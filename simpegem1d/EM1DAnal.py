@@ -38,7 +38,11 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     """
         Computing Cole-Cole model in frequency domain
     """
-    w = 2*pi*f
-    sigma = sig_inf + sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c)
+    sigma = []
+    for i in range(f.size):
+
+        w = 2*np.pi*f[i]
+        sigma_temp = sig_inf + sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c)
+        sigma.append(sigma_temp)
 
     return sigma
