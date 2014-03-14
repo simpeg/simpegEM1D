@@ -33,3 +33,12 @@ def HzanalCirc(sig, f, I, a, flag):
         Hzp = I/2./a
         Hz = Hz-Hzp
     return Hz
+
+def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
+    """
+        Computing Cole-Cole model in frequency domain
+    """
+    w = 2*pi*f
+    sigma = sig_inf + sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c)
+
+    return sigma
