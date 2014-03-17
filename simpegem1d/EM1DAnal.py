@@ -1,4 +1,6 @@
 import numpy as np
+from SimPEG import Utils
+
 
 def Hzanal(sig, f, r, flag):
 
@@ -38,11 +40,9 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     """
         Computing Cole-Cole model in frequency domain
     """
-    sigma = []
+
+    sigma = np.zeros((f.size,sig_inf.size), dtype=complex)
     for i in range(f.size):
-
         w = 2*np.pi*f[i]
-        sigma_temp = sig_inf + sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c)
-        sigma.append(sigma_temp)
-
+        sigma[i,:] = Utils.mkvc(sig_inf - sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c))
     return sigma

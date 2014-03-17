@@ -1,5 +1,5 @@
 import numpy as np
-
+from scipy.constants import mu_0
 def rTEfun(nlay, f, lamda, sig, chi, depth):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.

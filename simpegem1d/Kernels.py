@@ -12,7 +12,7 @@ def HzKernel_layer(lamda, f, nlay, sig, chi, depth, h, z, flag):
 
     """
     u0 = lamda
-    rTE = rTEfunMAT(nlay, f, lamda, sig, chi, depth)
+    rTE = rTEfun(nlay, f, lamda, sig, chi, depth)
 
     if flag=='secondary':
         # Note
@@ -43,7 +43,7 @@ def HzkernelCirc_layer(lamda, f, nlay, sig, chi, depth, h, z, I, a, flag):
     w = 2*np.pi*f
     rTE = np.zeros(lamda.size, dtype=complex)
     u0 = lamda
-    rTE = rTEfunMAT(nlay, f, lamda, sig, chi, depth)
+    rTE = rTEfun(nlay, f, lamda, sig, chi, depth)
 
     if flag == 'secondary':
         kernel = I*a*0.5*(rTE*np.exp(-u0*(z+h)))*lamda**2/u0
