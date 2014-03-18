@@ -6,6 +6,7 @@ from Kernels import HzKernel_layer, HzkernelCirc_layer
 from DigFilter import EvalDigitalFilt
 from RTEfun import rTEfun
 
+
 class EM1D(Problem.BaseProblem):
     """
         Pseudo analytic solutions for frequency and time domain EM problems assuming
@@ -61,6 +62,8 @@ class EM1D(Problem.BaseProblem):
                 for ifreq in range(nfreq):
                     kernel = lambda x: HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)
                     HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
+            else :
+                raise Exception("Tx options are only VMD or CircularLoop!!")                    
 
         elif self.CondType == 'Complex':
             sig_temp = np.zeros(self.survey.nlay, dtype = complex)
@@ -78,9 +81,13 @@ class EM1D(Problem.BaseProblem):
                     sig_temp = Utils.mkvc(sig[ifreq, :])
                     kernel = lambda x: HzkernelCirc_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, I, a, flag)
                     HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
+            else :
+                raise Exception("Tx options are only VMD or CircularLoop!!")                    
         else :
 
-            raise Exception("Not implemented!!")
+            raise Exception("CondType should be either 'Real' or 'Complex'!!")
+
+
 
         return  HzFHT
 
