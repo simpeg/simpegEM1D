@@ -16,9 +16,16 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         TDsurvey.fieldtype = 'secondary'
         TDsurvey.rxType = 'Bz'
         TDsurvey.waveType = 'general'
-        tconv =  np.r_[np.linspace(1e-6, 0.1, 2**12)]
+
         ta = 5.5*1e-4
         tb = 1.1*1e-3
+
+        tonw = np.linspace(1e-6, tb, 2**9+1)
+        dt = tonw[1]-tonw[0]
+        toffw = np.linspace(tb+dt, tb+(2**13)*dt, 2**13)
+        tconv = np.r_[tonw, toffw]        
+        # tconv =  np.r_[np.linspace(1e-7, 0.1, 2**12)]
+
         waveform = TriangleFun(tconv, ta, tb)
         waveformDeriv = TriangleFunDeriv(tconv, ta, tb)
         tend = 0.01
@@ -44,7 +51,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         TDsurvey.topo = topo
         TDsurvey.LocSigZ = LocSigZ
         TDsurvey.Setup1Dsystem()
-        TDsurvey.time = np.logspace(-4, -2, 64)+tb
+        TDsurvey.time = np.logspace(-5, -2, 64)+tb
         
         sig_half = 1e-2
         chi_half = 0.
@@ -85,7 +92,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
     def test_EM1DTDfwd_CirLoop_RealCond(self):
         self.prob.CondType = 'Real'        
-        sig_half = 0.01
+        sig_half = 1e-2
 
         em1dtd = io.loadmat('em1dtm/em1DTD_100.mat')
         tc = em1dtd['tc']
@@ -127,7 +134,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         print 'dBzdt error = ', err
         self.assertTrue(err < 2e-1)
 
-        print "EM1DTD-CirculurLoop-general waveform for real conductivity works"
+        print "EM1DTD-CirculurLoop-general for real conductivity works"
 
     # def test_EM1DTDfwd_CirLoop_ComplexCond(self):
 
