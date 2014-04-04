@@ -83,7 +83,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.modelComplex = modelComplex
         self.prob = prob
         self.mesh1D = mesh1D
-        self.showIt = True
+        self.showIt = False
         self.tau = tau
         self.eta = eta
         self.c = c
@@ -130,65 +130,13 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             plt.subplot(122)
             plt.loglog(self.survey.time-self.survey.toff, abs((dBzdtTD-dBdtint(self.survey.time))/dBdtint(self.survey.time)), 'r:')
             plt.show()
+
         err = np.linalg.norm(dBzdtTD-dBdtint(self.survey.time))/np.linalg.norm(dBdtint(self.survey.time))
         print 'dBzdt error = ', err
         self.assertTrue(err < 2e-1)
 
         print "EM1DTD-CirculurLoop-general for real conductivity works"
 
-    # def test_EM1DTDfwd_CirLoop_ComplexCond(self):
-
-    #     if self.prob.ispaired:
-    #         self.prob.unpair()
-    #     if self.survey.ispaired:
-    #         self.survey.unpair()
-
-    #     self.prob = EM1D.EM1D(self.modelComplex, **self.options)
-    #     self.prob.chi = np.zeros(self.survey.nlay)
-    #     self.prob.pair(self.survey)
-
-    #     self.prob.CondType = 'Complex'        
-    #     self.prob.survey.txType = 'CircularLoop'
-    #     self.prob.survey.offset = 10.
-    #     sig_half = 0.01
-    #     I = 1e0
-    #     a = 1e1
-    #     self.prob.survey.I = I
-    #     self.prob.survey.a = a
-
-        
-
-    #     m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
-    #     Hz = self.prob.fields(m_1D)
-    #     BzTD = self.prob.survey.projectFields(u=Hz)
-
-    #     sigCole = EM1DAnal.ColeCole(self.survey.frequency, sig_half, self.eta, self.tau, self.c)
-    #     Bzanal = EM1DAnal.BzAnalCircTCole(a, self.survey.time, sigCole)
-
-    #     if self.showIt == True:
-
-    #         plt.loglog(self.survey.time, abs(BzTD), 'b')
-    #         plt.loglog(self.survey.time, abs(Bzanal), 'b*')
-    #         plt.show()
-
-    #     err = np.linalg.norm(BzTD-Bzanal)/np.linalg.norm(Bzanal)
-    #     print 'Bz error = ', err        
-    #     self.assertTrue(err < 1e-2)
-
-    #     self.survey.rxType = 'dBzdt'
-    #     dBzdtTD = self.prob.survey.projectFields(u=Hz)
-    #     dBzdtanal = EM1DAnal.dBzdtAnalCircTCole(a, self.survey.time, sigCole)
-
-    #     if self.showIt == True:
-
-    #         plt.loglog(self.survey.time, abs(dBzdtTD), 'b')
-    #         plt.loglog(self.survey.time, abs(dBzdtanal), 'b*')
-    #         plt.show()
-
-    #     err = np.linalg.norm(dBzdtTD-dBzdtanal)/np.linalg.norm(dBzdtanal)
-    #     print 'dBzdt error = ', err
-    #     self.assertTrue(err < 1e-2)        
-    #     print "EM1DTD-CirculurLoop for Complex conductivity works"
 
 if __name__ == '__main__':
     unittest.main()
