@@ -36,15 +36,20 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
     z = None             #: Rx heights at local coordinate
     I = 1.               #: Tx loop current
     a = None             #: Tx loop radius
+    HalfSwitch = False
 
     def __init__(self, **kwargs):
         Survey.BaseSurvey.__init__(self, **kwargs)
 
     def Setup1Dsystem(self):
-        self.nlay = self.depth.size
+        if self.HalfSwitch == False:
+            self.nlay = self.depth.size
+        elif self.HalfSwitch == True:
+            self.nlay = 1
+        else:
+            raise Exception('Not implemnted!!')
         self.h = self.txLoc[2]-self.topo[2]
         self.z = self.rxLoc[2]-self.topo[2]
-
 
 
 class EM1DSurveyTD(BaseEM1DSurvey):

@@ -87,12 +87,11 @@ from numba import jit
 #         M10.append(Mtemp10)
 #         M11.append(Mtemp11)
 
-
 #     rTE = M1sum01/M1sum11
 
 #     return rTE, 0.
 
-def rTEfun(nlay, f, lamda, sig, chi, depth):
+def rTEfun(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.
         Only one for loop for multiple layers. Do not use for loop for lambda,
@@ -130,13 +129,12 @@ def rTEfun(nlay, f, lamda, sig, chi, depth):
 
     utemp0 = lamda
     utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0])
-
     const = mu_0*utemp1/(mu_0*(1+chi[0])*utemp0)
 
-    dj0Mtemp00 = 0.5*(const/utemp1)
-    dj0Mtemp10 = 0.5*(-const/utemp1)
-    dj0Mtemp01 = 0.5*(-const/utemp1)
-    dj0Mtemp11 = 0.5*(const/utemp1)
+    dj0Mtemp00 =  0.5*(mu_0/(mu_0*(1+chi[0])*utemp0))
+    dj0Mtemp10 = -0.5*(mu_0/(mu_0*(1+chi[0])*utemp0))
+    dj0Mtemp01 = -0.5*(mu_0/(mu_0*(1+chi[0])*utemp0))
+    dj0Mtemp11 =  0.5*(mu_0/(mu_0*(1+chi[0])*utemp0))
 
     # TODO: for computing Jacobian
     M00 = []
@@ -159,244 +157,298 @@ def rTEfun(nlay, f, lamda, sig, chi, depth):
     M0sum10 = Mtemp10
     M0sum01 = Mtemp01
     M0sum11 = Mtemp11
+    
+    if HalfSwitch == True:
 
-    for j in range (nlay-1):
-
-        Mtemp00 = np.zeros(lamda.size, dtype=complex)
-        Mtemp10 = np.zeros(lamda.size, dtype=complex)
-        Mtemp01 = np.zeros(lamda.size, dtype=complex)
-        Mtemp11 = np.zeros(lamda.size, dtype=complex)
-        # This in necessary... I am not quite sure why though
         M1sum00 = np.zeros(lamda.size, dtype=complex)
         M1sum10 = np.zeros(lamda.size, dtype=complex)
         M1sum01 = np.zeros(lamda.size, dtype=complex)
         M1sum11 = np.zeros(lamda.size, dtype=complex)
 
-        utemp0  = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j])*sig[j])
-        utemp1  = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j+1])*sig[j+1])
-        const = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0)
+        M1sum00 = M0sum00
+        M1sum10 = M0sum10
+        M1sum01 = M0sum01
+        M1sum11 = M0sum11
 
-        h0 = thick[j]
+    else:
 
-        Mtemp00 = 0.5*(1.+ const)*np.exp(-2.*utemp0*h0)
-        Mtemp10 = 0.5*(1.- const)
-        Mtemp01 = 0.5*(1.- const)*np.exp(-2.*utemp0*h0)
-        Mtemp11 = 0.5*(1.+ const)
+        for j in range (nlay-1):
 
-        M1sum00 = M0sum00*Mtemp00 + M0sum01*Mtemp10
-        M1sum10 = M0sum10*Mtemp00 + M0sum11*Mtemp10
-        M1sum01 = M0sum00*Mtemp01 + M0sum01*Mtemp11
-        M1sum11 = M0sum10*Mtemp01 + M0sum11*Mtemp11
+            Mtemp00 = np.zeros(lamda.size, dtype=complex)
+            Mtemp10 = np.zeros(lamda.size, dtype=complex)
+            Mtemp01 = np.zeros(lamda.size, dtype=complex)
+            Mtemp11 = np.zeros(lamda.size, dtype=complex)
+            # This in necessary... I am not quite sure why though
+            M1sum00 = np.zeros(lamda.size, dtype=complex)
+            M1sum10 = np.zeros(lamda.size, dtype=complex)
+            M1sum01 = np.zeros(lamda.size, dtype=complex)
+            M1sum11 = np.zeros(lamda.size, dtype=complex)
 
-        M0sum00 = M1sum00
-        M0sum10 = M1sum10
-        M0sum01 = M1sum01
-        M0sum11 = M1sum11
+            dJ_10Mtemp00 = np.zeros(lamda.size, dtype=complex)
+            dJ_10Mtemp10 = np.zeros(lamda.size, dtype=complex)
+            dJ_10Mtemp01 = np.zeros(lamda.size, dtype=complex)
+            dJ_10Mtemp11 = np.zeros(lamda.size, dtype=complex)
 
-        # TODO: for Computing Jacobian
-        dudsig =  0.5*1j*mu_0*(1+chi[j])*w/(np.sqrt(lamda**2+1j*mu_0*(1+chi[j])*sig[j]*w))
-        if j<1:
+            dJ01Mtemp00 = np.zeros(lamda.size, dtype=complex)
+            dJ01Mtemp10 = np.zeros(lamda.size, dtype=complex)
+            dJ01Mtemp01 = np.zeros(lamda.size, dtype=complex)
+            dJ01Mtemp11 = np.zeros(lamda.size, dtype=complex)
 
-            const1a = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0**2)
-            const1b = const1a*utemp1*h0
+            utemp0  = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j])*sig[j])
+            utemp1  = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j+1])*sig[j+1])
+            const = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0)
 
-            dj1Mtemp00 = -const1b*np.exp(-2.*utemp1*thick[0])-0.5*const1a*np.exp(-2.*utemp1*thick[0])
-            dj1Mtemp10 =  0.5*const1a
-            dj1Mtemp01 =  const1b*np.exp(-2.*utemp1*thick[0])+0.5*const1a*np.exp(-2.*utemp1*thick[0])
-            dj1Mtemp11 = -0.5*const1a
+            h0 = thick[j]
 
-            dJ_10Mtemp00 = dj0Mtemp00*Mtemp00 + dj0Mtemp01*Mtemp10
-            dJ_10Mtemp10 = dj0Mtemp10*Mtemp00 + dj0Mtemp11*Mtemp10
-            dJ_10Mtemp01 = dj0Mtemp00*Mtemp01 + dj0Mtemp01*Mtemp11
-            dJ_10Mtemp11 = dj0Mtemp10*Mtemp01 + dj0Mtemp11*Mtemp11
+            Mtemp00 = 0.5*(1.+ const)*np.exp(-2.*utemp0*h0)
+            Mtemp10 = 0.5*(1.- const)
+            Mtemp01 = 0.5*(1.- const)*np.exp(-2.*utemp0*h0)
+            Mtemp11 = 0.5*(1.+ const)
 
-            dJ01Mtemp00  = M00[j]*dj1Mtemp00 + M01[j]*dj1Mtemp10
-            dJ01Mtemp10  = M10[j]*dj1Mtemp00 + M11[j]*dj1Mtemp10
-            dJ01Mtemp01  = M00[j]*dj1Mtemp01 + M01[j]*dj1Mtemp11
-            dJ01Mtemp11  = M10[j]*dj1Mtemp01 + M11[j]*dj1Mtemp11
+            M1sum00 = M0sum00*Mtemp00 + M0sum01*Mtemp10
+            M1sum10 = M0sum10*Mtemp00 + M0sum11*Mtemp10
+            M1sum01 = M0sum00*Mtemp01 + M0sum01*Mtemp11
+            M1sum11 = M0sum10*Mtemp01 + M0sum11*Mtemp11
 
-            dJ00.append(dudsig*(dJ_10Mtemp00+dJ01Mtemp00))
-            dJ10.append(dudsig*(dJ_10Mtemp10+dJ01Mtemp10))
-            dJ01.append(dudsig*(dJ_10Mtemp01+dJ01Mtemp01))
-            dJ11.append(dudsig*(dJ_10Mtemp11+dJ01Mtemp11))
+            M0sum00 = M1sum00
+            M0sum10 = M1sum10
+            M0sum01 = M1sum01
+            M0sum11 = M1sum11
 
-        else:
-            h_1 = thick[j-1]            
+            # TODO: for Computing Jacobian
+    
+            k0 = np.sqrt(-1j*w*mu_0*(1+chi[j])*sig[j])    
+            dkdsig = k0/sig[j]*0.5
+            dudk = -k0/utemp0
+            dudsig = dkdsig*dudk
 
-            utemp_1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j-1])*sig[j-1])
-            const0 = mu_0*(1+chi[j-1])/(mu_0*(1+chi[j])*utemp_1)            
+            if j==0:                
 
-            dj0Mtemp00 =  0.5*(const0)*np.exp(-2.*utemp_1*h_1)
-            dj0Mtemp10 = -0.5*(const0)
-            dj0Mtemp01 = -0.5*(const0)*np.exp(-2.*utemp_1*h_1)
-            dj0Mtemp11 =  0.5*(const0)
+                const1a = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0**2)
+                const1b = const1a*utemp1*h0
 
-            const1a = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0**2)
-            const1b = const1a*utemp1*h0
+                dj1Mtemp00 = -const1b*np.exp(-2.*utemp1*h0)-0.5*const1a*np.exp(-2.*utemp1*h0)
+                dj1Mtemp10 =  0.5*const1a
+                dj1Mtemp01 =  const1b*np.exp(-2.*utemp1*h0)+0.5*const1a*np.exp(-2.*utemp1*h0)
+                dj1Mtemp11 = -0.5*const1a
 
-            dj1Mtemp00 = -const1b*np.exp(-2.*utemp1*thick[0])-0.5*const1a*np.exp(-2.*utemp1*thick[0])
-            dj1Mtemp10 =  0.5*const1a
-            dj1Mtemp01 =  const1b*np.exp(-2.*utemp1*thick[0])+0.5*const1a*np.exp(-2.*utemp1*thick[0])
-            dj1Mtemp11 = -0.5*const1a
+                #Compute dM1dm1*M2
+                dJ_10Mtemp00 = dj0Mtemp00*Mtemp00 + dj0Mtemp01*Mtemp10
+                dJ_10Mtemp10 = dj0Mtemp10*Mtemp00 + dj0Mtemp11*Mtemp10
+                dJ_10Mtemp01 = dj0Mtemp00*Mtemp01 + dj0Mtemp01*Mtemp11
+                dJ_10Mtemp11 = dj0Mtemp10*Mtemp01 + dj0Mtemp11*Mtemp11
 
-            dJ_10Mtemp00 = dj0Mtemp00*Mtemp00 + dj0Mtemp01*Mtemp10
-            dJ_10Mtemp10 = dj0Mtemp10*Mtemp00 + dj0Mtemp11*Mtemp10
-            dJ_10Mtemp01 = dj0Mtemp00*Mtemp01 + dj0Mtemp01*Mtemp11
-            dJ_10Mtemp11 = dj0Mtemp10*Mtemp01 + dj0Mtemp11*Mtemp11
+                #Compute M1*dM2dm1        
+                dJ01Mtemp00  = M00[0]*dj1Mtemp00 + M01[0]*dj1Mtemp10
+                dJ01Mtemp10  = M10[0]*dj1Mtemp00 + M11[0]*dj1Mtemp10
+                dJ01Mtemp01  = M00[0]*dj1Mtemp01 + M01[0]*dj1Mtemp11
+                dJ01Mtemp11  = M10[0]*dj1Mtemp01 + M11[0]*dj1Mtemp11
 
-            dJ01Mtemp00  = M00[j]*dj1Mtemp00 + M01[j]*dj1Mtemp10
-            dJ01Mtemp10  = M10[j]*dj1Mtemp00 + M11[j]*dj1Mtemp10
-            dJ01Mtemp01  = M00[j]*dj1Mtemp01 + M01[j]*dj1Mtemp11
-            dJ01Mtemp11  = M10[j]*dj1Mtemp01 + M11[j]*dj1Mtemp11
-            
+                dJ00.append(dudsig*(dJ_10Mtemp00+dJ01Mtemp00))
+                dJ10.append(dudsig*(dJ_10Mtemp10+dJ01Mtemp10))
+                dJ01.append(dudsig*(dJ_10Mtemp01+dJ01Mtemp01))
+                dJ11.append(dudsig*(dJ_10Mtemp11+dJ01Mtemp11))
 
-            dJ00.append(dudsig*(dJ_10Mtemp00+dJ01Mtemp00))
-            dJ10.append(dudsig*(dJ_10Mtemp10+dJ01Mtemp10))
-            dJ01.append(dudsig*(dJ_10Mtemp01+dJ01Mtemp01))
-            dJ11.append(dudsig*(dJ_10Mtemp11+dJ01Mtemp11))
+            else:
+                
+                h_1 = thick[j-1]            
+                utemp_1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j-1])*sig[j-1])
+                const0 = mu_0*(1+chi[j-1])/(mu_0*(1+chi[j])*utemp_1)            
 
-        M00.append(Mtemp00)
-        M01.append(Mtemp01)
-        M10.append(Mtemp10)
-        M11.append(Mtemp11)
+                dj0Mtemp00 =  0.5*(const0)*np.exp(-2.*utemp_1*h_1)
+                dj0Mtemp10 = -0.5*(const0)
+                dj0Mtemp01 = -0.5*(const0)*np.exp(-2.*utemp_1*h_1)
+                dj0Mtemp11 =  0.5*(const0)
+
+                
+                
+                const1a = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0**2)
+                const1b = const1a*utemp0*h0
+
+                dj1Mtemp00 = -const1b*np.exp(-2.*utemp1*h0)-0.5*const1a*np.exp(-2.*utemp1*h0)
+                dj1Mtemp10 =  0.5*const1a
+                dj1Mtemp01 =  const1b*np.exp(-2.*utemp1*h0)+0.5*const1a*np.exp(-2.*utemp1*h0)
+                dj1Mtemp11 = -0.5*const1a
+
+                #Compute dMjdmj*Mj+1
+                dJ_10Mtemp00 = dj0Mtemp00*Mtemp00 + dj0Mtemp01*Mtemp10
+                dJ_10Mtemp10 = dj0Mtemp10*Mtemp00 + dj0Mtemp11*Mtemp10
+                dJ_10Mtemp01 = dj0Mtemp00*Mtemp01 + dj0Mtemp01*Mtemp11
+                dJ_10Mtemp11 = dj0Mtemp10*Mtemp01 + dj0Mtemp11*Mtemp11
+
+                #Compute Mj*dMj+1dmj
+                dJ01Mtemp00  = M00[j]*dj1Mtemp00 + M01[j]*dj1Mtemp10
+                dJ01Mtemp10  = M10[j]*dj1Mtemp00 + M11[j]*dj1Mtemp10
+                dJ01Mtemp01  = M00[j]*dj1Mtemp01 + M01[j]*dj1Mtemp11
+                dJ01Mtemp11  = M10[j]*dj1Mtemp01 + M11[j]*dj1Mtemp11               
+
+                dJ00.append(dudsig*(dJ_10Mtemp00+dJ01Mtemp00))
+                dJ10.append(dudsig*(dJ_10Mtemp10+dJ01Mtemp10))
+                dJ01.append(dudsig*(dJ_10Mtemp01+dJ01Mtemp01))
+                dJ11.append(dudsig*(dJ_10Mtemp11+dJ01Mtemp11))
+
+            M00.append(Mtemp00)
+            M01.append(Mtemp01)
+            M10.append(Mtemp10)
+            M11.append(Mtemp11)
 
 
     rTE = M1sum01/M1sum11
-    h_1 = thick[nlay-2]            
-
-    utemp_1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[nlay-2])*sig[nlay-2])
-    const0 = mu_0*(1+chi[nlay-2])/(mu_0*(1+chi[nlay-1])*utemp_1)            
-
-    dj0Mtemp00 =  0.5*(const0)*np.exp(-2.*utemp_1*h_1)
-    dj0Mtemp10 = -0.5*(const0)
-    dj0Mtemp01 = -0.5*(const0)*np.exp(-2.*utemp_1*h_1)
-    dj0Mtemp11 =  0.5*(const0)
-
-    dJ00.append(dudsig*dJ_10Mtemp00)
-    dJ10.append(dudsig*dJ_10Mtemp10)
-    dJ01.append(dudsig*dJ_10Mtemp01)
-    dJ11.append(dudsig*dJ_10Mtemp11)    
 
 
-    dJ0sum00 = np.zeros(lamda.size, dtype=complex)
-    dJ0sum10 = np.zeros(lamda.size, dtype=complex)
-    dJ0sum01 = np.zeros(lamda.size, dtype=complex)
-    dJ0sum11 = np.zeros(lamda.size, dtype=complex)
+    if HalfSwitch ==  True:
 
-    for i in range (nlay):
+        utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0])
+        k0 = np.sqrt(-1j*w*mu_0*(1+chi[0])*sig[0])    
+        dkdsig = k0/sig[0]*0.5
+        dudk = -k0/utemp0
+        dudsig = dkdsig*dudk
 
-        if i==0:
+        dJ1sum00 = np.zeros(lamda.size, dtype=complex)
+        dJ1sum10 = np.zeros(lamda.size, dtype=complex)
+        dJ1sum01 = np.zeros(lamda.size, dtype=complex)
+        dJ1sum11 = np.zeros(lamda.size, dtype=complex)        
 
-            for j in range (nlay-2):
+        dJ1sum00 = dudsig*dj0Mtemp00
+        dJ1sum10 = dudsig*dj0Mtemp10
+        dJ1sum01 = dudsig*dj0Mtemp01
+        dJ1sum11 = dudsig*dj0Mtemp11
 
-                dJ1sum00 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum10 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum01 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum11 = np.zeros(lamda.size, dtype=complex)
+        drTE = dJ1sum01/M1sum11 - M1sum01/(M1sum11**2)*dJ1sum11
 
-                if j==0:
+    else:
 
-                    dJ0sum00 = dJ00[i]*M00[j+2] + dJ00[i]*M10[j+2]
-                    dJ0sum10 = dJ00[i]*M00[j+2] + dJ00[i]*M10[j+2]
-                    dJ0sum01 = dJ01[i]*M01[j+2] + dJ01[i]*M11[j+2]
-                    dJ0sum11 = dJ01[i]*M01[j+2] + dJ01[i]*M11[j+2]        
+        #j = nlay
+        h_1 = thick[nlay-2]            
+        utemp_1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[nlay-2])*sig[nlay-2])
+        const0 = mu_0*(1+chi[nlay-2])/(mu_0*(1+chi[nlay-1])*utemp_1)            
 
-                else:
+        dj0Mtemp00 =  0.5*(const0)*np.exp(-2.*utemp_1*h_1)
+        dj0Mtemp10 = -0.5*(const0)
+        dj0Mtemp01 = -0.5*(const0)*np.exp(-2.*utemp_1*h_1)
+        dj0Mtemp11 =  0.5*(const0)        
 
-                    dJ1sum00 = dJ0sum00*M00[j+2] + dJ0sum00*M10[j+2]
-                    dJ1sum10 = dJ0sum10*M00[j+2] + dJ0sum10*M10[j+2]
-                    dJ1sum01 = dJ0sum01*M01[j+2] + dJ0sum01*M11[j+2]
-                    dJ1sum11 = dJ0sum11*M01[j+2] + dJ0sum11*M11[j+2]        
-
-                dJ0sum00 = dJ1sum00
-                dJ0sum10 = dJ1sum10
-                dJ0sum01 = dJ1sum01
-                dJ0sum11 = dJ1sum11                
-
-        elif (i>0) & (i<nlay-1):
-
-            dJ0sum00 = M00[0]
-            dJ0sum10 = M10[0]
-            dJ0sum01 = M01[0]
-            dJ0sum11 = M11[0]
-
-            for j in range (nlay-2):
-
-                dJ1sum00 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum10 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum01 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum11 = np.zeros(lamda.size, dtype=complex)
+        dJ_10Mtemp00 = dj0Mtemp00
+        dJ_10Mtemp10 = dj0Mtemp10
+        dJ_10Mtemp01 = dj0Mtemp01
+        dJ_10Mtemp11 = dj0Mtemp11
 
 
-                if j==i-1:
+        dJ00.append(dudsig*dJ_10Mtemp00)
+        dJ10.append(dudsig*dJ_10Mtemp10)
+        dJ01.append(dudsig*dJ_10Mtemp01)
+        dJ11.append(dudsig*dJ_10Mtemp11)       
 
-                    dJ1sum00 = M00[j]*dJ00[i] + M10[j]*dJ00[i]
-                    dJ1sum10 = M00[j]*dJ00[i] + M10[j]*dJ00[i]
-                    dJ1sum01 = M01[j]*dJ01[i] + M11[j]*dJ01[i]
-                    dJ1sum11 = M01[j]*dJ01[i] + M11[j]*dJ01[i]
+        for i in range (nlay):
 
-                elif j==i:
+            dJ0sum00 = np.zeros(lamda.size, dtype=complex)
+            dJ0sum10 = np.zeros(lamda.size, dtype=complex)
+            dJ0sum01 = np.zeros(lamda.size, dtype=complex)
+            dJ0sum11 = np.zeros(lamda.size, dtype=complex)
 
-                    dJ1sum00 = dJ00[i]*M00[j+2] + dJ00[i]*M10[j+2]
-                    dJ1sum10 = dJ00[i]*M00[j+2] + dJ00[i]*M10[j+2]
-                    dJ1sum01 = dJ01[i]*M01[j+2] + dJ01[i]*M11[j+2]
-                    dJ1sum11 = dJ01[i]*M01[j+2] + dJ01[i]*M11[j+2]
+            if i==0:
 
-                elif j < i-1:
+                for j in range (nlay-2):
 
-                    dJ1sum00 = dJ0sum00*M00[j+1] + dJ0sum00*M10[j+1]
-                    dJ1sum10 = dJ0sum10*M00[j+1] + dJ0sum10*M10[j+1]
-                    dJ1sum01 = dJ0sum01*M01[j+1] + dJ0sum01*M11[j+1]
-                    dJ1sum11 = dJ0sum11*M01[j+1] + dJ0sum11*M11[j+1]        
+                    dJ1sum00 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum10 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum01 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum11 = np.zeros(lamda.size, dtype=complex)                    
+
+                    if j==0:                       
+
+                        dJ1sum00 = dJ00[i]*M00[j+2] + dJ01[i]*M10[j+2]
+                        dJ1sum10 = dJ10[i]*M00[j+2] + dJ11[i]*M10[j+2]
+                        dJ1sum01 = dJ00[i]*M01[j+2] + dJ01[i]*M11[j+2]
+                        dJ1sum11 = dJ10[i]*M01[j+2] + dJ11[i]*M11[j+2]        
+
+                    else:
+
+                        dJ1sum00 = dJ0sum00*M00[j+2] + dJ0sum01*M10[j+2]
+                        dJ1sum10 = dJ0sum10*M00[j+2] + dJ0sum11*M10[j+2]
+                        dJ1sum01 = dJ0sum00*M01[j+2] + dJ0sum01*M11[j+2]
+                        dJ1sum11 = dJ0sum10*M01[j+2] + dJ0sum11*M11[j+2]        
+
+                    dJ0sum00 = dJ1sum00
+                    dJ0sum10 = dJ1sum10
+                    dJ0sum01 = dJ1sum01
+                    dJ0sum11 = dJ1sum11                
+
+            elif (i>0) & (i<nlay-1):
+
+                dJ0sum00 = M00[0]
+                dJ0sum10 = M10[0]
+                dJ0sum01 = M01[0]
+                dJ0sum11 = M11[0]
+
+                for j in range (nlay-2):
+
+                    dJ1sum00 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum10 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum01 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum11 = np.zeros(lamda.size, dtype=complex) 
+
+                    if j==i-1:
+
+                        dJ1sum00 = M00[j]*dJ00[i] + M01[j]*dJ10[i]
+                        dJ1sum10 = M10[j]*dJ00[i] + M11[j]*dJ10[i]
+                        dJ1sum01 = M00[j]*dJ01[i] + M01[j]*dJ11[i]
+                        dJ1sum11 = M10[j]*dJ01[i] + M11[j]*dJ11[i]
+
+                    elif j < i-1:
+
+                        dJ1sum00 = dJ0sum00*M00[j+1] + dJ0sum01*M10[j+1]
+                        dJ1sum10 = dJ0sum10*M00[j+1] + dJ0sum11*M10[j+1]
+                        dJ1sum01 = dJ0sum00*M01[j+1] + dJ0sum01*M11[j+1]
+                        dJ1sum11 = dJ0sum10*M01[j+1] + dJ0sum11*M11[j+1]        
+
+                    elif j > i-1:
+
+                        dJ1sum00 = dJ0sum00*M00[j+2] + dJ0sum01*M10[j+2]
+                        dJ1sum10 = dJ0sum10*M00[j+2] + dJ0sum11*M10[j+2]
+                        dJ1sum01 = dJ0sum00*M01[j+2] + dJ0sum01*M11[j+2]
+                        dJ1sum11 = dJ0sum10*M01[j+2] + dJ0sum11*M11[j+2]        
 
 
-                else:
+                    dJ0sum00 = dJ1sum00
+                    dJ0sum10 = dJ1sum10
+                    dJ0sum01 = dJ1sum01
+                    dJ0sum11 = dJ1sum11   
 
-                    dJ1sum00 = dJ0sum00*M00[j+2] + dJ0sum00*M10[j+2]
-                    dJ1sum10 = dJ0sum10*M00[j+2] + dJ0sum10*M10[j+2]
-                    dJ1sum01 = dJ0sum01*M01[j+2] + dJ0sum01*M11[j+2]
-                    dJ1sum11 = dJ0sum11*M01[j+2] + dJ0sum11*M11[j+2]        
+            elif i==nlay-1:
+
+                dJ0sum00 = M00[0]
+                dJ0sum10 = M10[0]
+                dJ0sum01 = M01[0]
+                dJ0sum11 = M11[0]
+
+                for j in range (nlay-1):
+
+                    dJ1sum00 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum10 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum01 = np.zeros(lamda.size, dtype=complex)
+                    dJ1sum11 = np.zeros(lamda.size, dtype=complex)                         
+
+                    if j < nlay-2:
+
+                        dJ1sum00 = dJ0sum00*M00[j+1] + dJ0sum01*M10[j+1]
+                        dJ1sum10 = dJ0sum10*M00[j+1] + dJ0sum11*M10[j+1]
+                        dJ1sum01 = dJ0sum01*M01[j+1] + dJ0sum01*M11[j+1]
+                        dJ1sum11 = dJ0sum11*M01[j+1] + dJ0sum11*M11[j+1]     
 
 
-                dJ0sum00 = dJ1sum00
-                dJ0sum10 = dJ1sum10
-                dJ0sum01 = dJ1sum01
-                dJ0sum11 = dJ1sum11   
+                    elif j == nlay-2:
 
-        elif i==nlay-1:
+                        dJ1sum00 = dJ0sum00*dJ00[i] + dJ0sum01*dJ10[i]
+                        dJ1sum10 = dJ0sum10*dJ00[i] + dJ0sum11*dJ10[i]
+                        dJ1sum01 = dJ0sum01*dJ01[i] + dJ0sum01*dJ11[i]
+                        dJ1sum11 = dJ0sum11*dJ01[i] + dJ0sum11*dJ11[i]    
 
-            dJ0sum00 = M00[0]
-            dJ0sum10 = M10[0]
-            dJ0sum01 = M01[0]
-            dJ0sum11 = M11[0]
+                    dJ0sum00 = dJ1sum00
+                    dJ0sum10 = dJ1sum10
+                    dJ0sum01 = dJ1sum01
+                    dJ0sum11 = dJ1sum11
 
-            for j in range (nlay-2):
-
-                dJ1sum00 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum10 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum01 = np.zeros(lamda.size, dtype=complex)
-                dJ1sum11 = np.zeros(lamda.size, dtype=complex)
-
-                if j < nlay-3:
-
-                    dJ1sum00 = dJ0sum00*M00[j+1] + dJ0sum00*M10[j+1]
-                    dJ1sum10 = dJ0sum10*M00[j+1] + dJ0sum10*M10[j+1]
-                    dJ1sum01 = dJ0sum01*M01[j+1] + dJ0sum01*M11[j+1]
-                    dJ1sum11 = dJ0sum11*M01[j+1] + dJ0sum11*M11[j+1]     
-
-                elif j == nlay-3:
-
-                    dJ1sum00 = M00[j]*dJ00[i] + M10[j]*dJ00[i]
-                    dJ1sum10 = M00[j]*dJ00[i] + M10[j]*dJ00[i]
-                    dJ1sum01 = M01[j]*dJ01[i] + M11[j]*dJ01[i]
-                    dJ1sum11 = M01[j]*dJ01[i] + M11[j]*dJ01[i]    
-
-                dJ0sum00 = dJ1sum00
-                dJ0sum10 = dJ1sum10
-                dJ0sum01 = dJ1sum01
-                dJ0sum11 = dJ1sum11
-
-        M1sum01/M1sum11
-        drTE[i,:] = dJ1sum01/M1sum11 - M1sum01/M1sum11**2*dJ1sum11
+            drTE[i,:] = dJ1  sum01/M1sum11 - M1sum01/(M1sum11**2)*dJ1sum11
 
     return rTE, drTE

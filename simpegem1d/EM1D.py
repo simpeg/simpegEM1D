@@ -24,7 +24,7 @@ class EM1D(Problem.BaseProblem):
     M10 = None
     M01 = None
     M11 = None
-    jacSwitch = True
+    jacSwitch = False
 
     
     def __init__(self, model, **kwargs):
@@ -47,7 +47,7 @@ class EM1D(Problem.BaseProblem):
         rTE = np.zeros(lamda.size, dtype=complex)
         drTE = np.zeros((nlay, lamda.size), dtype=complex)        
 
-        rTE, drTE = rTEfun(nlay, f, lamda, sig, chi, depth)
+        rTE, drTE = rTEfun(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
 
         if flag=='secondary':
             # Note
@@ -73,7 +73,7 @@ class EM1D(Problem.BaseProblem):
 
         return  Kernel
 
-
+    @Utils.requires('survey')
     def HzkernelCirc_layer(self, lamda, f, nlay, sig, chi, depth, h, z, I, a, flag):
 
         """
@@ -91,7 +91,7 @@ class EM1D(Problem.BaseProblem):
         rTE = np.zeros(lamda.size, dtype=complex)
         rTE = np.zeros((nlay, lamda.size), dtype=complex)        
         u0 = lamda
-        rTE, drTE = rTEfun(nlay, f, lamda, sig, chi, depth)
+        rTE, drTE = rTEfun(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
 
 
         if flag == 'secondary':
@@ -100,7 +100,7 @@ class EM1D(Problem.BaseProblem):
             kernel = I*a*0.5*(np.exp(u0*(z-h))+rTE*np.exp(-u0*(z+h)))*lamda**2/u0
 
         if self.jacSwitch == True:
-            jackernel = 1/(4*np.pi)*(drTE)*(np.exp(-u0*(z+h))*lamda**3/u0) 
+            jackernel = I*a*0.5*(drTE)*(np.exp(-u0*(z+h))*lamda**2/u0) 
             Kernel = []
             Kernel.append(kernel)
             Kernel.append(jackernel)
@@ -150,7 +150,7 @@ class EM1D(Problem.BaseProblem):
                             kernel    = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[0]
                             jackernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[1]
                             HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
-                            dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r)
+                            dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, jackernel, a)
                     else :
                         raise Exception("Tx options are only VMD or CircularLoop!!")                    
 
@@ -178,7 +178,10 @@ class EM1D(Problem.BaseProblem):
             else :
 
                 raise Exception("CondType should be either 'Real' or 'Complex'!!")
-            return  HzFHT, dHzFHTdsig                    
+                
+            if nlay==1:
+                dHzFHTdsig = Utils.mkvc(dHzFHTdsig)
+            return  HzFHT, dHzFHTdsig.T                    
             # return  HzFHT
 
         else:

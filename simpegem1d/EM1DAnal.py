@@ -39,6 +39,23 @@ def HzanalCirc(sig, f, I, a, flag):
         Hz = Hz-Hzp
     return Hz
 
+def dHzdsiganalCirc(sig, f, I, a, flag):
+
+    """
+
+        Analytic solution for half-space (Circular-loop source)
+        Tx and Rx are on the surface and receiver is located at the center of the loop.
+
+    """
+    mu_0 = 4*np.pi*1e-7
+    w = 2*np.pi*f
+    k = np.sqrt(-1j*w*mu_0*sig)
+    perc = 0.001
+    Hzfun = lambda m: HzanalCirc(m, f, I, a, flag)
+    dHzdsig = (Hzfun(sig+perc*sig)-Hzfun(sig-perc*sig))/(2*perc*sig)
+    return dHzdsig
+
+
 def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     """
         Computing Cole-Cole model in frequency domain

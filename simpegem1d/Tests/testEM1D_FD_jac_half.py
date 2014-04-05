@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from simpegem1d import EM1D, EM1DAnal, BaseEM1D
 
 
-class EM1D_FD_JacProblemTests(unittest.TestCase):
+class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
 
     def setUp(self):
         
@@ -16,6 +16,7 @@ class EM1D_FD_JacProblemTests(unittest.TestCase):
         nearthick = np.logspace(-1, 1, 5)
         deepthick = np.logspace(1, 2, 10)
         hx = np.r_[nearthick, deepthick]
+
         mesh1D = Mesh.TensorMesh([hx], [0.])
         depth = -mesh1D.gridN
         LocSigZ = -mesh1D.gridCC
@@ -25,10 +26,11 @@ class EM1D_FD_JacProblemTests(unittest.TestCase):
         FDsurvey.topo = topo
         FDsurvey.LocSigZ = LocSigZ
 
-        FDsurvey.frequency = np.logspace(1, 8, 61)
+        FDsurvey.frequency = np.logspace(2, 3, 10)
         FDsurvey.Nfreq = FDsurvey.frequency.size
+        FDsurvey.HalfSwitch = True
         FDsurvey.Setup1Dsystem()
-        sig_half = 1e-2
+        sig_half = 1e-1
         chi_half = 0.
 
         Logmodel = BaseEM1D.BaseEM1DModel(mesh1D)
@@ -53,43 +55,57 @@ class EM1D_FD_JacProblemTests(unittest.TestCase):
         prob.pair(FDsurvey)
         prob.chi = np.zeros(FDsurvey.nlay)
 
+
         self.survey = FDsurvey
         self.options = options
-        self.modelComplex = modelComplex
+        self.modelReal = modelReal
         self.prob = prob
         self.mesh1D = mesh1D
         self.showIt = False
-        self.tau = tau
-        self.eta = eta
-        self.c = c
 
 
-    def test_EM1DFDfwd_VMD_RealCond(self):
+    def test_EM1DFDjac_Circ_RealCond_Half(self):
         self.prob.CondType = 'Real'        
-        self.prob.survey.txType = 'VMD'
-        self.prob.survey.offset = 10.
-        sig_half = 0.01
+        self.prob.survey.txType = 'CircularLoop'
+    
+        I = 1e0
+        a = 1e1
+        self.prob.survey.I = I
+        self.prob.survey.a = a        
+        
+        sig_half = np.r_[0.01]
         m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
+        self.prob.jacSwitch = True
+        
         Hz, dHzdsig = self.prob.fields(m_1D)
-        Hzanal = EM1DAnal.Hzanal(sig_half, self.prob.survey.frequency, self.prob.survey.offset, 'secondary')
+        dHzdsiganal = EM1DAnal.dHzdsiganalCirc(sig_half, self.prob.survey.frequency, I, a, 'secondary')        
+
+        def fwdfun(m):
+            self.prob.jacSwitch = False
+            Hz = self.prob.fields(m)
+            return Hz
+
+        def jacfun(m, dm):
+            self.prob.jacSwitch = True
+            Hz, dHzdsig = self.prob.fields(m)
+            dsigdm = self.prob.model.transformDeriv(m)
+            return dHzdsig*(dsigdm*dm)
 
         if self.showIt == True:
-
-            plt.loglog(self.prob.survey.frequency, abs(Hz.real), 'b')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.real), 'b*')
-            plt.loglog(self.prob.survey.frequency, abs(Hz.imag), 'r')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.imag), 'r*')
+            plt.loglog(self.prob.survey.frequency, abs(dHzdsig.imag), 'r')
+            plt.loglog(self.prob.survey.frequency, abs(dHzdsig.real), 'b')
+            plt.loglog(self.prob.survey.frequency, abs(dHzdsiganal.imag), 'r*')
+            plt.loglog(self.prob.survey.frequency, abs(dHzdsiganal.real), 'b*')
             plt.show()
-        plt.loglog(self.prob.survey.frequency, abs(dHzdsig[1,:].imag), 'r')
-        plt.loglog(self.prob.survey.frequency, abs(dHzdsig[1,:].real), 'b')
-        plt.show()
-        # print dHzdsig[2,:].imag
-        err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
+
+        err = np.linalg.norm(dHzdsig-dHzdsiganal)/np.linalg.norm(dHzdsiganal)
         self.assertTrue(err < 1e-5)
-        print "EM1DFD-VMD for real conductivity works"
-        # self.prob.Jvec(m_1D, 0., 0.)
 
-
+        dm = m_1D*0.1
+        derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
+        passed = Tests.checkDerivative(derChk, m_1D, num=4, dx = dm, plotIt=False)
+        if passed:
+            print "EM1DFD-CircularLoop for real conductivity works"
 
 
  
