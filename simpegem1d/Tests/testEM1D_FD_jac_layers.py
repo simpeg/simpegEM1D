@@ -9,8 +9,8 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
     def setUp(self):
         
         FDsurvey = BaseEM1D.EM1DSurveyFD()
-        FDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
-        FDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
+        FDsurvey.rxLoc = np.array([0., 0., 100.+50.])
+        FDsurvey.txLoc = np.array([0., 0., 100.+50.])
         FDsurvey.fieldtype = 'secondary'
 
         nearthick = np.logspace(-1, 1, 2)
@@ -26,7 +26,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         FDsurvey.topo = topo
         FDsurvey.LocSigZ = LocSigZ
 
-        FDsurvey.frequency = np.logspace(2.5, 3, 5)
+        FDsurvey.frequency = np.logspace(-3, 5, 31)
         FDsurvey.Nfreq = FDsurvey.frequency.size
         FDsurvey.Setup1Dsystem()
         sig_half = 1e-1
@@ -60,7 +60,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         self.modelReal = modelReal
         self.prob = prob
         self.mesh1D = mesh1D
-        self.showIt = False
+        self.showIt = True
 
 
     def test_EM1DFDjac_Circ_RealCond_Layers(self):
@@ -72,9 +72,18 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         self.prob.survey.I = I
         self.prob.survey.a = a        
         
-        sig_half = np.r_[0.01]
-        m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
+        sig_half = 0.01
+        sig_blk = 0.1
+        sig = np.ones(self.prob.survey.nlay)*sig_half
+        sig[3] = sig_blk
+        m_1D = np.log(sig)
+
         self.prob.jacSwitch = True
+        Hz, dHzdsig = self.prob.fields(m_1D)
+        dsigdm = self.prob.model.transformDeriv(m_1D)
+        
+        dHzdsig = dHzdsig*dsigdm
+
 
         def fwdfun(m):
             self.prob.jacSwitch = False
@@ -88,10 +97,23 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
             return np.dot(dHzdsig, (dsigdm*dm))
 
 
-
-        dm = m_1D*0.1
+        dm = m_1D*0.5
         derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
         passed = Tests.checkDerivative(derChk, m_1D, num=4, dx = dm, plotIt=False)
+
+        if self.showIt == True:
+
+            ilay = 3
+            temp_r = Utils.mkvc((dHzdsig[:,ilay].copy()).real)
+            temp_i = Utils.mkvc((dHzdsig[:,ilay].copy()).imag)
+            frequency = Utils.mkvc(self.prob.survey.frequency)
+
+            plt.loglog(frequency[temp_r>0], temp_r[temp_r>0], 'b.-')
+            plt.loglog(frequency[temp_r<0], -temp_r[temp_r<0], 'b.--')
+            plt.loglog(frequency[temp_i>0], temp_i[temp_i>0], 'r.-')
+            plt.loglog(frequency[temp_i<0], -temp_i[temp_i<0], 'r.--')
+            plt.show()
+
         if passed:
             print "EM1DFD-CircularLoop for real conductivity works"
 
