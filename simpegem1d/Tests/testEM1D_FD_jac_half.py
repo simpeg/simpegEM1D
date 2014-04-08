@@ -7,7 +7,7 @@ from simpegem1d import EM1D, EM1DAnal, BaseEM1D
 class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
 
     def setUp(self):
-
+        
         FDsurvey = BaseEM1D.EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
         FDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
@@ -41,10 +41,10 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
         Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
 
         modelReal = Model.ComboModel(mesh1D, [Logmodel])
-        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])
+        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
         m_1D = np.log(np.ones(nlay)*sig_half)
 
-        FDsurvey.rxType = 'Hz'
+        FDsurvey.rxType = 'Hz'        
 
         WT0 = np.load('../WT0.npy')
         WT1 = np.load('../WT1.npy')
@@ -65,20 +65,20 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
 
 
     def test_EM1DFDjac_Circ_RealCond_Half(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
-
+    
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
-        self.prob.survey.a = a
-
+        self.prob.survey.a = a        
+        
         sig_half = np.r_[0.01]
         m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
         self.prob.jacSwitch = True
-
+        
         Hz, dHzdsig = self.prob.fields(m_1D)
-        dHzdsiganal = EM1DAnal.dHzdsiganalCirc(sig_half, self.prob.survey.frequency, I, a, 'secondary')
+        dHzdsiganal = EM1DAnal.dHzdsiganalCirc(sig_half, self.prob.survey.frequency, I, a, 'secondary')        
 
         def fwdfun(m):
             self.prob.jacSwitch = False
@@ -95,7 +95,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
             plt.loglog(self.prob.survey.frequency, abs(dHzdsig.imag), 'r')
             plt.loglog(self.prob.survey.frequency, abs(dHzdsig.real), 'b')
             plt.loglog(self.prob.survey.frequency, abs(dHzdsiganal.imag), 'r*')
-            plt.loglog(2*perc*m[i], abs(dHzdsiganal.real), 'b*')
+            plt.loglog(self.prob.survey.frequency, abs(dHzdsiganal.real), 'b*')
             plt.show()
 
         err = np.linalg.norm(dHzdsig-dHzdsiganal)/np.linalg.norm(dHzdsiganal)
@@ -108,7 +108,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
             print "EM1DFD-CircularLoop for real conductivity works"
 
 
-
+ 
 
 
 if __name__ == '__main__':

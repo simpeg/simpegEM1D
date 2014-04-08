@@ -7,7 +7,7 @@ from simpegem1d import EM1D, EM1DAnal, BaseEM1D
 class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def setUp(self):
-
+        
         FDsurvey = BaseEM1D.EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
         FDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
@@ -26,7 +26,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         FDsurvey.topo = topo
         FDsurvey.LocSigZ = LocSigZ
 
-        FDsurvey.frequency = np.logspace(3, 3, 1)
+        FDsurvey.frequency = np.logspace(2.5, 3, 5)
         FDsurvey.Nfreq = FDsurvey.frequency.size
         FDsurvey.Setup1Dsystem()
         sig_half = 1e-1
@@ -40,10 +40,10 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
 
         modelReal = Model.ComboModel(mesh1D, [Logmodel])
-        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])
+        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
         m_1D = np.log(np.ones(nlay)*sig_half)
 
-        FDsurvey.rxType = 'Hz'
+        FDsurvey.rxType = 'Hz'        
 
         WT0 = np.load('../WT0.npy')
         WT1 = np.load('../WT1.npy')
@@ -64,21 +64,17 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
 
     def test_EM1DFDjac_Circ_RealCond_Layers(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
-
+    
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
-        self.prob.survey.a = a
-
+        self.prob.survey.a = a        
+        
         sig_half = np.r_[0.01]
         m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
         self.prob.jacSwitch = True
-        Hz, dHzdsig = self.prob.fields(m_1D)
-        dsigdm = self.prob.model.transformDeriv(m_1D)
-
-        dHzdsig = dHzdsig*dsigdm
 
         def fwdfun(m):
             self.prob.jacSwitch = False
@@ -89,39 +85,20 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
             self.prob.jacSwitch = True
             Hz, dHzdsig = self.prob.fields(m)
             dsigdm = self.prob.model.transformDeriv(m)
-            return np.dot(dHzdsig, dsigdm*dm)
-
-        def jacfunpert(m, dm):
-            self.prob.jacSwitch = False
-            dHzdsig = np.zeros((self.prob.survey.Nfreq, m.size), dtype = complex)
-            m1 = np.zeros(m.size)
-            m2 = np.zeros(m.size)
-            perc = 0.001
-            for i in range (m.size):
-                m1 = m.copy()
-                m2 = m.copy()
-                m1[i] = m[i]+perc*m[i]
-                m2[i] = m[i]-perc*m[i]
-                Hzu = self.prob.fields(m1)
-                Hzd = self.prob.fields(m2)
-                dHzdsig[:, i] = (Hzu-Hzd)/(2*perc*m[i])
-            return dHzdsig, np.dot(dHzdsig, (dm))
+            return np.dot(dHzdsig, (dsigdm*dm))
 
 
-        dHzdsiganal = jacfunpert(m_1D, 0.)[0]
-        for i in range(self.prob.survey.nlay):
-            print i, abs((Utils.mkvc(dHzdsig)[i].imag-Utils.mkvc(dHzdsiganal)[i].imag)/Utils.mkvc(dHzdsiganal)[i].imag)
-            # print i, abs((Utils.mkvc(dHzdsig)[i].real-Utils.mkvc(dHzdsiganal)[i].real)/Utils.mkvc(dHzdsiganal)[i].real)
 
-        passed = True
-
-        dm = m_1D*0.5
-        # derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
-        derChk = lambda m: [fwdfun(m), lambda mx: jacfunpert(m, mx)[1]]
+        dm = m_1D*0.1
+        derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
         passed = Tests.checkDerivative(derChk, m_1D, num=4, dx = dm, plotIt=False)
         if passed:
             print "EM1DFD-CircularLoop for real conductivity works"
 
 
+ 
+
+
 if __name__ == '__main__':
     unittest.main()
+_

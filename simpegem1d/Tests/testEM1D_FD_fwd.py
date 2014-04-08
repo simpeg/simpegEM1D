@@ -7,7 +7,7 @@ from simpegem1d import EM1D, EM1DAnal, BaseEM1D
 class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
     def setUp(self):
-
+        
         FDsurvey = BaseEM1D.EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
         FDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
@@ -25,7 +25,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         FDsurvey.topo = topo
         FDsurvey.LocSigZ = LocSigZ
 
-        FDsurvey.frequency = np.logspace(2, 3, 11)
+        FDsurvey.frequency = np.logspace(1, 8, 61)
         FDsurvey.Nfreq = FDsurvey.frequency.size
         FDsurvey.Setup1Dsystem()
         sig_half = 1e-2
@@ -39,10 +39,10 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
 
         modelReal = Model.ComboModel(mesh1D, [Logmodel])
-        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])
+        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
         m_1D = np.log(np.ones(nlay)*sig_half)
 
-        FDsurvey.rxType = 'Hz'
+        FDsurvey.rxType = 'Hz'        
 
         WT0 = np.load('../WT0.npy')
         WT1 = np.load('../WT1.npy')
@@ -65,7 +65,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
 
     def test_EM1DFDfwd_VMD_RealCond(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'VMD'
         self.prob.survey.offset = 10.
         sig_half = 0.01
@@ -87,7 +87,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
 
     def test_EM1DFDfwd_VMD_ComplexCond(self):
-
+        
         if self.prob.ispaired:
             self.prob.unpair()
         if self.survey.ispaired:
@@ -119,7 +119,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         print "EM1DFD-VMD for complex conductivity works"
 
     def test_EM1DFDfwd_CircularLoop_RealCond(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
         I = 1e0
         a = 1e1
@@ -139,11 +139,11 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
             plt.show()
 
         err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
-        self.assertTrue(err < 1e-5)
+        self.assertTrue(err < 1e-5)        
         print "EM1DFD-CircularLoop for real conductivity works"
 
     def test_EM1DFDfwd_CircularLoop_ComplexCond(self):
-
+        
         if self.prob.ispaired:
             self.prob.unpair()
         if self.survey.ispaired:
@@ -164,7 +164,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
         Hz = self.prob.fields(m_1D)
         sigCole = EM1DAnal.ColeCole(self.survey.frequency, sig_half, self.eta, self.tau, self.c)
-        Hzanal = EM1DAnal.HzanalCirc(sigCole, self.prob.survey.frequency, I, a, 'secondary')
+        Hzanal = EM1DAnal.HzanalCirc(sigCole, self.prob.survey.frequency, I, a, 'secondary')        
 
         if self.showIt == True:
 
@@ -200,7 +200,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.survey.Nfreq = self.survey.frequency.size
         self.survey.Setup1Dsystem()
 
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'VMD'
         self.prob.survey.offset = 10.
 
@@ -225,7 +225,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
             plt.show()
 
         err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
-        self.assertTrue(err < 0.08)
+        self.assertTrue(err < 0.08)        
 
         chi = np.array([0., 1., 0.], dtype=complex)
         sig = np.array([0.01, 0.01, 0.01], dtype=complex)
@@ -248,7 +248,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
             plt.show()
 
         err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
-        self.assertTrue(err < 0.08)
+        self.assertTrue(err < 0.08)  
 
         print "EM1DFD comprison of UBC code works"
 
