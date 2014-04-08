@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.constants import mu_0
 from DigFilter import EvalDigitalFilt
-from RTEfun import rTEfun
+# from RTEfun import rTEfun
 
 # def HzKernel_layer(lamda, f, nlay, sig, chi, depth, h, z, flag):
 
