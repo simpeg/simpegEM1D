@@ -26,7 +26,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
         FDsurvey.topo = topo
         FDsurvey.LocSigZ = LocSigZ
 
-        FDsurvey.frequency = np.logspace(2, 3, 10)
+        FDsurvey.frequency = np.logspace(2, 4, 10)
         FDsurvey.Nfreq = FDsurvey.frequency.size
         FDsurvey.HalfSwitch = True
         FDsurvey.Setup1Dsystem()
@@ -45,6 +45,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
         m_1D = np.log(np.ones(nlay)*sig_half)
 
         FDsurvey.rxType = 'Hz'        
+        FDsurvey.switchRI = 'all'
 
         WT0 = np.load('../WT0.npy')
         WT1 = np.load('../WT1.npy')
@@ -64,7 +65,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
         self.showIt = False
 
 
-    def test_EM1DFDjac_Circ_RealCond_Half(self):
+    def test_EM1DFDJvec_Half(self):
         self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
     
@@ -76,20 +77,25 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
         sig_half = np.r_[0.01]
         m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
         self.prob.jacSwitch = True
-        
+
         Hz, dHzdsig = self.prob.fields(m_1D)
+        dHzdsig = Utils.mkvc(dHzdsig)
         dHzdsiganal = EM1DAnal.dHzdsiganalCirc(sig_half, self.prob.survey.frequency, I, a, 'secondary')        
 
         def fwdfun(m):
             self.prob.jacSwitch = False
             Hz = self.prob.fields(m)
-            return Hz
+            resp = self.prob.survey.projectFields(u=Hz)
+            return resp
+            
+            # return Hz
 
         def jacfun(m, dm):
             self.prob.jacSwitch = True
-            Hz, dHzdsig = self.prob.fields(m)
-            dsigdm = self.prob.model.transformDeriv(m)
-            return dHzdsig*(dsigdm*dm)
+            u = self.prob.fields(m)
+            drespdmv = self.prob.Jvec(m, dm, u = u)
+            return drespdmv
+
 
         if self.showIt == True:
             plt.loglog(self.prob.survey.frequency, abs(dHzdsig.imag), 'r')
@@ -98,18 +104,47 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
             plt.loglog(self.prob.survey.frequency, abs(dHzdsiganal.real), 'b*')
             plt.show()
 
-        err = np.linalg.norm(dHzdsig-dHzdsiganal)/np.linalg.norm(dHzdsiganal)
-        self.assertTrue(err < 1e-5)
-
         dm = m_1D*0.1
         derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
-        passed = Tests.checkDerivative(derChk, m_1D, num=4, dx = dm, plotIt=False)
+        passed = Tests.checkDerivative(derChk, m_1D, num=4, dx = dm, plotIt=False, eps = 1e-15)
         if passed:
-            print "EM1DFD-CircularLoop for real conductivity works"
+            print "EM1DFD-half Jvec works"
 
 
- 
+    def test_EM1DFDJtvec_Half(self):
+        self.prob.CondType = 'Real'        
+        self.prob.survey.txType = 'CircularLoop'
+    
+        I = 1e0
+        a = 1e1
+        self.prob.survey.I = I
+        self.prob.survey.a = a        
+        
+        sig_half = np.r_[0.01]
+        self.prob.jacSwitch = False
+        m_true = np.log(np.ones(self.prob.survey.nlay)*sig_half)
+        Hz_true = self.prob.fields(m_true)
+        dobs = self.prob.survey.projectFields(u=Hz_true)
 
+        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half*10)                
+        Hz_ini = self.prob.fields(m_ini)
+        resp_ini = self.prob.survey.projectFields(u=Hz_ini)
+        dr = resp_ini-dobs
+
+
+        def misfit(m, dobs):
+            self.prob.jacSwitch = True
+            Hz = self.prob.fields(m)
+            dpred = self.survey.dpred(m, u = Hz)
+            misfit = 0.5*np.linalg.norm(dpred-dobs)**2
+            dmisfit = self.prob.Jtvec(m, dr, u = Hz)
+            return misfit, dmisfit
+
+        derChk = lambda m: misfit(m, dobs)
+        passed = Tests.checkDerivative(derChk, m_ini, num=4, plotIt=False, eps = 1e-23)
+        self.assertTrue(passed)        
+        if passed:
+            print "EM1DFD-half Jtvec works"
 
 if __name__ == '__main__':
     unittest.main()

@@ -4,7 +4,7 @@ import BaseEM1D
 from scipy.constants import mu_0
 # from Kernels import HzKernel_layer, HzkernelCirc_layer
 from DigFilter import EvalDigitalFilt
-from RTEfun import rTEfun
+from RTEfun import rTEfunfwd, rTEfunjac
 from numba import jit
 
 class EM1D(Problem.BaseProblem):
@@ -45,11 +45,14 @@ class EM1D(Problem.BaseProblem):
         """
         u0 = lamda
         rTE = np.zeros(lamda.size, dtype=complex)
-        drTE = np.zeros((nlay, lamda.size), dtype=complex)        
-
-        rTE, drTE = rTEfun(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
+        if self.jacSwitch == True:
+            drTE = np.zeros((nlay, lamda.size), dtype=complex)        
+            rTE, drTE = rTEfunjac(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
+        else:
+            rTE = rTEfunfwd(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)            
 
         if flag=='secondary':
+
             # Note
             # Here only computes secondary field.
             # I am not sure why it does not work if we add primary term.
@@ -89,10 +92,12 @@ class EM1D(Problem.BaseProblem):
 
         w = 2*np.pi*f
         rTE = np.zeros(lamda.size, dtype=complex)
-        rTE = np.zeros((nlay, lamda.size), dtype=complex)        
-        u0 = lamda
-        rTE, drTE = rTEfun(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
-
+        u0 = lamda        
+        if self.jacSwitch ==  True:
+            drTE = np.zeros((nlay, lamda.size), dtype=complex)        
+            rTE, drTE = rTEfunjac(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
+        else:
+            rTE = rTEfunfwd(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
 
         if flag == 'secondary':
             kernel = I*a*0.5*(rTE*np.exp(-u0*(z+h)))*lamda**2/u0
@@ -178,11 +183,9 @@ class EM1D(Problem.BaseProblem):
             else :
 
                 raise Exception("CondType should be either 'Real' or 'Complex'!!")
-                
-            if nlay==1:
-                dHzFHTdsig = Utils.mkvc(dHzFHTdsig)
+
             return  HzFHT, dHzFHTdsig.T                    
-            # return  HzFHT
+
 
         else:
             if self.CondType == 'Real':
@@ -227,13 +230,65 @@ class EM1D(Problem.BaseProblem):
             return  HzFHT
 
 
-    @Utils.timeIt
+    @Utils.requires('survey')
+    def Jvec(self, m, v, u=None):
+        """
+            Computing Jacobian^T multiplied by vector.
+        """
+        if u is None:
+
+            u = self.fields(m)
+
+        f, dfdsig=u[0], u[1]
+        if self.survey.switchFDTD == 'FD':
+
+            resp = self.survey.projectFields(f)
+            drespdsig = self.survey.projectFields(dfdsig)
+
+        elif self.survey.switchFDTD == 'TD':
+            resp = self.survey.projectFields(f)
+            drespdsig = self.survey.projectFields(dfdsig)    
+            if drespdsig.size == self.survey.Nch:
+                drespdsig = np.reshape(drespdsig, (-1,1), order='F')
+            else:
+                drespdsig = np.reshape(drespdsig, (self.survey.Nch, drespdsig.shape[1]), order='F')
+        else:
+
+            raise Exception('Not implemented!!')
+
+        dsigdm = self.model.transformDeriv(m)
+        Jv = np.dot(drespdsig, dsigdm*v)
+        return Jv
+
+    @Utils.requires('survey')
     def Jtvec(self, m, v, u=None):
         """
             Computing Jacobian^T multiplied by vector.
-
         """
-        pass
+        if u is None:
+            u = self.fields(m)
+
+        f, dfdsig=u[0], u[1]
+        if self.survey.switchFDTD == 'FD':
+
+            resp = self.survey.projectFields(f)
+            drespdsig = self.survey.projectFields(dfdsig)
+
+        elif self.survey.switchFDTD == 'TD':
+            resp = self.survey.projectFields(f)
+            drespdsig = self.survey.projectFields(dfdsig)    
+            if drespdsig.size == self.survey.Nch:
+                drespdsig = np.reshape(drespdsig, (-1,1), order='F')
+            else:
+                drespdsig = np.reshape(drespdsig, (self.survey.Nch, drespdsig.shape[1]), order='F')
+        else:
+        
+            raise Exception('Not implemented!!')
+
+        dsigdm = self.model.transformDeriv(m)
+        Jtv = dsigdm*(np.dot(drespdsig.T, v))
+        return Jtv
+
 
 
 if __name__ == '__main__':
