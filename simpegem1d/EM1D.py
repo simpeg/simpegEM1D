@@ -247,7 +247,7 @@ class EM1D(Problem.BaseProblem):
 
         elif self.survey.switchFDTD == 'TD':
             resp = self.survey.projectFields(f)
-            drespdsig = self.survey.projectFields(dfdsig)    
+            drespdsig = self.survey.projectFields(dfdsig)   
             if drespdsig.size == self.survey.Nch:
                 drespdsig = np.reshape(drespdsig, (-1,1), order='F')
             else:
