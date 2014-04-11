@@ -13,6 +13,10 @@ Here are some complicated stuff.::
 	>> hello
 
 
+.. math ::
+
+    (\vec{B}\cdot{\vec{n}})_{\partial\Omega} = B_{BC}
+
 
 Guide
 ^^^^^
