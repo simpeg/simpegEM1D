@@ -1,31 +1,16 @@
-.. https://www.youtube.com/watch?feature=player_embedded&v=oJsUvBQyHBs
+.. simpegEM1D documentation master file, created by
+   sphinx-quickstart on Fri Apr 11 13:45:01 2014.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
 
 SimPEG EM1D
 ===========
 
-
-Simple header
-=============
-
-Here are some complicated stuff.::
-
-	print 'hello'
-	>> hello
-
-
-.. math ::
-
-    (\vec{B}\cdot{\vec{n}})_{\partial\Omega} = B_{BC}
-
-
-Guide
-^^^^^
+Contents:
 
 .. toctree::
    :maxdepth: 2
-   
-   license
-   help
+
 
 
 Indices and tables
