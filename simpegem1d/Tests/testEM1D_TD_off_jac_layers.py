@@ -12,7 +12,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
         TDsurvey.rxLoc = np.array([0., 0., 100.+50.])
         TDsurvey.txLoc = np.array([0., 0., 100.+50.])
         TDsurvey.fieldtype = 'secondary'
-        TDsurvey.rxType = 'Bz'
+        TDsurvey.rxType = 'dBzdt'
         TDsurvey.waveType = 'stepoff'
 
         nearthick = np.logspace(-1, 1, 2)
@@ -30,6 +30,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
         TDsurvey.HalfSwitch = False
         TDsurvey.Setup1Dsystem()
         TDsurvey.time = np.logspace(-5, -2, 64)
+        TDsurvey.switchInterp = True
         TDsurvey.setFrequency(TDsurvey.time)        
         sig_half = 1e-1
         chi_half = 0.
@@ -63,7 +64,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
         self.showIt = False
 
 
-    def test_EM1DTDJtvec_Layers(self):
+    def test_EM1DTDJvec_Layers(self):
         self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
     

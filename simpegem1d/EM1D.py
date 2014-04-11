@@ -240,6 +240,7 @@ class EM1D(Problem.BaseProblem):
             u = self.fields(m)
 
         f, dfdsig=u[0], u[1]
+        
         if self.survey.switchFDTD == 'FD':
 
             resp = self.survey.projectFields(f)
