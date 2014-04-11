@@ -7,23 +7,19 @@ SimPEG (Simulation and Parameter Estimation in Geophysics) is a python
 package for simulation and gradient based parameter estimation in the
 context of geoscience applications.
 
-simpegEM1D uses SimPEG as the framework for the forward and inverse
-problems for electromagnetic (EM) problemes assuming layered earth. Here, we focus on airbonre EM application. 
+simpegPF uses SimPEG as the framework for the forward and inverse
+gravity and magnetics geophysical problems.
 
 
-AirEM1D
-=======
+EM1D
+====
 
-Contents
-^^^^^^^^
+Contents:
 
 .. toctree::
    :maxdepth: 2
-
+   
    api_EM1D
-   api_EM1Dcode   
-   api_contact
-   api_license
 
 Project Index & Search
 ======================

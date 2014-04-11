@@ -1,0 +1,37 @@
+.. _api_EM1D:
+
+.. math::
+
+    \renewcommand{\div}{\nabla\cdot\,}
+    \newcommand{\grad}{\vec \nabla}
+    \newcommand{\curl}{{\vec \nabla}\times\,}
+    \newcommand {\J}{{\vec J}}
+    \renewcommand{\H}{{\vec H}}
+    \newcommand {\E}{{\vec E}}
+
+    
+EM1D
+****
+
+
+
+Backgrounds
+===========
+Maxwell's equations for static case with out current source can be written as
+
+.. math::
+
+    \nabla U = \frac{1}{\mu}\vec{B} \\
+
+    \nabla \cdot \vec{B} = 0
+
+.. math::
+   :nowrap:
+
+
+
+.. math:: e^{i\pi} + 1 = 0
+   :label: euler
+
+Euler's identity, equation :eq:`euler`, was elected one of the most
+beautiful mathematical formulas   
