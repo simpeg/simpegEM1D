@@ -2,7 +2,6 @@ import numpy as np
 from scipy.constants import mu_0
 from scipy.interpolate import interp1d
 from scipy.constants import pi
-from numba import jit
 
 def EvalDigitalFilt(base, weight, fun, r):
     """
@@ -26,7 +25,7 @@ def setFrequency(time):
 
     # b. Determine required frequencies
     omega_int = (ab/tbase[0])*np.exp(0.1*(np.r_[1:786+tbase.size:(786+tbase.size)*1j]-425))
-    
+
     return wt, tbase, omega_int
 
 def transFilt(hz, wt, tbase, omega_int, t, tol=1e-12):
@@ -66,7 +65,7 @@ def transFilt(hz, wt, tbase, omega_int, t, tol=1e-12):
     fhz = interp1d(tbase[::-1], dt_filt[::-1])
     hz_out = fhz(t)
 
-    
+
     return hz_out, np.r_[tbase[-1], dt_filt[-1]]
 
 def transFiltInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
@@ -110,13 +109,13 @@ def transFiltInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
     fhz = interp1d(tbase[::-1], dt_filt[::-1])
     hz_out = fhz(t)
 
-    
+
     return hz_out, np.r_[tbase[-1], dt_filt[-1]]
 
 def transFiltImpulse(hz, wt, tbase, omega_int, t, tol=1e-12):
     """
         Compute Impulse responses by Fast Hankel Transform (FHT) with cosine filters
-    """  
+    """
     # Define the filter coeffs
     # Generate time base
     # Determine required frequencies
@@ -131,7 +130,7 @@ def transFiltImpulse(hz, wt, tbase, omega_int, t, tol=1e-12):
     idRemove = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] < tol]
     idRemove = np.array(idRemove)
 
-    
+
     hzrc = hzr.copy()
     # if idRemove.size != 0:
     #     lastKeep = idKeep.max()
@@ -156,7 +155,7 @@ def transFiltImpulse(hz, wt, tbase, omega_int, t, tol=1e-12):
 def transFiltImpulseInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
     """
         Compute Impulse responses by Fast Hankel Transform (FHT) with cosine filters
-    """  
+    """
     # Define the filter coeffs
     # Generate time base
     # Determine required frequencies
@@ -2614,5 +2613,5 @@ def LoadWeights():
     0.72149205056137611593E-27,
     ])
 
-    return WT0, WT1, YBASE 
+    return WT0, WT1, YBASE
 

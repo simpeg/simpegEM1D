@@ -62,7 +62,7 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     """
     if np.isscalar(sig_inf):
         w = 2*np.pi*f
-        sigma = sig_inf - sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c)        
+        sigma = sig_inf - sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c)
     else:
         sigma = np.zeros((f.size,sig_inf.size), dtype=complex)
         for i in range(f.size):
@@ -96,7 +96,7 @@ def dBzdtAnalCircT(a, t, sigma):
     t1 = 3*eta
     t2 = -2/(np.pi**0.5)*ta*(3+2*ta**2)*np.exp(-ta**2)
     dhzdt = const*(t1+t2)
-    return mu_0*dhzdt    
+    return mu_0*dhzdt
 
 def BzAnalCircTCole(a, t, sigma):
 
@@ -109,13 +109,13 @@ def BzAnalCircTCole(a, t, sigma):
     return hzTD*mu_0
 
 def dBzdtAnalCircTCole(a, t, sigma):
-    
+
     wt, tbase, omega_int = setFrequency(t)
-    hz = HzanalCirc(sigma, omega_int/2/np.pi, 1., a, 'secondary')    
+    hz = HzanalCirc(sigma, omega_int/2/np.pi, 1., a, 'secondary')
     # Treatment for inaccuracy in analytic solutions
     ind = omega_int < 0.2
     hz[ind] = 0.
 
     dhzdtTD = -transFiltImpulse(hz, wt, tbase, omega_int, t)
 
-    return dhzdtTD*mu_0    
+    return dhzdtTD*mu_0

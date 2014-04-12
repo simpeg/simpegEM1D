@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.constants import mu_0
-from numba import jit
 
 
 def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
@@ -64,7 +63,7 @@ def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
         M1sum10 = M0sum10.copy()
         M1sum01 = M0sum01.copy()
         M1sum11 = M0sum11.copy()
-        
+
     else :
 
         for j in range (nlay-1):
@@ -111,9 +110,9 @@ def matmul(a00, a10, a01, a11, b00, b10, b01, b11):
     """
 
     c00 = a00*b00 + a01*b10
-    c10 = a10*b00 + a11*b10 
-    c01 = a00*b01 + a01*b11 
-    c11 = a10*b01 + a11*b11 
+    c10 = a10*b00 + a11*b10
+    c01 = a00*b01 + a01*b11
+    c11 = a10*b01 + a11*b11
 
     return c00, c10, c01, c11
 
@@ -204,7 +203,7 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     M0sum10 = Mtemp10.copy()
     M0sum01 = Mtemp01.copy()
     M0sum11 = Mtemp11.copy()
-    
+
     if HalfSwitch == True:
 
         M1sum00 = np.zeros(lamda.size, dtype=complex)
@@ -249,11 +248,11 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
             M0sum01 = M1sum01.copy()
             M0sum11 = M1sum11.copy()
 
-            # TODO: for Computing Jacobian   
+            # TODO: for Computing Jacobian
 
             dudsig = 0.5*1j*w*mu_0*(1+chi[j])/utemp0
 
-            if j==0:                
+            if j==0:
 
                 const1a = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0**2)
                 const1b = const1a*utemp0
@@ -266,26 +265,26 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
                 #Compute dM1dm1*M2
                 dJ_10Mtemp00, dJ_10Mtemp10, dJ_10Mtemp01, dJ_10Mtemp11 = matmul(dj0Mtemp00, dj0Mtemp10, dj0Mtemp01, dj0Mtemp11, Mtemp00, Mtemp10, Mtemp01, Mtemp11)
 
-                #Compute M1*dM2dm1        
+                #Compute M1*dM2dm1
                 dJ01Mtemp00, dJ01Mtemp10, dJ01Mtemp01, dJ01Mtemp11 = matmul(M00[j], M10[j], M01[j], M11[j], dj1Mtemp00, dj1Mtemp10, dj1Mtemp01, dj1Mtemp11)
-                
+
                 dJ00.append(dudsig*(dJ_10Mtemp00+dJ01Mtemp00))
                 dJ10.append(dudsig*(dJ_10Mtemp10+dJ01Mtemp10))
                 dJ01.append(dudsig*(dJ_10Mtemp01+dJ01Mtemp01))
                 dJ11.append(dudsig*(dJ_10Mtemp11+dJ01Mtemp11))
 
             else:
-                
-                h_1 = thick[j-1]            
+
+                h_1 = thick[j-1]
                 utemp_1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j-1])*sig[j-1])
-                const0 = mu_0*(1+chi[j-1])/(mu_0*(1+chi[j])*utemp_1)            
+                const0 = mu_0*(1+chi[j-1])/(mu_0*(1+chi[j])*utemp_1)
 
                 dj0Mtemp00 =  0.5*(const0)*np.exp(-2.*utemp_1*h_1)
                 dj0Mtemp10 = -0.5*(const0)
                 dj0Mtemp01 = -0.5*(const0)*np.exp(-2.*utemp_1*h_1)
                 dj0Mtemp11 =  0.5*(const0)
 
-                
+
                 const1a = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0**2)
                 const1b = const1a*utemp0
 
@@ -295,10 +294,10 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
                 dj1Mtemp11 = -0.5*const1a
 
                 #Compute dMjdmj*Mj+1
-                dJ_10Mtemp00, dJ_10Mtemp10, dJ_10Mtemp01, dJ_10Mtemp11 = matmul(dj0Mtemp00, dj0Mtemp10, dj0Mtemp01, dj0Mtemp11, Mtemp00, Mtemp10, Mtemp01, Mtemp11)                
+                dJ_10Mtemp00, dJ_10Mtemp10, dJ_10Mtemp01, dJ_10Mtemp11 = matmul(dj0Mtemp00, dj0Mtemp10, dj0Mtemp01, dj0Mtemp11, Mtemp00, Mtemp10, Mtemp01, Mtemp11)
 
                 #Compute Mj*dMj+1dmj
-                dJ01Mtemp00, dJ01Mtemp10, dJ01Mtemp01, dJ01Mtemp11 = matmul(M00[j], M10[j], M01[j], M11[j], dj1Mtemp00, dj1Mtemp10, dj1Mtemp01, dj1Mtemp11)                
+                dJ01Mtemp00, dJ01Mtemp10, dJ01Mtemp01, dJ01Mtemp11 = matmul(M00[j], M10[j], M01[j], M11[j], dj1Mtemp00, dj1Mtemp10, dj1Mtemp01, dj1Mtemp11)
 
                 dJ00.append(dudsig*(dJ_10Mtemp00+dJ01Mtemp00))
                 dJ10.append(dudsig*(dJ_10Mtemp10+dJ01Mtemp10))
@@ -320,7 +319,7 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
         dJ1sum00 = np.zeros(lamda.size, dtype=complex)
         dJ1sum10 = np.zeros(lamda.size, dtype=complex)
         dJ1sum01 = np.zeros(lamda.size, dtype=complex)
-        dJ1sum11 = np.zeros(lamda.size, dtype=complex)        
+        dJ1sum11 = np.zeros(lamda.size, dtype=complex)
 
         dJ1sum00 = dudsig*dj0Mtemp00
         dJ1sum10 = dudsig*dj0Mtemp10
@@ -335,14 +334,14 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
         utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[nlay-1])*sig[nlay-1])
         dudsig = 0.5*1j*w*mu_0*(1+chi[j])/utemp0
 
-        h_1 = thick[nlay-2]            
+        h_1 = thick[nlay-2]
         utemp_1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[nlay-2])*sig[nlay-2])
-        const0 = mu_0*(1+chi[nlay-2])/(mu_0*(1+chi[nlay-1])*utemp_1)            
+        const0 = mu_0*(1+chi[nlay-2])/(mu_0*(1+chi[nlay-1])*utemp_1)
 
         dj0Mtemp00 =  0.5*(const0)*np.exp(-2.*utemp_1*h_1)
         dj0Mtemp10 = -0.5*(const0)
         dj0Mtemp01 = -0.5*(const0)*np.exp(-2.*utemp_1*h_1)
-        dj0Mtemp11 =  0.5*(const0)        
+        dj0Mtemp11 =  0.5*(const0)
 
         dJ_10Mtemp00 = dj0Mtemp00.copy()
         dJ_10Mtemp10 = dj0Mtemp10.copy()
@@ -352,7 +351,7 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
         dJ00.append(dudsig*dJ_10Mtemp00)
         dJ10.append(dudsig*dJ_10Mtemp10)
         dJ01.append(dudsig*dJ_10Mtemp01)
-        dJ11.append(dudsig*dJ_10Mtemp11)       
+        dJ11.append(dudsig*dJ_10Mtemp11)
 
         for i in range (nlay):
 
@@ -364,24 +363,24 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
             dJ1sum00 = np.zeros(lamda.size, dtype=complex)
             dJ1sum10 = np.zeros(lamda.size, dtype=complex)
             dJ1sum01 = np.zeros(lamda.size, dtype=complex)
-            dJ1sum11 = np.zeros(lamda.size, dtype=complex)                    
+            dJ1sum11 = np.zeros(lamda.size, dtype=complex)
 
             if i==0:
 
                 for j in range (nlay-2):
 
-                    if j==0:                       
+                    if j==0:
 
-                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ00[i], dJ10[i], dJ01[i], dJ11[i], M00[j+2], M10[j+2], M01[j+2], M11[j+2])                
+                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ00[i], dJ10[i], dJ01[i], dJ11[i], M00[j+2], M10[j+2], M01[j+2], M11[j+2])
 
                     else:
 
-                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+2], M10[j+2], M01[j+2], M11[j+2])                                        
+                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+2], M10[j+2], M01[j+2], M11[j+2])
 
                     dJ0sum00 = dJ1sum00.copy()
                     dJ0sum10 = dJ1sum10.copy()
                     dJ0sum01 = dJ1sum01.copy()
-                    dJ0sum11 = dJ1sum11.copy()                
+                    dJ0sum11 = dJ1sum11.copy()
 
             elif (i>0) & (i<nlay-1):
 
@@ -394,20 +393,20 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
 
                     if j==i-1:
 
-                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, dJ00[i], dJ10[i], dJ01[i], dJ11[i])                                        
+                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, dJ00[i], dJ10[i], dJ01[i], dJ11[i])
 
                     elif j < i-1:
 
-                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+1], M10[j+1], M01[j+1], M11[j+1])                                                                
+                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+1], M10[j+1], M01[j+1], M11[j+1])
 
                     elif j > i-1:
 
-                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+2], M10[j+2], M01[j+2], M11[j+2])                                                                                        
+                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+2], M10[j+2], M01[j+2], M11[j+2])
 
                     dJ0sum00 = dJ1sum00.copy()
                     dJ0sum10 = dJ1sum10.copy()
                     dJ0sum01 = dJ1sum01.copy()
-                    dJ0sum11 = dJ1sum11.copy()   
+                    dJ0sum11 = dJ1sum11.copy()
 
             elif i==nlay-1:
 
@@ -420,11 +419,11 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
 
                     if j < nlay-2:
 
-                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+1], M10[j+1], M01[j+1], M11[j+1])                                                                                        
+                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, M00[j+1], M10[j+1], M01[j+1], M11[j+1])
 
                     elif j == nlay-2:
 
-                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, dJ00[i], dJ10[i], dJ01[i], dJ11[i])                                                                                                                
+                        dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11 = matmul(dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11, dJ00[i], dJ10[i], dJ01[i], dJ11[i])
 
                     dJ0sum00 = dJ1sum00.copy()
                     dJ0sum10 = dJ1sum10.copy()
