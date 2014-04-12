@@ -1,0 +1,30 @@
+.. image:: simpeg-logo.png
+   :width: 300 px
+   :alt: SimPEG
+   :align: center
+
+SimPEG (Simulation and Parameter Estimation in Geophysics) is a python
+package for simulation and gradient based parameter estimation in the
+context of geoscience applications.
+
+simpegPF uses SimPEG as the framework for the forward and inverse
+gravity and magnetics geophysical problems.
+
+
+EM1D
+====
+
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+   
+   api_EM1D
+
+Project Index & Search
+======================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+

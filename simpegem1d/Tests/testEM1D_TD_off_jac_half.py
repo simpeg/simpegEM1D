@@ -31,6 +31,7 @@ class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
         TDsurvey.HalfSwitch = True
         TDsurvey.Setup1Dsystem()
         TDsurvey.time = np.logspace(-5, -2, 64)
+        # TDsurvey.switchInterp = True
         TDsurvey.setFrequency(TDsurvey.time)        
         sig_half = 1e-1
         chi_half = 0.

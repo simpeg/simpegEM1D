@@ -48,13 +48,13 @@ def transFilt(hz, wt, tbase, omega_int, t, tol=1e-12):
     idRemove = np.array(idRemove)
 
     hziwc = hziw.copy()
-    if idRemove.size != 0:
-        lastKeep = idKeep.max()
+    # if idRemove.size != 0:
+    #     lastKeep = idKeep.max()
 
-        idRemove[idRemove > lastKeep] = 0
-        lastRemove = idRemove.max()
+    #     idRemove[idRemove > lastKeep] = 0
+    #     lastRemove = idRemove.max()
 
-        hziwc[:lastRemove] = hziw[lastRemove+1]
+    #     hziwc[:lastRemove] = hziw[lastRemove+1]
 
     # Apply filter
     dt_filt = np.zeros_like(tbase)
@@ -69,7 +69,49 @@ def transFilt(hz, wt, tbase, omega_int, t, tol=1e-12):
     
     return hz_out, np.r_[tbase[-1], dt_filt[-1]]
 
+def transFiltInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
+    """
+        Compute Step-off responses by Fast Hankel Transform (FHT) with cosine filters
+    """
+    # Define the filter coeffs
+    # Generate time base
+    # Determine required frequencies
+    # Calculate the frequency domain data
 
+    hziw = hz.imag/omega
+
+    # Clean the low frequency results
+    idKeep = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] > tol]
+    idKeep = np.array(idKeep)
+
+    idRemove = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] < tol]
+    idRemove = np.array(idRemove)
+    hziwint = interp1d(omega, hziw)
+    hziwc = np.zeros(omega_int.shape)
+    ind = (omega_int > omega.min()) & (omega_int < omega.max())
+
+    hziwc[ind] = hziwint(omega_int[ind])
+
+    # if idRemove.size != 0:
+    #     lastKeep = idKeep.max()
+
+    #     idRemove[idRemove > lastKeep] = 0
+    #     lastRemove = idRemove.max()
+
+    #     hziwc[:lastRemove] = hziw[lastRemove+1]
+
+    # Apply filter
+    dt_filt = np.zeros_like(tbase)
+    for i in np.arange(tbase.size):
+        F = np.r_[np.zeros(i), 2*wt/(pi*tbase[i]), np.zeros(tbase.size-i-1)]
+        dt_filt[i] = -np.dot(F, hziwc)
+
+    # Interpolate result
+    fhz = interp1d(tbase[::-1], dt_filt[::-1])
+    hz_out = fhz(t)
+
+    
+    return hz_out, np.r_[tbase[-1], dt_filt[-1]]
 
 def transFiltImpulse(hz, wt, tbase, omega_int, t, tol=1e-12):
     """
@@ -89,14 +131,15 @@ def transFiltImpulse(hz, wt, tbase, omega_int, t, tol=1e-12):
     idRemove = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] < tol]
     idRemove = np.array(idRemove)
 
+    
     hzrc = hzr.copy()
-    if idRemove.size != 0:
-        lastKeep = idKeep.max()
+    # if idRemove.size != 0:
+    #     lastKeep = idKeep.max()
 
-        idRemove[idRemove > lastKeep] = 0
-        lastRemove = idRemove.max()
+    #     idRemove[idRemove > lastKeep] = 0
+    #     lastRemove = idRemove.max()
 
-        hzrc[:lastRemove] = hzr[lastRemove+1]
+    #     hzrc[:lastRemove] = hzr[lastRemove+1]
 
     # Apply filter
     dt_filt = np.zeros_like(tbase)
@@ -110,6 +153,49 @@ def transFiltImpulse(hz, wt, tbase, omega_int, t, tol=1e-12):
 
     return hz_out
 
+def transFiltImpulseInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
+    """
+        Compute Impulse responses by Fast Hankel Transform (FHT) with cosine filters
+    """  
+    # Define the filter coeffs
+    # Generate time base
+    # Determine required frequencies
+    # Calculate the frequency domain data
+
+    hzr = -hz.real
+
+    # Clean the low frequency results
+    # idKeep = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] > tol]
+    # idKeep = np.array(idKeep)
+
+    # idRemove = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] < tol]
+    # idRemove = np.array(idRemove)
+
+    hzrint = interp1d(omega, hzr, kind = 'quadratic')
+    hzrc = np.zeros(omega_int.shape)
+    ind = (omega_int > omega.min()) & (omega_int < omega.max())
+
+    hzrc[ind] = hzrint(omega_int[ind])
+
+    # if idRemove.size != 0:
+    #     lastKeep = idKeep.max()
+
+    #     idRemove[idRemove > lastKeep] = 0
+    #     lastRemove = idRemove.max()
+
+    #     hzrc[:lastRemove] = hzr[lastRemove+1]
+
+    # Apply filter
+    dt_filt = np.zeros_like(tbase)
+    for i in np.arange(tbase.size):
+        F = np.r_[np.zeros(i), 2*wt/(pi*tbase[i]), np.zeros(tbase.size-i-1)]
+        dt_filt[i] = -np.dot(F, hzrc)
+
+    # Interpolate result
+    fhz = interp1d(tbase[::-1], dt_filt[::-1])
+    hz_out = fhz(t)
+
+    return hz_out
 def LoadWeights():
     """
     """
