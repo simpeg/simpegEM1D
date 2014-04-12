@@ -1,5 +1,3 @@
-import sys
-sys.path.append('/../../../')
 
 .. _api_EM1Dfwd:
 
