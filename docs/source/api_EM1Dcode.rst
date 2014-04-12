@@ -14,7 +14,7 @@ Here, we used SimPEG's frame work so that we have following modules:
 EM1D problem
 ************
 
-.. automodule:: simpegem1d.EM1D
+.. autoclass:: simpegem1d.EM1D.EM1D
     :show-inheritance:
     :members:
     :undoc-members:
@@ -27,7 +27,7 @@ Computing reflection coefficients
     :show-inheritance:
     :members:
     :undoc-members:
-    :inherited-members:     
+    :inherited-members:
 
 
 Digital filtering
@@ -48,15 +48,14 @@ Transmitter Waveform
     :undoc-members:
     :inherited-members:
 
-EM1D survey and model
-*********************
+EM1D survey
+***********
 
-.. automodule:: simpegem1d.BaseEM1D
+.. autoclass:: simpegem1d.BaseEM1D.BaseEM1DSurvey
     :show-inheritance:
     :members:
     :undoc-members:
-    :inherited-members:    
-
+    :inherited-members:
 
 EM1D analaytic solutions
 ************************
@@ -65,6 +64,6 @@ EM1D analaytic solutions
     :show-inheritance:
     :members:
     :undoc-members:
-    :inherited-members:        
+    :inherited-members:
 
 
