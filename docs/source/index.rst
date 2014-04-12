@@ -8,7 +8,7 @@ package for simulation and gradient based parameter estimation in the
 context of geoscience applications.
 
 simpegEM1D uses SimPEG as the framework for the forward and inverse
-problems for electromagnetic (EM) problemes assuming layered earth. Here, we focus on airbonre EM application. 
+problems for electromagnetic (EM) problemes assuming layered earth. Here, we focus on airbonre EM application.
 
 
 AirEM1D
@@ -21,7 +21,7 @@ Contents
    :maxdepth: 2
 
    api_EM1D
-   api_EM1Dcode   
+   api_EM1Dcode
    api_contact
    api_license
 

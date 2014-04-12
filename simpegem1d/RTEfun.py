@@ -105,8 +105,7 @@ def matmul(a00, a10, a01, a11, b00, b10, b01, b11):
         Compute 2x2 matrix mutiplication in vector way
         C = A*B
         C = [a00   a01] * [b00   b01] = [c00   c01]
-            [a10   a11]   [b10   b11]   [c10   c11]
-
+        [a10   a11]   [b10   b11]   [c10   c11]
     """
 
     c00 = a00*b00 + a01*b10

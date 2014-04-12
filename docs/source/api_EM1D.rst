@@ -1,5 +1,4 @@
-
-.. _api_EM1Dfwd:
+.. _api_EM1D:
 
 .. math::
 
@@ -8,6 +7,8 @@
     \newcommand{\curl}{{\vec \nabla}\times\,}
     \newcommand {\J}{{\vec J}}
     \renewcommand{\H}{{\vec H}}
+    \renewcommand{\B}{{\vec B}}
+    \renewcommand{\dBdt}{{\frac{d\vec B}{dt}}}
     \newcommand {\E}{{\vec E}}
     \renewcommand{\Re}{\mathsf{Re}}
     \renewcommand{\Im}{\mathsf{Im}}
@@ -44,13 +45,15 @@ Forward problem
 Freqeuncy domain EM
 ^^^^^^^^^^^^^^^^^^^
 
-Maxwell's equations for static case with out current source can be written as
+Maxwell's equations in frequency domain can be written as
 
-.. math::
+.. math:: \curl \E = -\imath\omega\B
+   :label: maxeq1
 
+.. math:: \curl \H  - \J = \J_s
+   :label: maxeq2
 
-.. math:: e^{i\pi} + 1 = 0
-   :label: euler
+where \\(\\E\\)
 
 Euler's identity, equation :eq:`euler`, was elected one of the most
 beautiful mathematical formulas
