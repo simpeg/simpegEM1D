@@ -37,6 +37,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         TDsurvey.a = a
 
         TDsurvey.setWaveform(**optionswave)
+        TDsurvey.time = np.logspace(-5, -2, 64)+tb
         TDsurvey.setFrequency(tconv)
 
         nearthick = np.logspace(-1, 1, 5)
@@ -51,7 +52,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         TDsurvey.topo = topo
         TDsurvey.LocSigZ = LocSigZ
         TDsurvey.Setup1Dsystem()
-        TDsurvey.time = np.logspace(-5, -2, 64)+tb
+        
         
         sig_half = 1e-2
         chi_half = 0.

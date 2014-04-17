@@ -39,6 +39,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         
         TDsurvey.time = np.logspace(-5, -2, 64)+tb
         TDsurvey.setWaveform(**optionswave)
+        TDsurvey.switchInterp = True
         TDsurvey.setFrequency(tconv)
 
         nearthick = np.logspace(-1, 1, 2)

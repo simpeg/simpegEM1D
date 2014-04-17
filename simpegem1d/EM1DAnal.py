@@ -9,8 +9,22 @@ def Hzanal(sig, f, r, flag):
 
     """
 
-        Analytic solution for half-space (VMD source)
+        Hz component of analytic solution for half-space (VMD source)
         Tx and Rx are on the surface
+
+        .. math::
+            
+            H_z  = \\frac{m}{2\pi k^2 r^5} \
+                    \left( 9 -(9+\imath\ kr - 4 k^2r^2 - \imath k^3r^3)e^{-\imath kr}\\right)
+
+        * r: Tx-Rx offset
+        * m: magnetic dipole moment
+        * k: propagation constant
+
+        .. math::
+
+            k = \omega^2\epsilon\mu - \imath\omega\mu\sigma
+
 
     """
     mu0 = 4*np.pi*1e-7
@@ -26,8 +40,16 @@ def HzanalCirc(sig, f, I, a, flag):
 
     """
 
-        Analytic solution for half-space (Circular-loop source)
+        Hz component of analytic solution for half-space (Circular-loop source)
         Tx and Rx are on the surface and receiver is located at the center of the loop.
+
+        .. math::
+            
+            H_z  = -\\frac{I}{k^2a^3} \
+                    \left( 3 -(3+\imath\ ka - k^2a^2 )e^{-\imath ka}\\right)
+
+        * a: Tx-loop radius
+        * I: Current intensity
 
     """
     mu_0 = 4*np.pi*1e-7
@@ -42,10 +64,13 @@ def HzanalCirc(sig, f, I, a, flag):
 def dHzdsiganalCirc(sig, f, I, a, flag):
 
     """
+        Compute sensitivity for HzanalCirc by using perturbation
 
-        Analytic solution for half-space (Circular-loop source)
-        Tx and Rx are on the surface and receiver is located at the center of the loop.
+        .. math::
 
+            \\frac{\partial H_z}{\partial \sigma} 
+            = \\frac{H_z(\sigma+\\triangle\sigma)- H_z(\sigma-\\triangle\sigma)}
+                {2\\triangle\sigma}
     """
     mu_0 = 4*np.pi*1e-7
     w = 2*np.pi*f
@@ -59,7 +84,21 @@ def dHzdsiganalCirc(sig, f, I, a, flag):
 def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     """
         Computing Cole-Cole model in frequency domain
+
+        .. math::
+
+            \sigma (\omega) = \sigma_{\infty} - 
+            \\frac{\sigma_{\infty}\eta}{1-(1-\eta)(\imath\omega\\tau)^c}
+
+
+        
+        where \\\\(\\\\\sigma_{\\\\infty}\\\\) is conductivity at infinte frequency, 
+        \\\\(\\\\\eta\\\\) is chargeability,
+        \\\\(\\\\\\tau\\\\) is chargeability,
+        \\\\(\\\\ c\\\\) is chargeability.
+    
     """
+
     if np.isscalar(sig_inf):
         w = 2*np.pi*f
         sigma = sig_inf - sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c)
@@ -71,6 +110,7 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     return sigma
 
 def BzAnalT(r, t, sigma):
+
     theta = np.sqrt((sigma*mu_0)/(4*t))
     tr = theta*r
     etr = erf(tr)
@@ -80,6 +120,22 @@ def BzAnalT(r, t, sigma):
     return mu_0*hz
 
 def BzAnalCircT(a, t, sigma):
+    """
+        Hz component of analytic solution for half-space (Circular-loop source)
+        Tx and Rx are on the surface and receiver is located at the center of the loop.
+        Tx waveform here is step-off.
+
+        .. math::
+            
+            h_z  = \\frac{I}{2a} \
+                    \left( \\frac{3}{\sqrt{\pi}\\theta a}e^{-\\theta^2a^2} 
+                    +(1-\\frac{3}{2\\theta^2a^2})erf(\\theta a)\\right)
+
+        .. math::
+
+            \\theta = \sqrt{\\frac{\sigma\mu}{4t}}
+    """
+
     theta = np.sqrt((sigma*mu_0)/(4*t))
     ta = theta*a
     eta = erf(ta)
@@ -89,6 +145,20 @@ def BzAnalCircT(a, t, sigma):
     return mu_0*hz
 
 def dBzdtAnalCircT(a, t, sigma):
+    """
+        Hz component of analytic solution for half-space (Circular-loop source)
+        Tx and Rx are on the surface and receiver is located at the center of the loop.
+        Tx waveform here is step-off.
+
+        .. math::
+            
+            \\frac{\partial h_z}{\partial t}  = -\\frac{I}{\mu_0\sigma a^3} \
+                    \left( 3erf(\\theta a) - \\frac{2}{\sqrt{\pi}}\\theta a (3+2\\theta^2 a^2) e^{-\\theta^2a^2}\\right)
+
+        .. math::
+
+            \\theta = \sqrt{\\frac{\sigma\mu}{4t}}
+    """    
     theta = np.sqrt((sigma*mu_0)/(4*t))
     const = -1/(mu_0*sigma*a**3)
     ta = theta*a

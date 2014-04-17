@@ -2,6 +2,7 @@ import numpy as np
 from scipy.constants import mu_0
 from scipy.interpolate import interp1d
 from scipy.constants import pi
+from SimPEG import Utils
 
 def EvalDigitalFilt(base, weight, fun, r):
     """
@@ -37,7 +38,7 @@ def transFilt(hz, wt, tbase, omega_int, t, tol=1e-12):
     # Determine required frequencies
     # Calculate the frequency domain data
 
-    hziw = hz.imag/omega_int
+    hziw = Utils.mkvc(hz.imag)/omega_int
 
     # Clean the low frequency results
     idKeep = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] > tol]
@@ -77,7 +78,7 @@ def transFiltInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
     # Determine required frequencies
     # Calculate the frequency domain data
 
-    hziw = hz.imag/omega
+    hziw = Utils.mkvc(hz.imag)/omega
 
     # Clean the low frequency results
     idKeep = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] > tol]
@@ -121,7 +122,7 @@ def transFiltImpulse(hz, wt, tbase, omega_int, t, tol=1e-12):
     # Determine required frequencies
     # Calculate the frequency domain data
 
-    hzr = -hz.real
+    hzr = -Utils.mkvc(hz.real)
 
     # Clean the low frequency results
     idKeep = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] > tol]
@@ -161,7 +162,7 @@ def transFiltImpulseInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
     # Determine required frequencies
     # Calculate the frequency domain data
 
-    hzr = -hz.real
+    hzr = -Utils.mkvc(hz.real)
 
     # Clean the low frequency results
     # idKeep = [idx for idx in range(len(hz)) if abs(hz.imag)[idx] > tol]
