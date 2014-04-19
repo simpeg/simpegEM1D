@@ -1,4 +1,4 @@
-from SimPEG import Model, Survey, Utils, np, sp
+from SimPEG import Maps, Survey, Utils, np, sp
 from scipy.constants import mu_0
 from EM1DAnal import ColeCole
 from DigFilter import transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
@@ -50,7 +50,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
             raise Exception('Not implemnted!!')
         self.h = self.txLoc[2]-self.topo[2]
         self.z = self.rxLoc[2]-self.topo[2]
-        
+
     @Utils.requires('prob')
     def dpred(self, m, u=None):
         """
@@ -71,7 +71,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
             u = u[0]
         else:
             u = u
-        return Utils.mkvc(self.projectFields(u))            
+        return Utils.mkvc(self.projectFields(u))
 
 
 class EM1DSurveyTD(BaseEM1DSurvey):
@@ -84,7 +84,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     omega_int = None
     switchFDTD = 'TD'
     switchInterp = False
-    waveType = 'stepoff'        
+    waveType = 'stepoff'
     waveform = None
     waveformDeriv = None
     tb = None
@@ -127,10 +127,10 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         # Case2: Compute frequency domain reponses in logarithmic then intepolate
         elif self.switchInterp ==  True:
-            # This is tested decision: works well 1e-4-1e0 S/m 
+            # This is tested decision: works well 1e-4-1e0 S/m
             self.frequency = np.logspace(-3, 8, 81)
             self.omega_int = omega_int
-            self.Nfreq = self.frequency.size      
+            self.Nfreq = self.frequency.size
         else:
             raise Exception('Not implemented!!')
 
@@ -151,9 +151,9 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         """
             Transform frequency domain responses to time domain responses
         """
-        # Case1: Compute frequency domain reponses right at filter coefficient values        
+        # Case1: Compute frequency domain reponses right at filter coefficient values
         if self.switchInterp == False:
-            # Tx waveform: Step-off    
+            # Tx waveform: Step-off
             if self.waveType == 'stepoff':
                 if self.rxType == 'Bz':
                     # Compute EM responses
@@ -167,9 +167,9 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
                 elif self.rxType == 'dBzdt':
                     # Compute EM responses
-                    if u.size == self.Nfreq:                
+                    if u.size == self.Nfreq:
                         resp = -transFiltImpulse(u, self.wt,self.tbase, self.frequency*2*np.pi, self.time)
-                    # Compute EM sensitivities                    
+                    # Compute EM sensitivities
                     else:
                         resp = np.zeros((self.Nch, self.nlay))
                         for i in range (self.nlay):
@@ -181,8 +181,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                 # Compute EM responses
                 if u.size == self.Nfreq:
                     # TODO: write small code which compute f at t = 0
-                    f, f0 = transFilt(Utils.mkvc(u), self.wt, self.tbase, self.frequency*2*np.pi, self.tconv)            
-                    fDeriv = -transFiltImpulse(Utils.mkvc(u), self.wt,self.tbase, self.frequency*2*np.pi, self.tconv)                                        
+                    f, f0 = transFilt(Utils.mkvc(u), self.wt, self.tbase, self.frequency*2*np.pi, self.tconv)
+                    fDeriv = -transFiltImpulse(Utils.mkvc(u), self.wt,self.tbase, self.frequency*2*np.pi, self.tconv)
 
                     if self.rxType == 'Bz':
 
@@ -191,8 +191,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         respint = interp1d(self.tconv, resp1, 'linear')
 
                         # TODO: make it as an opition #2
-                        # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)                
-                        # resp2 = (self.waveform*self.hp) - waveDerivConvf                
+                        # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)
+                        # resp2 = (self.waveform*self.hp) - waveDerivConvf
                         # respint = interp1d(self.tconv, resp2, 'linear')
 
                         resp = respint(self.time)
@@ -201,7 +201,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         waveDerivConvfDeriv = CausalConv(self.waveformDeriv, fDeriv, self.tconv)
                         resp1 = self.hp*self.waveformDeriv*(1-f0[1]/self.hp) - waveDerivConvfDeriv
                         respint = interp1d(self.tconv, resp1, 'linear')
-                        resp = respint(self.time)         
+                        resp = respint(self.time)
 
                 # Compute EM sensitivities
                 else:
@@ -209,8 +209,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     resp = np.zeros((self.Nch, self.nlay))
                     for i in range (self.nlay):
 
-                        f, f0 = transFilt(u[:,i], self.wt, self.tbase, self.frequency*2*np.pi, self.tconv)            
-                        fDeriv = -transFiltImpulse(u[:,i], self.wt,self.tbase, self.frequency*2*np.pi, self.tconv)                                                            
+                        f, f0 = transFilt(u[:,i], self.wt, self.tbase, self.frequency*2*np.pi, self.tconv)
+                        fDeriv = -transFiltImpulse(u[:,i], self.wt,self.tbase, self.frequency*2*np.pi, self.tconv)
 
                         if self.rxType == 'Bz':
 
@@ -219,8 +219,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             respint = interp1d(self.tconv, resp1, 'linear')
 
                             # TODO: make it as an opition #2
-                            # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)                
-                            # resp2 = (self.waveform*self.hp) - waveDerivConvf                
+                            # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)
+                            # resp2 = (self.waveform*self.hp) - waveDerivConvf
                             # respint = interp1d(self.tconv, resp2, 'linear')
 
                             resp[:,i] = respint(self.time)
@@ -233,7 +233,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         # Case2: Compute frequency domain reponses in logarithmic then intepolate
         if self.switchInterp == True:
-            # Tx waveform: Step-off    
+            # Tx waveform: Step-off
             if self.waveType == 'stepoff':
                 if self.rxType == 'Bz':
                     # Compute EM responses
@@ -247,9 +247,9 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
                 elif self.rxType == 'dBzdt':
                     # Compute EM responses
-                    if u.size == self.Nfreq:                
+                    if u.size == self.Nfreq:
                         resp = -transFiltImpulseInterp(Utils.mkvc(u), self.wt,self.tbase, self.frequency*2*np.pi, self.omega_int, self.time)
-                    # Compute EM sensitivities                    
+                    # Compute EM sensitivities
                     else:
                         resp = np.zeros((self.Nch, self.nlay))
                         for i in range (self.nlay):
@@ -261,8 +261,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                 # Compute EM responses
                 if u.size == self.Nfreq:
                     # TODO: write small code which compute f at t = 0
-                    f, f0 = transFiltInterp(Utils.mkvc(u), self.wt, self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)            
-                    fDeriv = -transFiltImpulseInterp(Utils.mkvc(u), self.wt,self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)                                        
+                    f, f0 = transFiltInterp(Utils.mkvc(u), self.wt, self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)
+                    fDeriv = -transFiltImpulseInterp(Utils.mkvc(u), self.wt,self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)
 
                     if self.rxType == 'Bz':
 
@@ -271,8 +271,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         respint = interp1d(self.tconv, resp1, 'linear')
 
                         # TODO: make it as an opition #2
-                        # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)                
-                        # resp2 = (self.waveform*self.hp) - waveDerivConvf                
+                        # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)
+                        # resp2 = (self.waveform*self.hp) - waveDerivConvf
                         # respint = interp1d(self.tconv, resp2, 'linear')
 
                         resp = respint(self.time)
@@ -281,7 +281,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         waveDerivConvfDeriv = CausalConv(self.waveformDeriv, fDeriv, self.tconv)
                         resp1 = self.hp*self.waveformDeriv*(1-f0[1]/self.hp) - waveDerivConvfDeriv
                         respint = interp1d(self.tconv, resp1, 'linear')
-                        resp = respint(self.time)         
+                        resp = respint(self.time)
 
                 # Compute EM sensitivities
                 else:
@@ -289,8 +289,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     resp = np.zeros((self.Nch, self.nlay))
                     for i in range (self.nlay):
 
-                        f, f0 = transFiltInterp(u[:,i], self.wt, self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)            
-                        fDeriv = -transFiltImpulseInterp(u[:,i], self.wt,self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)                                                            
+                        f, f0 = transFiltInterp(u[:,i], self.wt, self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)
+                        fDeriv = -transFiltImpulseInterp(u[:,i], self.wt,self.tbase, self.frequency*2*np.pi, self.omega_int, self.tconv)
 
                         if self.rxType == 'Bz':
 
@@ -299,8 +299,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             respint = interp1d(self.tconv, resp1, 'linear')
 
                             # TODO: make it as an opition #2
-                            # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)                
-                            # resp2 = (self.waveform*self.hp) - waveDerivConvf                
+                            # waveDerivConvf = CausalConv(self.waveformDeriv, f, self.tconv)
+                            # resp2 = (self.waveform*self.hp) - waveDerivConvf
                             # respint = interp1d(self.tconv, resp2, 'linear')
 
                             resp[:,i] = respint(self.time)
@@ -328,7 +328,7 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     def projectFields(self, u):
         """
             Decompose frequency domain EM responses as real and imaginary
-            components            
+            components
         """
 
         ureal = (u.real).copy()
@@ -343,13 +343,13 @@ class EM1DSurveyFD(BaseEM1DSurvey):
                 if ureal.ndim == 1 or 0:
                     resp = np.r_[ureal, uimag]
                 elif ureal.ndim ==2:
-                    resp = np.vstack((ureal, uimag))                
+                    resp = np.vstack((ureal, uimag))
                 else:
                     raise Exception('Not implemented!!')
 
 
             elif self.switchRI == 'Real':
-                
+
                 resp = (u.real).copy()
 
             elif self.switchRI == 'Imag':
@@ -359,21 +359,21 @@ class EM1DSurveyFD(BaseEM1DSurvey):
             else:
 
                 raise Exception('Not implemented')
-            
+
         else:
 
             raise Exception('Not implemnted!!')
 
-        return mu_0*resp        
-
-    
+        return mu_0*resp
 
 
-class BaseEM1DModel(Model.BaseModel):
-    """BaseEM1DModel"""
+
+
+class BaseEM1DMap(Maps.IdentityMap):
+    """BaseEM1DMap"""
 
     def __init__(self, mesh, **kwargs):
-        Model.BaseModel.__init__(self, mesh)
+        Maps.IdentityMap.__init__(self, mesh)
 
     def transform(self, m):
         """
@@ -385,11 +385,11 @@ class BaseEM1DModel(Model.BaseModel):
         return Utils.sdiag(np.exp(m))
 
 
-class BaseColeColeModel(BaseEM1DModel):
-    """BaseColeColeModel"""
+class BaseColeColeMap(BaseEM1DMap):
+    """BaseColeColeMap"""
 
     def __init__(self, mesh,  **kwargs):
-        Model.BaseModel.__init__(self, mesh)
+        Maps.IdentityMap.__init__(self, mesh)
         self.tau = kwargs['tau']
         self.eta = kwargs['eta']
         self.c = kwargs['c']
