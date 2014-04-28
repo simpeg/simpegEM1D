@@ -8,7 +8,7 @@ from simpegem1d.Waveform import TriangleFun, TriangleFunDeriv
 class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
 
     def setUp(self):
-
+        
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+50.])
         TDsurvey.txLoc = np.array([0., 0., 100.+50.])
@@ -16,27 +16,27 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         # TDsurvey.rxType = 'Bz'
         TDsurvey.rxType = 'dBzdt'
         TDsurvey.waveType = 'general'
-
+        
         ta = 5.5*1e-4
         tb = 1.1*1e-3
 
         tonw = np.linspace(1e-6, tb, 2**9+1)
         dt = tonw[1]-tonw[0]
         toffw = np.linspace(tb+dt, tb+(2**13)*dt, 2**13)
-        tconv = np.r_[tonw, toffw]
+        tconv = np.r_[tonw, toffw]        
 
         waveform = TriangleFun(tconv, ta, tb)
         waveformDeriv = TriangleFunDeriv(tconv, ta, tb)
         tend = 0.01
-        optionswave = {'toff': tb,'tconv': tconv,'waveform': waveform, 'waveformDeriv': waveformDeriv }
+        optionswave = {'toff': tb,'tconv': tconv,'waveform': waveform, 'waveformDeriv': waveformDeriv }       
         TDsurvey.txType = 'CircularLoop'
-
+    
         I = 1e0
         a = 1e1
 
         TDsurvey.I = I
-        TDsurvey.a = a
-
+        TDsurvey.a = a     
+        
         TDsurvey.time = np.logspace(-5, -2, 64)+tb
         TDsurvey.setWaveform(**optionswave)
         TDsurvey.switchInterp = True
@@ -56,21 +56,22 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         TDsurvey.LocSigZ = LocSigZ
         TDsurvey.HalfSwitch = False
         TDsurvey.Setup1Dsystem()
-
+        
 
 
         sig_half = 1e-1
         chi_half = 0.
 
-        expmap = BaseEM1D.BaseEM1DMap(mesh1D)
+        Logmodel = BaseEM1D.BaseEM1DModel(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
-        options = {'Frequency': TDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
-        colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
 
-        modelReal = Maps.ComboMap(mesh1D, [expmap])
-        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
+        options = {'Frequency': TDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
+        Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
+
+        modelReal = Model.ComboModel(mesh1D, [Logmodel])
+        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
         m_1D = np.log(np.ones(nlay)*sig_half)
 
         WT0 = np.load('../WT0.npy')
@@ -78,7 +79,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         YBASE = np.load('../YBASE.npy')
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
-        prob = EM1D.EM1D(mesh1D, modelReal, **options)
+        prob = EM1D.EM1D(modelReal, **options)
         prob.pair(TDsurvey)
         prob.chi = np.zeros(TDsurvey.nlay)
 
@@ -92,7 +93,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
 
 
     def test_EM1DTDJvec_Layers(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
 
         sig_half = 0.001
         sig = np.ones(self.prob.survey.nlay)*sig_half
@@ -107,7 +108,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
             self.prob.jacSwitch = True
             u = self.prob.fields(m)
             Jvec = self.prob.Jvec(m, dm, u = u)
-            return Jvec
+            return Jvec       
 
         dm = m_1D*2
         derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
@@ -117,8 +118,8 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
             print "EM1DTD-Layers Jvec works"
 
     def test_EM1DTDJtvec_Half(self):
-        self.prob.CondType = 'Real'
-
+        self.prob.CondType = 'Real'        
+        
         sig_half = 0.001
         sig_blk = 1
         sig = np.ones(self.prob.survey.nlay)*sig_half
@@ -128,7 +129,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         Hz_true = self.prob.fields(m_true)
         dobs = self.prob.survey.projectFields(u=Hz_true)
 
-        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half*2)
+        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half*2)                
         Hz_ini = self.prob.fields(m_ini)
         resp_ini = self.prob.survey.projectFields(u=Hz_ini)
         dr = resp_ini-dobs
@@ -140,12 +141,12 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
             misfit = 0.5*np.linalg.norm(dpred-dobs)**2
             dmisfit = self.prob.Jtvec(m, dr, u = Hz)
             return misfit, dmisfit
-
+       
         derChk = lambda m: misfit(m, dobs)
         passed = Tests.checkDerivative(derChk, m_ini, num=3, plotIt=False, eps = 1e-26)
-        self.assertTrue(passed)
+        self.assertTrue(passed)        
         if passed:
-            print "EM1DTD-layers Jtvec works"
+            print "EM1DTD-layers Jtvec works"            
 
 if __name__ == '__main__':
     unittest.main()
