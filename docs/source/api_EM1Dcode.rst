@@ -54,7 +54,6 @@ EM1D survey
 .. autoclass:: simpegem1d.BaseEM1D.BaseEM1DSurvey
     :show-inheritance:
     :members:
-    :undoc-members:
     :inherited-members:
 
 EM1D analaytic solutions

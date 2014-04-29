@@ -78,12 +78,13 @@ class EM1D(Problem.BaseProblem):
 
         """
 
-            Kernel for vertical magnetic component (Hz) at the center
-            due to circular loop source in (kx,ky) domain
+                Kernel for vertical magnetic component (Hz) at the center
+                due to circular loop source in (kx,ky) domain
 
-            .. math::
+                .. math::
 
-                H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} + r_{TE}e^{u_0|z-h|}] \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
+                    H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} + r_{TE}e^{u_0|z-h|}] \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
+
 
         """
 
@@ -115,9 +116,7 @@ class EM1D(Problem.BaseProblem):
     @Utils.requires('survey')
     def fields(self, m):
         """
-            Return Bz or dBzdt
-
-            .. math ::
+                Return Bz or dBzdt
 
         """
 
