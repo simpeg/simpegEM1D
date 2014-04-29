@@ -41,7 +41,7 @@ def CausalConv(array1, array2, time):
 
         * array1: array for \\\\(\\\\ f_1(t)\\\\)
         * array2: array for \\\\(\\\\ f_2(t)\\\\)
-        time: array for time
+        * time: array for time
 
         .. math::
 
@@ -58,11 +58,13 @@ def CausalConv(array1, array2, time):
 
 def RectFun(time, ta, tb):
     """
+
         Rectangular Waveform
 
         * time: 1D array for time
         * ta: time for transition from (+) to (-)
         * tb: time at step-off
+
         .. math::
 
             I(t) = 1, 0 < t \le t_a
@@ -70,6 +72,7 @@ def RectFun(time, ta, tb):
             I(t) = -1, t_a < t < t_b
 
             I(t) = 0, t \le t_a \ \\text{or}  \ t \ge t_b
+
     """
     out = np.zeros(time.size)
     out[time<=ta] = 1
