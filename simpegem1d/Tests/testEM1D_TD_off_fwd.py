@@ -7,7 +7,7 @@ from scipy import io
 class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
     def setUp(self):
-        
+
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
         TDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
@@ -32,25 +32,25 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         sig_half = 1e-2
         chi_half = 0.
 
-        Logmodel = BaseEM1D.BaseEM1DModel(mesh1D)
+        expmap = BaseEM1D.BaseEM1DMap(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
         options = {'Frequency': TDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
-        Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
+        colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
 
-        modelReal = Model.ComboModel(mesh1D, [Logmodel])
-        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
+        modelReal = Maps.ComboMap(mesh1D, [expmap])
+        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
         m_1D = np.log(np.ones(nlay)*sig_half)
 
-        TDsurvey.rxType = 'Bz'        
+        TDsurvey.rxType = 'Bz'
 
         WT0 = np.load('../WT0.npy')
         WT1 = np.load('../WT1.npy')
         YBASE = np.load('../YBASE.npy')
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
-        prob = EM1D.EM1D(modelReal, **options)
+        prob = EM1D.EM1D(mesh1D, modelReal, **options)
         prob.pair(TDsurvey)
         prob.chi = np.zeros(TDsurvey.nlay)
 
@@ -68,7 +68,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
 
     def test_EM1DTDfwd_CirLoop_RealCond(self):
-        self.prob.CondType = 'Real'        
+        self.prob.CondType = 'Real'
         self.prob.survey.txType = 'CircularLoop'
         self.prob.survey.offset = 10.
         sig_half = 0.01
@@ -115,11 +115,11 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         if self.survey.ispaired:
             self.survey.unpair()
 
-        self.prob = EM1D.EM1D(self.modelComplex, **self.options)
+        self.prob = EM1D.EM1D(self.mesh1D, self.modelComplex, **self.options)
         self.prob.chi = np.zeros(self.survey.nlay)
         self.prob.pair(self.survey)
 
-        self.prob.CondType = 'Complex'        
+        self.prob.CondType = 'Complex'
         self.prob.survey.txType = 'CircularLoop'
         self.prob.survey.offset = 10.
         sig_half = 0.01
@@ -128,7 +128,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.prob.survey.I = I
         self.prob.survey.a = a
 
-        
+
 
         m_1D = np.log(np.ones(self.prob.survey.nlay)*sig_half)
         Hz = self.prob.fields(m_1D)
@@ -144,7 +144,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             plt.show()
 
         err = np.linalg.norm(BzTD-Bzanal)/np.linalg.norm(Bzanal)
-        print 'Bz error = ', err        
+        print 'Bz error = ', err
         self.assertTrue(err < 1e-2)
 
         self.survey.rxType = 'dBzdt'
@@ -159,7 +159,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
         err = np.linalg.norm(dBzdtTD-dBzdtanal)/np.linalg.norm(dBzdtanal)
         print 'dBzdt error = ', err
-        self.assertTrue(err < 1e-2)        
+        self.assertTrue(err < 1e-2)
         print "EM1DTD-CirculurLoop for Complex conductivity works"
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ from scipy.interpolate import interp1d
 class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
     def setUp(self):
-        
+
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+ 100.])
         TDsurvey.txLoc = np.array([0., 0., 100.+ 100.])
@@ -23,13 +23,13 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         tonw = np.linspace(1e-6, tb, 2**9+1)
         dt = tonw[1]-tonw[0]
         toffw = np.linspace(tb+dt, tb+(2**13)*dt, 2**13)
-        tconv = np.r_[tonw, toffw]        
+        tconv = np.r_[tonw, toffw]
         # tconv =  np.r_[np.linspace(1e-7, 0.1, 2**12)]
 
         waveform = TriangleFun(tconv, ta, tb)
         waveformDeriv = TriangleFunDeriv(tconv, ta, tb)
         tend = 0.01
-        optionswave = {'toff': tb,'tconv': tconv,'waveform': waveform, 'waveformDeriv': waveformDeriv }       
+        optionswave = {'toff': tb,'tconv': tconv,'waveform': waveform, 'waveformDeriv': waveformDeriv }
         TDsurvey.txType = 'CircularLoop'
         I = 1e0
         a = 2e1
@@ -52,30 +52,30 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         TDsurvey.topo = topo
         TDsurvey.LocSigZ = LocSigZ
         TDsurvey.Setup1Dsystem()
-        
-        
+
+
         sig_half = 1e-2
         chi_half = 0.
 
-        Logmodel = BaseEM1D.BaseEM1DModel(mesh1D)
+        expmap = BaseEM1D.BaseEM1DMap(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
         options = {'Frequency': TDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
-        Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
+        colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
 
-        modelReal = Model.ComboModel(mesh1D, [Logmodel])
-        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
+        modelReal = Maps.ComboMap(mesh1D, [expmap])
+        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
         m_1D = np.log(np.ones(nlay)*sig_half)
 
-        TDsurvey.rxType = 'Bz'        
+        TDsurvey.rxType = 'Bz'
 
         WT0 = np.load('../WT0.npy')
         WT1 = np.load('../WT1.npy')
         YBASE = np.load('../YBASE.npy')
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
-        prob = EM1D.EM1D(modelReal, **options)
+        prob = EM1D.EM1D(mesh1D, modelReal, **options)
         prob.pair(TDsurvey)
         prob.chi = np.zeros(TDsurvey.nlay)
 
@@ -92,7 +92,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
 
     def test_EM1DTDfwd_CirLoop_RealCond(self):
-        self.prob.CondType = 'Real'        
+        self.prob.CondType = 'Real'
         sig_half = 1e-2
 
         em1dtd = io.loadmat('em1dtm/em1DTD_100.mat')

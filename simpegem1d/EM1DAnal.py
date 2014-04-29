@@ -11,15 +11,15 @@ def Hzanal(sig, f, r, flag):
 
         Hz component of analytic solution for half-space (VMD source)
         Tx and Rx are on the surface
-        
-        * r: Tx-Rx offset
-        * m: magnetic dipole moment
-        * k: propagation constant       
 
         .. math::
             
             H_z  = \\frac{m}{2\pi k^2 r^5} \
                     \left( 9 -(9+\imath\ kr - 4 k^2r^2 - \imath k^3r^3)e^{-\imath kr}\\right)
+
+        * r: Tx-Rx offset
+        * m: magnetic dipole moment
+        * k: propagation constant
 
         .. math::
 
@@ -43,11 +43,6 @@ def HzanalCirc(sig, f, I, a, flag):
         Hz component of analytic solution for half-space (Circular-loop source)
         Tx and Rx are on the surface and receiver is located at the center of the loop.
 
-        * a: radius of loop
-        * I: current (assumed as 1)
-        * t: out put time channel
-        * sigma: half-space conductivity        
-
         .. math::
             
             H_z  = -\\frac{I}{k^2a^3} \
@@ -70,11 +65,6 @@ def dHzdsiganalCirc(sig, f, I, a, flag):
 
     """
         Compute sensitivity for HzanalCirc by using perturbation
-
-        * a: radius of loop
-        * I: current (assumed as 1)
-        * t: out put time channel
-        * sigma: half-space conductivity
 
         .. math::
 
@@ -120,31 +110,6 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     return sigma
 
 def BzAnalT(r, t, sigma):
-    """
-        Hz component of analytic solution for half-space (VMD source)
-        Tx and Rx are on the surface.
-        Tx waveform here is step-off.
-
-        * r: Tx-Rx offset
-        * m: magnetic dipole moment (assumed as 1)
-        * t: out put time channel
-        * sigma: half-space conductivity
-
-
-        .. math::
-            
-            h_z  = \\frac{m}{4\pi r^3} \
-                    \left(
-                    \\frac{9}{2\\theta^2r^2}erf(\\theta r) - erf(\\theta r)
-                    - \\frac{1}{\pi^{0.5}}(\\frac{9}{\\theta r} + 4\\theta r)e^{-\\theta r^2}
-                    )\\right)
-
-        .. math::
-
-            \\theta = \sqrt{\\frac{\sigma\mu}{4t}}
-        
-
-    """    
 
     theta = np.sqrt((sigma*mu_0)/(4*t))
     tr = theta*r
@@ -160,11 +125,6 @@ def BzAnalCircT(a, t, sigma):
         Tx and Rx are on the surface and receiver is located at the center of the loop.
         Tx waveform here is step-off.
 
-        * a: radius of loop
-        * I: current (assumed as 1)
-        * t: out put time channel
-        * sigma: half-space conductivity
-
         .. math::
             
             h_z  = \\frac{I}{2a} \
@@ -174,7 +134,6 @@ def BzAnalCircT(a, t, sigma):
         .. math::
 
             \\theta = \sqrt{\\frac{\sigma\mu}{4t}}
-
     """
 
     theta = np.sqrt((sigma*mu_0)/(4*t))
@@ -210,14 +169,7 @@ def dBzdtAnalCircT(a, t, sigma):
     return mu_0*dhzdt
 
 def BzAnalCircTCole(a, t, sigma):
-    """
-        Evaluate half-space solution Bz component of Circular-loop Tx (HCP)
-        with Complex conductivity model using Digital filtering
-        
-        * a: radius of loop
-        * t: out put time channel
-        * sigma: complex conductivity model 
-    """
+
     wt, tbase, omega_int = setFrequency(t)
     hz = HzanalCirc(sigma, omega_int/2/np.pi, 1., a, 'secondary')
     # Treatment for inaccuracy in analytic solutions
@@ -227,14 +179,7 @@ def BzAnalCircTCole(a, t, sigma):
     return hzTD*mu_0
 
 def dBzdtAnalCircTCole(a, t, sigma):
-    """
-        Evaluate half-space solution dBzdt component of Circular-loop Tx (HCP)
-        with Complex conductivity model using Digital filtering
-        
-        * a: radius of loop
-        * t: out put time channel
-        * sigma: complex conductivity model 
-    """
+
     wt, tbase, omega_int = setFrequency(t)
     hz = HzanalCirc(sigma, omega_int/2/np.pi, 1., a, 'secondary')
     # Treatment for inaccuracy in analytic solutions
