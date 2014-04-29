@@ -9,7 +9,7 @@ Here, we used SimPEG's frame work so that we have following modules:
 
 * Problem: EM1D
 * Survey: BaseEM1Dsurvey
-* Model: BaseEM1Dmodel
+* Mapping: BaseEM1Dmap
 
 EM1D problem
 ************
@@ -55,6 +55,19 @@ EM1D survey
     :show-inheritance:
     :members:
     :inherited-members:
+
+Frequency domain survey
+^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: simpegem1d.BaseEM1D.EM1DSurveyFD
+    :show-inheritance:
+    :members:
+
+Time domain survey
+^^^^^^^^^^^^^^^^^^
+.. autoclass:: simpegem1d.BaseEM1D.EM1DSurveyTD
+    :show-inheritance:
+    :members:
+
 
 EM1D analaytic solutions
 ************************
