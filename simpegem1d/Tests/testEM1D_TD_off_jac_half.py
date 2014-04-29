@@ -7,7 +7,7 @@ from simpegem1d import EM1D, EM1DAnal, BaseEM1D
 class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
 
     def setUp(self):
-
+        
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+50.])
         TDsurvey.txLoc = np.array([0., 0., 100.+50.])
@@ -30,22 +30,22 @@ class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
         TDsurvey.LocSigZ = LocSigZ
         TDsurvey.time = np.logspace(-5, -2, 64)
         TDsurvey.switchInterp = True
-        TDsurvey.setFrequency(TDsurvey.time)
+        TDsurvey.setFrequency(TDsurvey.time)        
         TDsurvey.HalfSwitch = True
         TDsurvey.Setup1Dsystem()
-
+        
         sig_half = 1e-1
         chi_half = 0.
 
-        expmap = BaseEM1D.BaseEM1DMap(mesh1D)
+        Logmodel = BaseEM1D.BaseEM1DModel(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
         options = {'Frequency': TDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
-        colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
+        Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
 
-        modelReal = Maps.ComboMap(mesh1D, [expmap])
-        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
+        modelReal = Model.ComboModel(mesh1D, [Logmodel])
+        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
         m_1D = np.log(np.ones(nlay)*sig_half)
 
         WT0 = np.load('../WT0.npy')
@@ -53,7 +53,7 @@ class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
         YBASE = np.load('../YBASE.npy')
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
-        prob = EM1D.EM1D(mesh1D, modelReal, **options)
+        prob = EM1D.EM1D(modelReal, **options)
         prob.pair(TDsurvey)
         prob.chi = np.zeros(TDsurvey.nlay)
 
@@ -67,22 +67,24 @@ class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
 
 
     def test_EM1DTDJvec_Half(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
-
+    
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
-        self.prob.survey.a = a
-
+        self.prob.survey.a = a        
+        
         sig_half = 0.01
+        # sig_blk = 0.1
         sig = np.ones(self.prob.survey.nlay)*sig_half
+        # sig[3] = sig_blk
         m_1D = np.log(sig)
 
         self.prob.jacSwitch = True
         Hz, dHzdsig = self.prob.fields(m_1D)
 
-        dsigdm = self.prob.mapping.transformDeriv(m_1D)
+        dsigdm = self.prob.model.transformDeriv(m_1D)        
         dHzdsig = dHzdsig
 
         def fwdfun(m):
@@ -98,7 +100,7 @@ class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
             drespdmv = self.prob.Jvec(m, dm, u = u)
             return drespdmv
 
-
+       
 
         dm = m_1D*0.5
         derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
@@ -108,21 +110,21 @@ class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
             print "EM1DTD-half Jvec works"
 
     def test_EM1DTDJtvec_Half(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
-
+    
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
-        self.prob.survey.a = a
-
+        self.prob.survey.a = a        
+        
         sig_half = np.r_[0.01]
         self.prob.jacSwitch = False
         m_true = np.log(np.ones(self.prob.survey.nlay)*sig_half)
         Hz_true = self.prob.fields(m_true)
         dobs = self.prob.survey.projectFields(u=Hz_true)
 
-        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half*10)
+        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half*10)                
         Hz_ini = self.prob.fields(m_ini)
         resp_ini = self.prob.survey.projectFields(u=Hz_ini)
         dr = resp_ini-dobs
@@ -134,13 +136,13 @@ class EM1D_TD_Jac_half_ProblemTests(unittest.TestCase):
             misfit = 0.5*np.linalg.norm(dpred-dobs)**2
             dmisfit = self.prob.Jtvec(m, dr, u = Hz)
             return misfit, dmisfit
-
+       
 
         derChk = lambda m: misfit(m, dobs)
         passed = Tests.checkDerivative(derChk, m_ini, num=4, plotIt=False, eps = 1e-26)
-        self.assertTrue(passed)
+        self.assertTrue(passed)        
         if passed:
-            print "EM1DFD-half Jtvec works"
+            print "EM1DFD-half Jtvec works"           
 
 if __name__ == '__main__':
     unittest.main()

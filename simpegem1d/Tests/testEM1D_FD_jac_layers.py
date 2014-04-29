@@ -7,7 +7,7 @@ from simpegem1d import EM1D, EM1DAnal, BaseEM1D
 class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def setUp(self):
-
+        
         FDsurvey = BaseEM1D.EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+50.])
         FDsurvey.txLoc = np.array([0., 0., 100.+50.])
@@ -32,25 +32,25 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         sig_half = 1e-1
         chi_half = 0.
 
-        expmap = BaseEM1D.BaseEM1DMap(mesh1D)
+        Logmodel = BaseEM1D.BaseEM1DModel(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
         options = {'Frequency': FDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
-        colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
+        Colemodel = BaseEM1D.BaseColeColeModel(mesh1D, **options)
 
-        modelReal = Maps.ComboMap(mesh1D, [expmap])
-        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
+        modelReal = Model.ComboModel(mesh1D, [Logmodel])
+        modelComplex = Model.ComboModel(mesh1D, [Colemodel, Logmodel])                
         m_1D = np.log(np.ones(nlay)*sig_half)
 
-        FDsurvey.rxType = 'Hz'
+        FDsurvey.rxType = 'Hz'        
 
         WT0 = np.load('../WT0.npy')
         WT1 = np.load('../WT1.npy')
         YBASE = np.load('../YBASE.npy')
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
-        prob = EM1D.EM1D(mesh1D, mapping = modelReal, **options)
+        prob = EM1D.EM1D(modelReal, **options)
         prob.pair(FDsurvey)
         prob.chi = np.zeros(FDsurvey.nlay)
 
@@ -64,14 +64,14 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
 
     def test_EM1DFDJvec_Layers(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
-
+    
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
-        self.prob.survey.a = a
-
+        self.prob.survey.a = a        
+        
         sig_half = 0.01
         sig_blk = 0.1
         sig = np.ones(self.prob.survey.nlay)*sig_half
@@ -81,7 +81,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         self.prob.jacSwitch = True
         Hz, dHzdsig = self.prob.fields(m_1D)
 
-        dsigdm = self.prob.mapping.transformDeriv(m_1D)
+        dsigdm = self.prob.model.transformDeriv(m_1D)        
         dHzdsig = dHzdsig
 
         def fwdfun(m):
@@ -114,17 +114,17 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
             plt.show()
 
         if passed:
-            print "EM1DFD-layers Jvec works"
+            print "EM1DFD-layers Jvec works"     
 
 
     def test_EM1DFDJtvec_Layers(self):
-        self.prob.CondType = 'Real'
+        self.prob.CondType = 'Real'        
         self.prob.survey.txType = 'CircularLoop'
 
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
-        self.prob.survey.a = a
+        self.prob.survey.a = a        
 
         sig_half = 0.01
         sig_blk = 0.1
@@ -136,7 +136,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         Hz_true = self.prob.fields(m_true)
         dobs = self.prob.survey.projectFields(u=Hz_true)
 
-        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half)
+        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half)                
         Hz_ini = self.prob.fields(m_ini)
         resp_ini = self.prob.survey.projectFields(u=Hz_ini)
         dr = resp_ini-dobs
@@ -151,9 +151,9 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
         derChk = lambda m: misfit(m, dobs)
         passed = Tests.checkDerivative(derChk, m_ini, num=4, plotIt=False, eps = 1e-27)
-        self.assertTrue(passed)
+        self.assertTrue(passed)        
         if passed:
-            print "EM1DFD-layers Jtvec works"
+            print "EM1DFD-layers Jtvec works"        
 
 
 

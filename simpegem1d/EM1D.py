@@ -12,7 +12,8 @@ class EM1D(Problem.BaseProblem):
         Layered earth (1D).
     """
     surveyPair = BaseEM1D.BaseEM1DSurvey
-    mapPair = BaseEM1D.BaseEM1DMap
+    modelPair = BaseEM1D.BaseEM1DModel
+    # modelPair = Model.BaseModel
     CondType = 'Real'
     WT1 = None
     WT0 = None
@@ -25,12 +26,13 @@ class EM1D(Problem.BaseProblem):
     jacSwitch = False
 
 
-    def __init__(self, mesh, mapping = None, **kwargs):
+    def __init__(self, model, **kwargs):
 
-        Problem.BaseProblem.__init__(self, mesh, mapping=mapping, **kwargs)
+        Problem.BaseProblem.__init__(self, model, **kwargs)
         self.WT0 = kwargs['WT0']
         self.WT1 = kwargs['WT1']
         self.YBASE = kwargs['YBASE']
+        self.drTE = []
 
     def HzKernel_layer(self, lamda, f, nlay, sig, chi, depth, h, z, flag):
 
@@ -124,7 +126,7 @@ class EM1D(Problem.BaseProblem):
         nfreq = self.survey.Nfreq
         flag = self.survey.fieldtype
         r = self.survey.offset
-        sig = self.mapping.transform(m)
+        sig = self.model.transform(m)
         #TODO: In corporate suseptibility in to the model !!
         chi = self.chi
         nlay = self.survey.nlay
@@ -253,7 +255,7 @@ class EM1D(Problem.BaseProblem):
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.mapping.transformDeriv(m)
+        dsigdm = self.model.transformDeriv(m)
         Jv = np.dot(drespdsig, dsigdm*v)
         return Jv
 
@@ -282,7 +284,7 @@ class EM1D(Problem.BaseProblem):
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.mapping.transformDeriv(m)
+        dsigdm = self.model.transformDeriv(m)
         Jtv = dsigdm*(np.dot(drespdsig.T, v))
         return Jtv
 
