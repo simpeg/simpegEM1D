@@ -88,7 +88,7 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
         .. math::
 
             \sigma (\omega) = \sigma_{\infty} - 
-            \\frac{\sigma_{\infty}\eta}{1-(1-\eta)(\imath\omega\\tau)^c}
+            \\frac{\sigma_{\infty}\eta}{1+(1-\eta)(\imath\omega\\tau)^c}
 
 
         
