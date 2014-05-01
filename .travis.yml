@@ -7,7 +7,7 @@ before_install:
   - sudo apt-get install -qq gcc gfortran libblas-dev liblapack-dev python-numpy python-scipy python-matplotlib python-pip
   - sudo pip install scipy --upgrade
   - sudo pip install numpy --upgrade
-  - cd SimPEG
+  - cd simpegem1d
   - python setup.py
   - cd ../
 # command to install dependencies
