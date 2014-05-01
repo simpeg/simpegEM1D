@@ -25,6 +25,12 @@ Contents
    api_contact
    api_license
 
+* Master Branch
+   .. image:: https://travis-ci.org/simpeg/simpegEM1D.svg?branch=master
+      :target: https://travis-ci.org/simpeg/simpegEM1D
+      :alt: Master Branch
+      :align: center
+
 Project Index & Search
 ======================
 
