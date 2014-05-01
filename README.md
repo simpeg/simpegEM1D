@@ -10,10 +10,10 @@ Code:
 [https://github.com/simpeg/simpegem1d](https://github.com/simpeg/simpegem1d)
 
 Tests:
-[https://travis-ci.org/simpeg/simpegem1d](https://travis-ci.org/simpeg/simpegem1d)
+[https://travis-ci.org/simpeg/simpegEM1D](https://travis-ci.org/simpeg/simpegEM1D)
 
 Build Status:
-[![Build Status](https://travis-ci.org/simpeg/simpegem1d.svg?branch=master)](https://travis-ci.org/simpeg/simpegem1d)
+[![Build Status](https://travis-ci.org/simpeg/simpegEM1D.svg?branch=master)](https://travis-ci.org/simpeg/simpegEM1D)
 
 Bugs & Issues:
 [https://github.com/simpeg/simpegem1d/issues](https://github.com/simpeg/simpegem1d/issues)
