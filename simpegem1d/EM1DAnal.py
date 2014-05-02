@@ -189,3 +189,29 @@ def dBzdtAnalCircTCole(a, t, sigma):
     dhzdtTD = -transFiltImpulse(hz, wt, tbase, omega_int, t)
 
     return dhzdtTD*mu_0
+
+def DiffusionDistnace(t, sigma):
+    """
+        Compute diffusion distance
+
+        .. math::
+
+            d = \sqrt{\\frac{2t}{\mu_0\sigma}}
+
+        assume \\\\(\\\\ \mu = \mu_0\\\\) is chargeability
+    """
+
+    return np.sqrt(2*t/mu_0/sigma)
+
+def SkinDepth(f, sigma):
+    """
+        Compute skin depth
+
+        .. math::
+
+            \delta = \sqrt{\\frac{2}{\omega\mu_0\sigma}}
+
+        where \\\\(\\\\ \omega = 2\pi f \\\\) is chargeability
+    """
+
+    return np.sqrt(2*t/mu_0/sigma)    
