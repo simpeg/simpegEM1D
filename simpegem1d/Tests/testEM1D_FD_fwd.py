@@ -1,7 +1,7 @@
 import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnal, BaseEM1D
+from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter
 
 
 class EM1D_FD_FwdProblemTests(unittest.TestCase):
@@ -17,7 +17,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         deepthick = np.logspace(1, 2, 10)
         hx = np.r_[nearthick, deepthick]
         mesh1D = Mesh.TensorMesh([hx], [0.])
-        depth = -mesh1D.gridN
+        depth = -mesh1D.gridN[:-1]
         LocSigZ = -mesh1D.gridCC
         nlay = depth.size
         topo = np.r_[0., 0., 100.]
@@ -38,15 +38,12 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         options = {'Frequency': FDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
         colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
 
-        modelReal = Maps.ComboMap(mesh1D, [expmap])
-        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
+        modelReal = expmap
+        modelComplex = colemap*expmap
         m_1D = np.log(np.ones(nlay)*sig_half)
-
         FDsurvey.rxType = 'Hz'
 
-        WT0 = np.load('../WT0.npy')
-        WT1 = np.load('../WT1.npy')
-        YBASE = np.load('../YBASE.npy')
+        WT0, WT1, YBASE = DigFilter.LoadWeights()
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
         prob = EM1D.EM1D(mesh1D, mapping = modelReal, **options)
@@ -185,9 +182,9 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.survey.txLoc = np.array([0., 0., 110.+1e-5])
         self.survey.fieldtype = 'secondary'
 
-        hx = np.r_[np.ones(2)*10]
+        hx = np.r_[np.ones(3)*10]
         mesh1D = Mesh.TensorMesh([hx], [0.])
-        depth = -mesh1D.gridN
+        depth = -mesh1D.gridN[:-1]
         LocSigZ = -mesh1D.gridCC
         nlay = depth.size
         topo = np.r_[0., 0., 100.]
@@ -199,7 +196,10 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.survey.frequency = np.logspace(-3, 5, 61)
         self.survey.Nfreq = self.survey.frequency.size
         self.survey.Setup1Dsystem()
-
+        self.prob.unpair()
+        mapping = BaseEM1D.BaseEM1DMap(mesh1D)
+        self.prob = EM1D.EM1D(mesh1D, mapping = mapping, **self.options)
+        self.prob.pair(self.survey)
         self.prob.CondType = 'Real'
         self.prob.survey.txType = 'VMD'
         self.prob.survey.offset = 10.

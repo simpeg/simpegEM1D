@@ -1,7 +1,7 @@
 import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnal, BaseEM1D
+from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter
 
 
 class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
@@ -13,12 +13,10 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
         FDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
         FDsurvey.fieldtype = 'secondary'
 
-        nearthick = np.logspace(-1, 1, 5)
-        deepthick = np.logspace(1, 2, 10)
-        hx = np.r_[nearthick, deepthick]
+        hx = np.r_[100.]
 
         mesh1D = Mesh.TensorMesh([hx], [0.])
-        depth = -mesh1D.gridN
+        depth = -mesh1D.gridN[:-1]
         LocSigZ = -mesh1D.gridCC
         nlay = depth.size
         topo = np.r_[0., 0., 100.]
@@ -40,16 +38,14 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
         options = {'Frequency': FDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
         colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
 
-        modelReal = Maps.ComboMap(mesh1D, [expmap])
-        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
+        modelReal = expmap
+        modelComplex = colemap * expmap
         m_1D = np.log(np.ones(nlay)*sig_half)
 
         FDsurvey.rxType = 'Hz'
         FDsurvey.switchRI = 'all'
 
-        WT0 = np.load('../WT0.npy')
-        WT1 = np.load('../WT1.npy')
-        YBASE = np.load('../YBASE.npy')
+        WT0, WT1, YBASE = DigFilter.LoadWeights()
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
         prob = EM1D.EM1D(mesh1D, modelReal, **options)

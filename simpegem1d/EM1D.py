@@ -124,7 +124,7 @@ class EM1D(Problem.BaseProblem):
         nfreq = self.survey.Nfreq
         flag = self.survey.fieldtype
         r = self.survey.offset
-        sig = self.mapping.transform(m)
+        sig = self.mapping*m
         #TODO: In corporate suseptibility in to the model !!
         chi = self.chi
         nlay = self.survey.nlay
@@ -253,7 +253,7 @@ class EM1D(Problem.BaseProblem):
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.mapping.transformDeriv(m)
+        dsigdm = self.mapping.deriv(m)
         Jv = np.dot(drespdsig, dsigdm*v)
         return Jv
 
@@ -282,7 +282,7 @@ class EM1D(Problem.BaseProblem):
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.mapping.transformDeriv(m)
+        dsigdm = self.mapping.deriv(m)
         Jtv = dsigdm*(np.dot(drespdsig.T, v))
         return Jtv
 

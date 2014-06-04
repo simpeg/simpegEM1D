@@ -44,7 +44,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         deepthick = np.logspace(1, 2, 10)
         hx = np.r_[nearthick, deepthick]
         mesh1D = Mesh.TensorMesh([hx], [0.])
-        depth = -mesh1D.gridN
+        depth = -mesh1D.gridN[:-1]
         LocSigZ = -mesh1D.gridCC
         nlay = depth.size
         topo = np.r_[0., 0., 100.]
@@ -64,8 +64,8 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         options = {'Frequency': TDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
         colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
 
-        modelReal = Maps.ComboMap(mesh1D, [expmap])
-        modelComplex = Maps.ComboMap(mesh1D, [colemap, expmap])
+        modelReal = expmap
+        modelComplex = colemap * expmap
         m_1D = np.log(np.ones(nlay)*sig_half)
 
         TDsurvey.rxType = 'Bz'

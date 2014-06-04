@@ -375,13 +375,13 @@ class BaseEM1DMap(Maps.IdentityMap):
     def __init__(self, mesh, **kwargs):
         Maps.IdentityMap.__init__(self, mesh)
 
-    def transform(self, m):
+    def _transform(self, m):
         """
         """
         return np.exp(m)
 
     #TODO: Need to think about this ...
-    def transformDeriv(self, m):
+    def deriv(self, m):
         return Utils.sdiag(np.exp(m))
 
 
@@ -395,7 +395,7 @@ class BaseColeColeMap(BaseEM1DMap):
         self.c = kwargs['c']
         self.frequency = kwargs['Frequency']
 
-    def transform(self, m):
+    def _transform(self, m):
         """
             Here m is going to be Nsd (The number of sounding) lists.
         """
