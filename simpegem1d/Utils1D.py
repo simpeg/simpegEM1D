@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plotLayer(sig, LocSigZ, xscale='log', ax=None, **kwargs):
+def plotLayer(sig, LocSigZ, xscale='log', ax=None, showlayers=False,**kwargs):
     """
         Plot Conductivity model for the layered earth model
     """
@@ -17,12 +17,13 @@ def plotLayer(sig, LocSigZ, xscale='log', ax=None, **kwargs):
 
     if ax==None:
         plt.xscale(xscale)
-        ax.set_xlim(sig_min, sig_max)
+        plt.xlim(sig_min, sig_max)
         plt.ylim(z.min(), z.max())
         plt.xlabel('Conductivity (S/m)', fontsize = 14)
         plt.ylabel('Depth (m)', fontsize = 14)        
-        for locz in LocSigZ:
-            plt.plot(np.linspace(sig_min, sig_max, 100), np.ones(100)*locz, 'b--', lw = 0.5)
+        if showlayers == True:
+            for locz in LocSigZ:
+                plt.plot(np.linspace(sig_min, sig_max, 100), np.ones(100)*locz, 'b--', lw = 0.5)
         return plt.plot(sigma, z, 'k-', **kwargs)        
 
     else:
@@ -31,8 +32,9 @@ def plotLayer(sig, LocSigZ, xscale='log', ax=None, **kwargs):
         ax.set_ylim(z.min(), z.max())
         ax.set_xlabel('Conductivity (S/m)', fontsize = 14)
         ax.set_ylabel('Depth (m)', fontsize = 14)
-        for locz in LocSigZ:
-            ax.plot(np.linspace(sig_min, sig_max, 100), np.ones(100)*locz, 'b--', lw = 0.5)
+        if showlayers == True:
+            for locz in LocSigZ:            
+                ax.plot(np.linspace(sig_min, sig_max, 100), np.ones(100)*locz, 'b--', lw = 0.5)
         return ax.plot(sigma, z, 'k-', **kwargs)
 
 def plotComplexData(frequency, val, xscale='log', ax=None, **kwargs):

@@ -1,7 +1,7 @@
 import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnal, BaseEM1D
+from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter
 from simpegem1d.Waveform import TriangleFun, TriangleFunDeriv
 from scipy import io
 from scipy.interpolate import interp1d
@@ -70,9 +70,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
         TDsurvey.rxType = 'Bz'
 
-        WT0 = np.load('../WT0.npy')
-        WT1 = np.load('../WT1.npy')
-        YBASE = np.load('../YBASE.npy')
+        WT0, WT1, YBASE = DigFilter.LoadWeights()
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
         prob = EM1D.EM1D(mesh1D, modelReal, **options)

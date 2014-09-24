@@ -214,4 +214,4 @@ def SkinDepth(f, sigma):
         where \\\\(\\\\ \omega = 2\pi f \\\\) is chargeability
     """
 
-    return np.sqrt(2*t/mu_0/sigma)    
+    return np.sqrt(2/mu_0/sigma/f/(2*pi))    
