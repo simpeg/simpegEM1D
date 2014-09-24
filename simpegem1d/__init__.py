@@ -1,5 +1,4 @@
 import EM1D, BaseEM1D, DigFilter, EM1DAnal, Kernels, RTEfun, Waveform, Utils1D
-
 import os
 import glob
 import unittest

@@ -55,7 +55,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.modelComplex = modelComplex
         self.prob = prob
         self.mesh1D = mesh1D
-        self.showIt = False
+        self.showIt = True
         self.tau = tau
         self.eta = eta
         self.c = c
