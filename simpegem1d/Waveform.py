@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.constants import mu_0
 
 def TriangleFun(time, ta, tb):
     """
