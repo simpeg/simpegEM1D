@@ -51,6 +51,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
         self.h = self.txLoc[2]-self.topo[2]
         self.z = self.rxLoc[2]-self.topo[2]
 
+
     @Utils.requires('prob')
     def dpred(self, m, u=None):
         """
@@ -131,8 +132,15 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             self.frequency = np.logspace(-3, 8, 81)
             self.omega_int = omega_int
             self.Nfreq = self.frequency.size
+
         else:
             raise Exception('Not implemented!!')
+
+
+
+
+        if self.offset is not None:
+            self.offset = self.offset*np.ones(self.Nfreq)
 
     def setWaveform(self, **kwargs):
         """
@@ -324,6 +332,11 @@ class EM1DSurveyFD(BaseEM1DSurvey):
 
     def __init__(self, **kwargs):
         BaseEM1DSurvey.__init__(self, **kwargs)
+
+    def SetOffset(self):
+        if np.isscalar(self.offset):
+            print 'kang'
+            self.offset = self.offset*np.ones(self.Nfreq)
 
     def projectFields(self, u):
         """

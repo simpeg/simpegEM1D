@@ -141,8 +141,8 @@ class EM1D(Problem.BaseProblem):
                         for ifreq in range(nfreq):
                             kernel    = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[0]
                             jackernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[1]
-                            HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r)
-                            dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r)
+                            HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
+                            dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r[ifreq])
 
                     elif self.survey.txType == 'CircularLoop':
                         I = self.survey.I
@@ -163,8 +163,8 @@ class EM1D(Problem.BaseProblem):
                         sig_temp = Utils.mkvc(sig[ifreq, :])
                         kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, flag)[0]
                         jackernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, flag)[1]
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r)
-                        dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r)
+                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
+                        dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r[ifreq])
 
                 elif self.survey.txType == 'CircularLoop':
                     I = self.survey.I
@@ -189,7 +189,7 @@ class EM1D(Problem.BaseProblem):
                     r = self.survey.offset
                     for ifreq in range(nfreq):
                         kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r)
+                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
 
                 elif self.survey.txType == 'CircularLoop':
                     I = self.survey.I
@@ -207,7 +207,7 @@ class EM1D(Problem.BaseProblem):
                     for ifreq in range(nfreq):
                         sig_temp = Utils.mkvc(sig[ifreq, :])
                         kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, flag)
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r)
+                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
 
                 elif self.survey.txType == 'CircularLoop':
                     I = self.survey.I
