@@ -23,6 +23,26 @@ def TriangleFunDeriv(time, ta, tb):
     out[(time>ta)&(time<tb)] = -1/(tb-ta)
     return out
 
+def SineFun(time, ta):
+    """
+        Sine Waveform
+        * time: 1D array for time
+        * ta: Pulse Period
+    """
+    out = np.zeros(time.size)
+    out[time<=ta] = np.sin(1./ta*np.pi*time[time<=ta])
+
+    return out
+
+def SineFunDeriv(time, ta):
+    """
+        Derivative of Sine Waveform
+    """
+    out = np.zeros(time.size)
+    out[time<=ta] = 1./ta*np.pi*np.cos(1./ta*np.pi*time[time<=ta])
+    return out
+
+
 def VTEMFun(time, ta, tb, a):
     """
         VTEM Waveform

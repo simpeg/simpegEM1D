@@ -136,11 +136,10 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         else:
             raise Exception('Not implemented!!')
 
-
-
-
-        if self.offset is not None:
+        if self.offset is not None and np.isscalar(self.offset):
             self.offset = self.offset*np.ones(self.Nfreq)
+        elif self.offset is not None and not np.isscalar(self.offset):
+            self.offset = self.offset[0]*np.ones(self.Nfreq)
 
     def setWaveform(self, **kwargs):
         """
@@ -335,7 +334,6 @@ class EM1DSurveyFD(BaseEM1DSurvey):
 
     def SetOffset(self):
         if np.isscalar(self.offset):
-            print 'kang'
             self.offset = self.offset*np.ones(self.Nfreq)
 
     def projectFields(self, u):

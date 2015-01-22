@@ -68,8 +68,6 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         modelComplex = colemap * expmap
         m_1D = np.log(np.ones(nlay)*sig_half)
 
-        TDsurvey.rxType = 'Bz'
-
         WT0, WT1, YBASE = DigFilter.LoadWeights()
         options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
 
@@ -82,7 +80,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.modelComplex = modelComplex
         self.prob = prob
         self.mesh1D = mesh1D
-        self.showIt = False
+        self.showIt = True
         self.tau = tau
         self.eta = eta
         self.c = c

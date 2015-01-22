@@ -1,8 +1,8 @@
 .. _api_EM1Dcode:
 
 
-AirEM1D code
-============
+simpegEM1D code
+===============
 
 Here, we used SimPEG's frame work so that we have following modules:
 
