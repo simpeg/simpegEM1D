@@ -12,7 +12,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+ 100.])
-        TDsurvey.txLoc = np.array([0., 0., 100.+ 100.])
+        TDsurvey.srcLoc = np.array([0., 0., 100.+ 100.])
         TDsurvey.fieldtype = 'secondary'
         TDsurvey.rxType = 'Bz'
         TDsurvey.waveType = 'general'
@@ -30,7 +30,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         waveformDeriv = TriangleFunDeriv(tconv, ta, tb)
         tend = 0.01
         optionswave = {'toff': tb,'tconv': tconv,'waveform': waveform, 'waveformDeriv': waveformDeriv }
-        TDsurvey.txType = 'CircularLoop'
+        TDsurvey.srcType = 'CircularLoop'
         I = 1e0
         a = 2e1
         TDsurvey.I = I

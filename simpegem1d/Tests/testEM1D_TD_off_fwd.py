@@ -10,7 +10,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
-        TDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
+        TDsurvey.srcLoc = np.array([0., 0., 100.+1e-5])
         TDsurvey.fieldtype = 'secondary'
         TDsurvey.rxType = 'Bz'
         TDsurvey.waveType = 'stepoff'
@@ -67,7 +67,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
     def test_EM1DTDfwd_CirLoop_RealCond(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
         self.prob.survey.offset = 10.
         sig_half = 0.01
         I = 1e0
@@ -118,7 +118,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.prob.pair(self.survey)
 
         self.prob.CondType = 'Complex'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
         self.prob.survey.offset = 10.
         sig_half = 0.01
         I = 1e0

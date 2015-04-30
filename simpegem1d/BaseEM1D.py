@@ -23,19 +23,19 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
 
     """
     rxLoc = None         # [xr1, yr1, zr1]
-    txLoc = None         # [xt1, yt1, zt1]
+    srcLoc = None         # [xt1, yt1, zt1]
     rxType = None        # Bz, dBzdt
-    txType = None        # VMD, CircularLoop
-    offset = None        # Tx <-----> Rx
+    srcType = None        # VMD, CircularLoop
+    offset = None        # Src <-----> Rx
     fieldtype = None     #: total or secondary fields
     depth = None
     topo = None
     LocSigZ = None
-    h = None             #: Tx heights at local coordinate
+    h = None             #: Src heights at local coordinate
     nlay = None          #: The # of layer (fixed for all soundings)
     z = None             #: Rx heights at local coordinate
-    I = 1.               #: Tx loop current
-    a = None             #: Tx loop radius
+    I = 1.               #: Src loop current
+    a = None             #: Src loop radius
     HalfSwitch = False
 
     def __init__(self, **kwargs):
@@ -48,7 +48,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
             self.nlay = 1
         else:
             raise Exception('Not implemnted!!')
-        self.h = self.txLoc[2]-self.topo[2]
+        self.h = self.srcLoc[2]-self.topo[2]
         self.z = self.rxLoc[2]-self.topo[2]
 
 
@@ -143,7 +143,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
     def setWaveform(self, **kwargs):
         """
-            Set parameters for Tx Waveform
+            Set parameters for Src Waveform
         """
         #TODO: this is hp is only valid for Circular loop system
         self.hp = self.I/self.a*0.5
@@ -160,7 +160,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         """
         # Case1: Compute frequency domain reponses right at filter coefficient values
         if self.switchInterp == False:
-            # Tx waveform: Step-off
+            # Src waveform: Step-off
             if self.waveType == 'stepoff':
                 if self.rxType == 'Bz':
                     # Compute EM responses
@@ -182,7 +182,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         for i in range (self.nlay):
                             resp[:,i] = -transFiltImpulse(u[:,i], self.wt,self.tbase, self.frequency*2*np.pi, self.time)
 
-            # Tx waveform: General (it can be any waveform)
+            # Src waveform: General (it can be any waveform)
             # We evaluate this with time convolution
             elif self.waveType == 'general':
                 # Compute EM responses
@@ -240,7 +240,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         # Case2: Compute frequency domain reponses in logarithmic then intepolate
         if self.switchInterp == True:
-            # Tx waveform: Step-off
+            # Src waveform: Step-off
             if self.waveType == 'stepoff':
                 if self.rxType == 'Bz':
                     # Compute EM responses
@@ -262,7 +262,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         for i in range (self.nlay):
                             resp[:,i] = -transFiltImpulseInterp(u[:,i], self.wt,self.tbase, self.frequency*2*np.pi, self.omega_int, self.time)
 
-            # Tx waveform: General (it can be any waveform)
+            # Src waveform: General (it can be any waveform)
             # We evaluate this with time convolution
             elif self.waveType == 'general':
                 # Compute EM responses

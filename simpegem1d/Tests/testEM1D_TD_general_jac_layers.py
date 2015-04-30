@@ -11,7 +11,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
 
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+50.])
-        TDsurvey.txLoc = np.array([0., 0., 100.+50.])
+        TDsurvey.srcLoc = np.array([0., 0., 100.+50.])
         TDsurvey.fieldtype = 'secondary'
         # TDsurvey.rxType = 'Bz'
         TDsurvey.rxType = 'dBzdt'
@@ -29,7 +29,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         waveformDeriv = TriangleFunDeriv(tconv, ta, tb)
         tend = 0.01
         optionswave = {'toff': tb,'tconv': tconv,'waveform': waveform, 'waveformDeriv': waveformDeriv }
-        TDsurvey.txType = 'CircularLoop'
+        TDsurvey.srcType = 'CircularLoop'
 
         I = 1e0
         a = 1e1

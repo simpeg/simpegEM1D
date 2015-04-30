@@ -10,7 +10,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
         FDsurvey = BaseEM1D.EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+50.])
-        FDsurvey.txLoc = np.array([0., 0., 100.+50.])
+        FDsurvey.srcLoc = np.array([0., 0., 100.+50.])
         FDsurvey.fieldtype = 'secondary'
 
         nearthick = np.logspace(-1, 1, 2)
@@ -63,7 +63,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DFDJvec_Layers(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
 
         I = 1e0
         a = 1e1
@@ -117,7 +117,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DFDJtvec_Layers(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
 
         I = 1e0
         a = 1e1

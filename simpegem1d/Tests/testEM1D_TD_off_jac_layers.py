@@ -10,7 +10,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
 
         TDsurvey = BaseEM1D.EM1DSurveyTD()
         TDsurvey.rxLoc = np.array([0., 0., 100.+50.])
-        TDsurvey.txLoc = np.array([0., 0., 100.+50.])
+        TDsurvey.srcLoc = np.array([0., 0., 100.+50.])
         TDsurvey.fieldtype = 'secondary'
         TDsurvey.rxType = 'dBzdt'
         TDsurvey.waveType = 'stepoff'
@@ -64,7 +64,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DTDJvec_Layers(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
 
         I = 1e0
         a = 1e1
@@ -96,7 +96,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DTDJtvec_Layers(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
 
         I = 1e0
         a = 1e1
