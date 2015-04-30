@@ -39,7 +39,7 @@ Digital filtering
     :undoc-members:
     :inherited-members:
 
-Transmitter Waveform
+Source Waveform
 ^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: simpegem1d.Waveform

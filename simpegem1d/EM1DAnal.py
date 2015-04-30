@@ -10,14 +10,14 @@ def Hzanal(sig, f, r, flag):
     """
 
         Hz component of analytic solution for half-space (VMD source)
-        Tx and Rx are on the surface
+        Src and Rx are on the surface
 
         .. math::
             
             H_z  = \\frac{m}{2\pi k^2 r^5} \
                     \left( 9 -(9+\imath\ kr - 4 k^2r^2 - \imath k^3r^3)e^{-\imath kr}\\right)
 
-        * r: Tx-Rx offset
+        * r: Src-Rx offset
         * m: magnetic dipole moment
         * k: propagation constant
 
@@ -41,14 +41,14 @@ def HzanalCirc(sig, f, I, a, flag):
     """
 
         Hz component of analytic solution for half-space (Circular-loop source)
-        Tx and Rx are on the surface and receiver is located at the center of the loop.
+        Src and Rx are on the surface and receiver is located at the center of the loop.
 
         .. math::
             
             H_z  = -\\frac{I}{k^2a^3} \
                     \left( 3 -(3+\imath\ ka - k^2a^2 )e^{-\imath ka}\\right)
 
-        * a: Tx-loop radius
+        * a: Src-loop radius
         * I: Current intensity
 
     """
@@ -122,8 +122,8 @@ def BzAnalT(r, t, sigma):
 def BzAnalCircT(a, t, sigma):
     """
         Hz component of analytic solution for half-space (Circular-loop source)
-        Tx and Rx are on the surface and receiver is located at the center of the loop.
-        Tx waveform here is step-off.
+        Src and Rx are on the surface and receiver is located at the center of the loop.
+        Src waveform here is step-off.
 
         .. math::
             
@@ -147,8 +147,8 @@ def BzAnalCircT(a, t, sigma):
 def dBzdtAnalCircT(a, t, sigma):
     """
         Hz component of analytic solution for half-space (Circular-loop source)
-        Tx and Rx are on the surface and receiver is located at the center of the loop.
-        Tx waveform here is step-off.
+        Src and Rx are on the surface and receiver is located at the center of the loop.
+        Src waveform here is step-off.
 
         .. math::
             
