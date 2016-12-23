@@ -80,7 +80,7 @@ def write25Dinputformat(Rvals,Ivals, frequency, x, z, offset, fname='profile2D.i
     nst = x.size
     nfreq = frequency.size
     fid = open(fname, 'w')
-    fid.write(">> # of frequency, transmitter and receiver max\n")
+    fid.write(">> # of frequency, source and receiver max\n")
     fid.write("%5i %5i %5i\n" % (nfreq, nst, 1))
     for ifreq in range(nfreq):
         fid.write(">> Frequency (Hz)\n")

@@ -10,7 +10,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
         FDsurvey = BaseEM1D.EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
-        FDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
+        FDsurvey.srcLoc = np.array([0., 0., 100.+1e-5])
         FDsurvey.fieldtype = 'secondary'
 
         nearthick = np.logspace(-1, 1, 5)
@@ -55,7 +55,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.modelComplex = modelComplex
         self.prob = prob
         self.mesh1D = mesh1D
-        self.showIt = True
+        self.showIt = False
         self.tau = tau
         self.eta = eta
         self.c = c
@@ -63,7 +63,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
     def test_EM1DFDfwd_VMD_RealCond(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'VMD'
+        self.prob.survey.srcType = 'VMD'
         self.prob.survey.offset = 10.
         self.prob.survey.SetOffset()
         sig_half = 0.01
@@ -96,7 +96,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob.pair(self.survey)
 
         self.prob.CondType = 'Complex'
-        self.prob.survey.txType = 'VMD'
+        self.prob.survey.srcType = 'VMD'
         self.prob.survey.offset = 10.
         self.prob.survey.SetOffset()
         sig_half = 0.01
@@ -119,7 +119,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
     def test_EM1DFDfwd_CircularLoop_RealCond(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
@@ -153,7 +153,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob.pair(self.survey)
 
         self.prob.CondType = 'Complex'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
         I = 1e0
         a = 1e1
         self.prob.survey.I = I
@@ -181,7 +181,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
 
         self.survey.rxLoc = np.array([0., 0., 110.+1e-5])
-        self.survey.txLoc = np.array([0., 0., 110.+1e-5])
+        self.survey.srcLoc = np.array([0., 0., 110.+1e-5])
         self.survey.fieldtype = 'secondary'
 
         hx = np.r_[np.ones(3)*10]
@@ -203,7 +203,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob = EM1D.EM1D(mesh1D, mapping = mapping, **self.options)
         self.prob.pair(self.survey)
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'VMD'
+        self.prob.survey.srcType = 'VMD'
         self.prob.survey.offset = 10.
         self.prob.survey.SetOffset()
 

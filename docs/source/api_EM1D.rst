@@ -24,7 +24,7 @@
 simpegEM1D
 **********
 
-simpegEM1D provides pseudo-analytic solutions of electromagnetic (EM) geophysical methods with layered-earth assumption. Currently, only airborne types of survey geometry is provided: separate and coincident loop systems. However, this will be generalized for any types of transmitter and receiver configuration. Depending on instrumentation, we can have frequency and time domain EM systems. We compute solutions in frequency domain, and for time domain responses we transform frequency domain responses to time domain using fast Hankel transform (CITE).
+simpegEM1D provides pseudo-analytic solutions of electromagnetic (EM) geophysical methods with layered-earth assumption. Currently, only airborne types of survey geometry is provided: separate and coincident loop systems. However, this will be generalized for any types of source and receiver configuration. Depending on instrumentation, we can have frequency and time domain EM systems. We compute solutions in frequency domain, and for time domain responses we transform frequency domain responses to time domain using fast Hankel transform (CITE).
 
 We are gearing towards geophysical inversion, which recovers distribution of material property like electrical conductivity. Therefore, this package will provide not only forward responses, but also sensitivity function of EM responses. Structure of forward modeling and inversion of simpegEM1D follows simulation and parameter estimation of geophysics (SimPEG)'s framework.
 

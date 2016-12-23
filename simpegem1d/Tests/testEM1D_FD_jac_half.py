@@ -10,7 +10,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
 
         FDsurvey = BaseEM1D.EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+1e-5])
-        FDsurvey.txLoc = np.array([0., 0., 100.+1e-5])
+        FDsurvey.srcLoc = np.array([0., 0., 100.+1e-5])
         FDsurvey.fieldtype = 'secondary'
 
         hx = np.r_[100.]
@@ -63,7 +63,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
 
     def test_EM1DFDJvec_Half(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
 
         I = 1e0
         a = 1e1
@@ -109,7 +109,7 @@ class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
 
     def test_EM1DFDJtvec_Half(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.txType = 'CircularLoop'
+        self.prob.survey.srcType = 'CircularLoop'
 
         I = 1e0
         a = 1e1
