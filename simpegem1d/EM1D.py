@@ -24,10 +24,13 @@ class EM1D(Problem.BaseProblem):
     M11 = None
     jacSwitch = False
 
+    sigma, sigmaMap, sigmaDeriv = Props.Invertible(
+        "Electrical conductivity (S/m)"
+    )
 
-    def __init__(self, mesh, mapping = None, **kwargs):
+    def __init__(self, mesh, **kwargs):
 
-        Problem.BaseProblem.__init__(self, mesh, mapping=mapping, **kwargs)
+        Problem.BaseProblem.__init__(self, mesh, **kwargs)
         self.WT0 = kwargs['WT0']
         self.WT1 = kwargs['WT1']
         self.YBASE = kwargs['YBASE']
@@ -124,7 +127,7 @@ class EM1D(Problem.BaseProblem):
         nfreq = self.survey.Nfreq
         flag = self.survey.fieldtype
         r = self.survey.offset
-        sig = self.mapping*m
+        sig = self.sigmaMap*m
         #TODO: In corporate suseptibility in to the model !!
         chi = self.chi
         nlay = self.survey.nlay
@@ -253,7 +256,7 @@ class EM1D(Problem.BaseProblem):
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.mapping.deriv(m)
+        dsigdm = self.sigmaMap.deriv(m)
         Jv = np.dot(drespdsig, dsigdm*v)
         return Jv
 
@@ -282,7 +285,7 @@ class EM1D(Problem.BaseProblem):
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.mapping.deriv(m)
+        dsigdm = self.sigmaMap.deriv(m)
         Jtv = dsigdm*(np.dot(drespdsig.T, v))
         return Jtv
 
