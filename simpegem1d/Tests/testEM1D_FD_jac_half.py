@@ -2,7 +2,7 @@ import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
 from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter
-
+import numpy as np
 
 class EM1D_FD_Jac_half_ProblemTests(unittest.TestCase):
 

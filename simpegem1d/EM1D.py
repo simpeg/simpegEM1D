@@ -1,10 +1,12 @@
 from SimPEG import *
+import numpy as np
 import BaseEM1D
 # from future import division
 from scipy.constants import mu_0
 # from Kernels import HzKernel_layer, HzkernelCirc_layer
 from DigFilter import EvalDigitalFilt
 from RTEfun import rTEfunfwd, rTEfunjac
+
 
 class EM1D(Problem.BaseProblem):
     """
@@ -73,10 +75,8 @@ class EM1D(Problem.BaseProblem):
 
             Kernel = kernel
 
-
         return  Kernel
 
-    @Utils.requires('survey')
     def HzkernelCirc_layer(self, lamda, f, nlay, sig, chi, depth, h, z, I, a, flag):
 
         """
@@ -116,13 +116,12 @@ class EM1D(Problem.BaseProblem):
 
         return  Kernel
 
-    @Utils.requires('survey')
     def fields(self, m):
         """
                 Return Bz or dBzdt
 
         """
-
+        print ('fields')
         f = self.survey.frequency
         nfreq = self.survey.Nfreq
         flag = self.survey.fieldtype
@@ -229,25 +228,24 @@ class EM1D(Problem.BaseProblem):
             return  HzFHT
 
 
-    @Utils.requires('survey')
-    def Jvec(self, m, v, u=None):
+    def Jvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
         """
-        if u is None:
+        if f is None:
 
-            u = self.fields(m)
+            f = self.fields(m)
 
-        f, dfdsig=u[0], u[1]
+        u, dudsig = f[0], f[1]
 
         if self.survey.switchFDTD == 'FD':
 
-            resp = self.survey.projectFields(f)
-            drespdsig = self.survey.projectFields(dfdsig)
+            resp = self.survey.projectFields(u)
+            drespdsig = self.survey.projectFields(dudsig)
 
         elif self.survey.switchFDTD == 'TD':
-            resp = self.survey.projectFields(f)
-            drespdsig = self.survey.projectFields(dfdsig)
+            resp = self.survey.projectFields(u)
+            drespdsig = self.survey.projectFields(dudsig)
             if drespdsig.size == self.survey.Nch:
                 drespdsig = np.reshape(drespdsig, (-1,1), order='F')
             else:
@@ -260,25 +258,24 @@ class EM1D(Problem.BaseProblem):
         Jv = np.dot(drespdsig, dsigdm*v)
         return Jv
 
-    @Utils.requires('survey')
-    def Jtvec(self, m, v, u=None):
+    def Jtvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
         """
-        if u is None:
-            u = self.fields(m)
+        if f is None:
+            f = self.fields(m)
 
-        f, dfdsig=u[0], u[1]
+        u, dudsig=f[0], f[1]
         if self.survey.switchFDTD == 'FD':
 
-            resp = self.survey.projectFields(f)
-            drespdsig = self.survey.projectFields(dfdsig)
+            resp = self.survey.projectFields(u)
+            drespdsig = self.survey.projectFields(dudsig)
 
         elif self.survey.switchFDTD == 'TD':
-            resp = self.survey.projectFields(f)
-            drespdsig = self.survey.projectFields(dfdsig)
+            resp = self.survey.projectFields(u)
+            drespdsig = self.survey.projectFields(dudsig)
             if drespdsig.size == self.survey.Nch:
-                drespdsig = np.reshape(drespdsig, (-1,1), order='F')
+                drespdsig = np.reshape(drespdsig, (-1, 1), order='F')
             else:
                 drespdsig = np.reshape(drespdsig, (self.survey.Nch, drespdsig.shape[1]), order='F')
         else:

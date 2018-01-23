@@ -7,16 +7,17 @@ from DigFilter import transFilt, transFiltImpulse, transFiltInterp, transFiltImp
 from Waveform import CausalConv
 from scipy.interpolate import interp1d
 
-class BaseEMSurvey(object):
-    """docstring for BaseEMSurvey"""
-    def __init__(self, **kwargs):
-        Survey.BaseSurvey.__init__(self, **kwargs)
 
-    @property
-    def Qcc(self):
-        if getInterpolationMatttr(self, '_Qcc', None) is None:
-            self._Qcc = self.prob.mesh.getInterpolationMat(self.loc,'CC')
-        return self._Qcc
+# class BaseEMSurvey(object):
+#     """docstring for BaseEMSurvey"""
+#     def __init__(self, **kwargs):
+#         Survey.BaseSurvey.__init__(self, **kwargs)
+
+#     @property
+#     def Qcc(self):
+#         if getInterpolationMatttr(self, '_Qcc', None) is None:
+#             self._Qcc = self.prob.mesh.getInterpolationMat(self.loc,'CC')
+#         return self._Qcc
 
 
 class BaseEM1DSurvey(Survey.BaseSurvey):
@@ -55,9 +56,9 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
 
 
     @Utils.requires('prob')
-    def dpred(self, m, u=None):
+    def dpred(self, m, f=None):
         """
-            dpred(m, u=None)
+            dpred(m, f=None)
 
             Create the projected data from a model.
             The field, u, (if provided) will be used for the predicted data
@@ -69,12 +70,12 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
 
             Where P is a projection of the fields onto the data space.
         """
-        if u is None: u = self.prob.fields(m)
+        if f is None: f = self.prob.fields(m)
         if self.prob.jacSwitch == True:
-            u = u[0]
+            f = f[0]
         else:
-            u = u
-        return Utils.mkvc(self.projectFields(u))
+            f = f
+        return Utils.mkvc(self.projectFields(f))
 
 
 class EM1DSurveyTD(BaseEM1DSurvey):
@@ -124,7 +125,6 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         # Case1: Compute frequency domain reponses right at filter coefficient values
         if self.switchInterp == False:
-
             self.frequency = omega_int/(2*np.pi)
             self.Nfreq = self.frequency.size
 
@@ -337,6 +337,10 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     def SetOffset(self):
         if np.isscalar(self.offset):
             self.offset = self.offset*np.ones(self.Nfreq)
+
+    @property
+    def nD(self):
+        return int(self.frequency.size * 2)
 
     def projectFields(self, u):
         """
