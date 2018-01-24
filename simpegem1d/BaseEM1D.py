@@ -2,11 +2,10 @@ from SimPEG import Maps, Survey, Utils
 import numpy as np
 import scipy.sparse as sp
 from scipy.constants import mu_0
-from EM1DAnal import ColeCole
-from DigFilter import transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
-from Waveform import CausalConv
+from .EM1DAnal import ColeCole
+from .DigFilter import transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
+from .Waveform import CausalConv
 from scipy.interpolate import interp1d
-
 
 # class BaseEMSurvey(object):
 #     """docstring for BaseEMSurvey"""
@@ -364,7 +363,6 @@ class EM1DSurveyFD(BaseEM1DSurvey):
                 else:
                     raise Exception('Not implemented!!')
 
-
             elif self.switchRI == 'Real':
 
                 resp = (u.real).copy()
@@ -382,8 +380,6 @@ class EM1DSurveyFD(BaseEM1DSurvey):
             raise Exception('Not implemnted!!')
 
         return mu_0*resp
-
-
 
 
 class BaseEM1DMap(Maps.IdentityMap):

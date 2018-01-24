@@ -4,14 +4,13 @@ from scipy.interpolate import interp1d
 from scipy.constants import pi
 from SimPEG import Utils
 
+
 def EvalDigitalFilt(base, weight, fun, r):
     """
         Evaluating Digital filtering based on given base and weight
 
     """
-
-    return  np.dot(fun(base/r), weight)/r
-
+    return np.dot(fun(base/r), weight)/r
 
 
 def setFrequency(time):
@@ -20,7 +19,7 @@ def setFrequency(time):
     #------- Compute Frequency components reqired for transform -------#
     # This is for Digital filtering and here we evalute frequency domain responses
     # ritght at this bases.
-    # a. Generate time basedse
+    # a. Generate time based
     n = np.ceil(-10*np.log(time.min()/time.max()))
     tbase = time.max()*np.exp(-0.1*np.arange(0, n+1))
 
@@ -196,6 +195,7 @@ def transFiltImpulseInterp(hz, wt, tbase, omega, omega_int, t, tol=1e-12):
     hz_out = fhz(t)
 
     return hz_out
+
 def LoadWeights():
     """
     """

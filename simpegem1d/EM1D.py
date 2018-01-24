@@ -1,11 +1,14 @@
 from SimPEG import *
 import numpy as np
-import BaseEM1D
+from .BaseEM1D import BaseEM1DSurvey, BaseEM1DMap
 # from future import division
 from scipy.constants import mu_0
 # from Kernels import HzKernel_layer, HzkernelCirc_layer
-from DigFilter import EvalDigitalFilt
-from RTEfun import rTEfunfwd, rTEfunjac
+from .DigFilter import EvalDigitalFilt, LoadWeights
+from .RTEfun import rTEfunfwd, rTEfunjac
+from profilehooks import profile
+from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
+from empymod import filters
 
 
 class EM1D(Problem.BaseProblem):
@@ -13,34 +16,79 @@ class EM1D(Problem.BaseProblem):
         Pseudo analytic solutions for frequency and time domain EM problems assuming
         Layered earth (1D).
     """
-    surveyPair = BaseEM1D.BaseEM1DSurvey
-    mapPair = BaseEM1D.BaseEM1DMap
-    CondType = 'Real'
+    surveyPair = BaseEM1DSurvey
+    mapPair = BaseEM1DMap
     WT1 = None
     WT0 = None
     YBASE = None
     chi = None
-    M00 = None
-    M10 = None
-    M01 = None
-    M11 = None
-    jacSwitch = False
+    jacSwitch = True
+    filter_type = 'key_101'
 
     sigma, sigmaMap, sigmaDeriv = Props.Invertible(
-        "Electrical conductivity (S/m)"
+        "Electrical conductivity at infinite frequency(S/m)"
     )
 
-    def __init__(self, mesh, **kwargs):
+    chi = Props.PhysicalProperty(
+        "Magnetic susceptibility",
+        default=0.
+    )
 
+    eta, etaMap, etaDeriv = Props.Invertible(
+        "Electrical chargeability (V/V)",
+        default=0.
+    )
+
+    tau, tauMap, tauDeriv = Props.Invertible(
+        "Time constant (s)",
+        default=1.
+    )
+
+    c, cMap, cDeriv = Props.Invertible(
+        "frequency Dependency",
+        default=0.5
+    )
+
+
+    def __init__(self, mesh, **kwargs):
         Problem.BaseProblem.__init__(self, mesh, **kwargs)
-        self.WT0 = kwargs['WT0']
-        self.WT1 = kwargs['WT1']
-        self.YBASE = kwargs['YBASE']
+
+        if self.filter_type == 'key_201':
+            print (">> Use Key 201 filter for Hankel Tranform")
+            fht = filters.key_201_2009()
+            self.WT0 = np.empty(201, complex)
+            self.WT1 = np.empty(201, complex)
+            self.YBASE  = np.empty(201, complex)
+            self.WT0 = fht.j0
+            self.WT1 = fht.j1
+            self.YBASE = fht.base
+        elif self.filter_type == 'key_101':
+            print (">> Use Key 101 filter for Hankel Tranform")
+            fht = filters.key_101_2009()
+            self.WT0 = np.empty(101, complex)
+            self.WT1 = np.empty(101, complex)
+            self.YBASE  = np.empty(101, complex)
+            self.WT0 = fht.j0
+            self.WT1 = fht.j1
+            self.YBASE = fht.base
+        elif self.filter_type == 'anderson_801':
+            fht = filters.anderson_801_1982()
+            self.WT0 = np.empty(801, complex)
+            self.WT1 = np.empty(801, complex)
+            self.YBASE  = np.empty(801, complex)
+            self.WT0 = fht.j0
+            self.WT1 = fht.j1
+            self.YBASE = fht.base
+        else:
+            raise NotImplementedError()
+            # WT0, WT1, YBASE = LoadWeights()
+            # self.WT0 = WT0
+            # self.WT1 = WT1
+            # self.YBASE = YBASE
 
     def HzKernel_layer(self, lamda, f, nlay, sig, chi, depth, h, z, flag):
 
         """
-
             Kernel for vertical magnetic component (Hz) due to vertical magnetic
             diopole (VMD) source in (kx,ky) domain
 
@@ -54,12 +102,10 @@ class EM1D(Problem.BaseProblem):
             rTE = rTEfunfwd(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
 
         if flag=='secondary':
-
             # Note
             # Here only computes secondary field.
             # I am not sure why it does not work if we add primary term.
             # This term can be analytically evaluated, where h = 0.
-
             kernel = 1/(4*np.pi)*(rTE*np.exp(-u0*(z+h)))*lamda**3/u0
 
         else:
@@ -111,123 +157,89 @@ class EM1D(Problem.BaseProblem):
             Kernel.append(kernel)
             Kernel.append(jackernel)
         else:
-
             Kernel = kernel
 
         return  Kernel
 
+    def sigma_cole(self, f):
+        w = 2*np.pi*f
+        sigma_complex = (
+            self.sigma -
+            self.sigma*self.eta/(1+(1-self.eta)*(1j*w*self.tau)**self.c)
+        )
+        return sigma_complex
+
+    # @profile
     def fields(self, m):
         """
                 Return Bz or dBzdt
 
         """
-        print ('fields')
+        if self.verbose:
+            print ('>> Compute fields')
         f = self.survey.frequency
         nfreq = self.survey.Nfreq
         flag = self.survey.fieldtype
         r = self.survey.offset
-        sig = self.sigmaMap*m
-        #TODO: In corporate suseptibility in to the model !!
-        chi = self.chi
+
+        self.model = m
+
         nlay = self.survey.nlay
         depth = self.survey.depth
         h = self.survey.h
         z = self.survey.z
-        HzFHT = np.zeros(nfreq, dtype = complex)
-        dHzFHTdsig = np.zeros((nlay, nfreq), dtype = complex)
-
+        HzFHT = np.empty(nfreq, dtype = complex)
+        dHzFHTdsig = np.empty((nlay, nfreq), dtype = complex)
+        chi = self.chi
+        n_int = 31
         if self.jacSwitch==True:
-            if self.CondType == 'Real':
-                    if self.survey.srcType == 'VMD':
-                        r = self.survey.offset
-                        for ifreq in range(nfreq):
-                            kernel    = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[0]
-                            jackernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[1]
-                            HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
-                            dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r[ifreq])
+            # if self.CondType == 'Real':
+            if self.survey.srcType == 'VMD':
+                r = self.survey.offset
+                for ifreq in range(nfreq):
+                    sig = self.sigma_cole(f[ifreq])
+                    kernel    = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[0]
+                    jackernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[1]
+                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
+                    dHzFHTdsig[:, ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r[ifreq])
 
-                    elif self.survey.srcType == 'CircularLoop':
-                        I = self.survey.I
-                        a = self.survey.a
-                        for ifreq in range(nfreq):
-                            kernel    = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[0]
-                            jackernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[1]
-                            HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
-                            dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, jackernel, a)
-                    else :
-                        raise Exception("Src options are only VMD or CircularLoop!!")
-
-            elif self.CondType == 'Complex':
-                sig_temp = np.zeros(self.survey.nlay, dtype = complex)
-                if self.survey.srcType == 'VMD':
-                    r = self.survey.offset
-                    for ifreq in range(nfreq):
-                        sig_temp = Utils.mkvc(sig[ifreq, :])
-                        kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, flag)[0]
-                        jackernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, flag)[1]
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
-                        dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r[ifreq])
-
-                elif self.survey.srcType == 'CircularLoop':
-                    I = self.survey.I
-                    a = self.survey.a
-                    for ifreq in range(nfreq):
-                        sig_temp = Utils.mkvc(sig[ifreq, :])
-                        kernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, I, a, flag)[0]
-                        jackernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, I, a, flag)[1]
-                        dHzFHTdsig[:,ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, jackernel, a)
-                else :
-                    raise Exception("Src options are only VMD or CircularLoop!!")
+            elif self.survey.srcType == 'CircularLoop':
+                I = self.survey.I
+                a = self.survey.a
+                for ifreq in range(nfreq):
+                    sig = self.sigma_cole(f[ifreq])
+                    kernel    = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[0]
+                    jackernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[1]
+                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
+                    dHzFHTdsig[:, ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, jackernel, a)
             else :
-
-                raise Exception("CondType should be either 'Real' or 'Complex'!!")
+                raise Exception("Src options are only VMD or CircularLoop!!")
 
             return  HzFHT, dHzFHTdsig.T
 
-
         else:
-            if self.CondType == 'Real':
-                if self.survey.srcType == 'VMD':
-                    r = self.survey.offset
-                    for ifreq in range(nfreq):
-                        kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
 
-                elif self.survey.srcType == 'CircularLoop':
-                    I = self.survey.I
-                    a = self.survey.a
-                    for ifreq in range(nfreq):
-                        kernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
-                else :
-                    raise Exception("Src options are only VMD or CircularLoop!!")
+            # if self.CondType == 'Real':
+            if self.survey.srcType == 'VMD':
+                r = self.survey.offset
+                for ifreq in range(nfreq):
+                    sig = self.sigma_cole(f[ifreq])
+                    kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)
+                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
 
-            elif self.CondType == 'Complex':
-                sig_temp = np.zeros(self.survey.nlay, dtype = complex)
-                if self.survey.srcType == 'VMD':
-                    r = self.survey.offset
-                    for ifreq in range(nfreq):
-                        sig_temp = Utils.mkvc(sig[ifreq, :])
-                        kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, flag)
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
-
-                elif self.survey.srcType == 'CircularLoop':
-                    I = self.survey.I
-                    a = self.survey.a
-                    for ifreq in range(nfreq):
-                        sig_temp = Utils.mkvc(sig[ifreq, :])
-                        kernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig_temp, chi, depth, h, z, I, a, flag)
-                        HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
-                else :
-                    raise Exception("Src options are only VMD or CircularLoop!!")
+            elif self.survey.srcType == 'CircularLoop':
+                I = self.survey.I
+                a = self.survey.a
+                for ifreq in range(nfreq):
+                    sig = self.sigma_cole(f[ifreq])
+                    kernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)
+                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
             else :
-
-                raise Exception("CondType should be either 'Real' or 'Complex'!!")
-
+                raise Exception("Src options are only VMD or CircularLoop!!")
 
             return  HzFHT
 
-
+    # @profile
     def Jvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
@@ -258,6 +270,7 @@ class EM1D(Problem.BaseProblem):
         Jv = np.dot(drespdsig, dsigdm*v)
         return Jv
 
+    # @profile
     def Jtvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
@@ -286,14 +299,3 @@ class EM1D(Problem.BaseProblem):
         Jtv = dsigdm*(np.dot(drespdsig.T, v))
         return Jtv
 
-
-
-if __name__ == '__main__':
-    # hx = np.ones(10)
-    # M = Mesh.TensorMesh([hx])
-
-    # model = Model.LogModel(M)
-    # prob = EM1D(M)
-
-    test1 = np.load('WT1.npy')
-    test2 = np.load('WT0.npy')

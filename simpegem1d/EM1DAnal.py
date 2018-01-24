@@ -3,7 +3,8 @@ from SimPEG import Utils
 from scipy.constants import mu_0, pi
 from scipy.special import erf
 import matplotlib.pyplot as plt
-from DigFilter import transFiltImpulse, transFilt, setFrequency
+from .DigFilter import transFiltImpulse, transFilt, setFrequency
+
 
 def Hzanal(sig, f, r, flag):
 
@@ -13,7 +14,7 @@ def Hzanal(sig, f, r, flag):
         Src and Rx are on the surface
 
         .. math::
-            
+
             H_z  = \\frac{m}{2\pi k^2 r^5} \
                     \left( 9 -(9+\imath\ kr - 4 k^2r^2 - \imath k^3r^3)e^{-\imath kr}\\right)
 
@@ -44,7 +45,7 @@ def HzanalCirc(sig, f, I, a, flag):
         Src and Rx are on the surface and receiver is located at the center of the loop.
 
         .. math::
-            
+
             H_z  = -\\frac{I}{k^2a^3} \
                     \left( 3 -(3+\imath\ ka - k^2a^2 )e^{-\imath ka}\\right)
 
@@ -68,7 +69,7 @@ def dHzdsiganalCirc(sig, f, I, a, flag):
 
         .. math::
 
-            \\frac{\partial H_z}{\partial \sigma} 
+            \\frac{\partial H_z}{\partial \sigma}
             = \\frac{H_z(\sigma+\\triangle\sigma)- H_z(\sigma-\\triangle\sigma)}
                 {2\\triangle\sigma}
     """
@@ -87,16 +88,16 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
 
         .. math::
 
-            \sigma (\omega) = \sigma_{\infty} - 
+            \sigma (\omega) = \sigma_{\infty} -
             \\frac{\sigma_{\infty}\eta}{1+(1-\eta)(\imath\omega\\tau)^c}
 
 
-        
-        where \\\\(\\\\\sigma_{\\\\infty}\\\\) is conductivity at infinte frequency, 
+
+        where \\\\(\\\\\sigma_{\\\\infty}\\\\) is conductivity at infinte frequency,
         \\\\(\\\\\eta\\\\) is chargeability,
         \\\\(\\\\\\tau\\\\) is chargeability,
         \\\\(\\\\ c\\\\) is chargeability.
-    
+
     """
 
     if np.isscalar(sig_inf):
@@ -126,9 +127,9 @@ def BzAnalCircT(a, t, sigma):
         Src waveform here is step-off.
 
         .. math::
-            
+
             h_z  = \\frac{I}{2a} \
-                    \left( \\frac{3}{\sqrt{\pi}\\theta a}e^{-\\theta^2a^2} 
+                    \left( \\frac{3}{\sqrt{\pi}\\theta a}e^{-\\theta^2a^2}
                     +(1-\\frac{3}{2\\theta^2a^2})erf(\\theta a)\\right)
 
         .. math::
@@ -151,14 +152,14 @@ def dBzdtAnalCircT(a, t, sigma):
         Src waveform here is step-off.
 
         .. math::
-            
+
             \\frac{\partial h_z}{\partial t}  = -\\frac{I}{\mu_0\sigma a^3} \
                     \left( 3erf(\\theta a) - \\frac{2}{\sqrt{\pi}}\\theta a (3+2\\theta^2 a^2) e^{-\\theta^2a^2}\\right)
 
         .. math::
 
             \\theta = \sqrt{\\frac{\sigma\mu}{4t}}
-    """    
+    """
     theta = np.sqrt((sigma*mu_0)/(4*t))
     const = -1/(mu_0*sigma*a**3)
     ta = theta*a
@@ -214,4 +215,4 @@ def SkinDepth(f, sigma):
         where \\\\(\\\\ \omega = 2\pi f \\\\) is chargeability
     """
 
-    return np.sqrt(2/mu_0/sigma/f/(2*pi))    
+    return np.sqrt(2/mu_0/sigma/f/(2*pi))
