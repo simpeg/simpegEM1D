@@ -1,6 +1,6 @@
 from SimPEG import *
 import numpy as np
-from .BaseEM1D import BaseEM1DSurvey, BaseEM1DMap
+from .BaseEM1D import BaseEM1DSurvey
 # from future import division
 from scipy.constants import mu_0
 # from Kernels import HzKernel_layer, HzkernelCirc_layer
@@ -17,13 +17,14 @@ class EM1D(Problem.BaseProblem):
         Layered earth (1D).
     """
     surveyPair = BaseEM1DSurvey
-    mapPair = BaseEM1DMap
+    mapPair = Maps.IdentityMap
     WT1 = None
     WT0 = None
     YBASE = None
     chi = None
     jacSwitch = True
     filter_type = 'key_101'
+    verbose = False
 
     sigma, sigmaMap, sigmaDeriv = Props.Invertible(
         "Electrical conductivity at infinite frequency(S/m)"
@@ -54,28 +55,32 @@ class EM1D(Problem.BaseProblem):
         Problem.BaseProblem.__init__(self, mesh, **kwargs)
 
         if self.filter_type == 'key_201':
-            print (">> Use Key 201 filter for Hankel Tranform")
+            if self.verbose:
+                print (">> Use Key 201 filter for Hankel Tranform")
             fht = filters.key_201_2009()
-            self.WT0 = np.empty(201, complex)
-            self.WT1 = np.empty(201, complex)
-            self.YBASE  = np.empty(201, complex)
+            self.WT0 = np.empty(201, float)
+            self.WT1 = np.empty(201, float)
+            self.YBASE  = np.empty(201, float)
             self.WT0 = fht.j0
             self.WT1 = fht.j1
             self.YBASE = fht.base
         elif self.filter_type == 'key_101':
-            print (">> Use Key 101 filter for Hankel Tranform")
+            if self.verbose:
+                print (">> Use Key 101 filter for Hankel Tranform")
             fht = filters.key_101_2009()
-            self.WT0 = np.empty(101, complex)
-            self.WT1 = np.empty(101, complex)
-            self.YBASE  = np.empty(101, complex)
+            self.WT0 = np.empty(101, float)
+            self.WT1 = np.empty(101, float)
+            self.YBASE  = np.empty(101, float)
             self.WT0 = fht.j0
             self.WT1 = fht.j1
             self.YBASE = fht.base
         elif self.filter_type == 'anderson_801':
+            if self.verbose:
+                print (">> Use Anderson 801 filter for Hankel Tranform")
             fht = filters.anderson_801_1982()
-            self.WT0 = np.empty(801, complex)
-            self.WT1 = np.empty(801, complex)
-            self.YBASE  = np.empty(801, complex)
+            self.WT0 = np.empty(801, float)
+            self.WT1 = np.empty(801, float)
+            self.YBASE  = np.empty(801, float)
             self.WT0 = fht.j0
             self.WT1 = fht.j1
             self.YBASE = fht.base
@@ -138,10 +143,10 @@ class EM1D(Problem.BaseProblem):
         """
 
         w = 2*np.pi*f
-        rTE = np.zeros(lamda.size, dtype=complex)
+        rTE = np.empty(lamda.size, dtype=complex)
         u0 = lamda
         if self.jacSwitch ==  True:
-            drTE = np.zeros((nlay, lamda.size), dtype=complex)
+            drTE = np.empty((nlay, lamda.size), dtype=complex)
             rTE, drTE = rTEfunjac(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
         else:
             rTE = rTEfunfwd(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
@@ -177,6 +182,7 @@ class EM1D(Problem.BaseProblem):
         """
         if self.verbose:
             print ('>> Compute fields')
+
         f = self.survey.frequency
         nfreq = self.survey.Nfreq
         flag = self.survey.fieldtype
@@ -192,8 +198,9 @@ class EM1D(Problem.BaseProblem):
         dHzFHTdsig = np.empty((nlay, nfreq), dtype = complex)
         chi = self.chi
         n_int = 31
+
+        # for inversion
         if self.jacSwitch==True:
-            # if self.CondType == 'Real':
             if self.survey.srcType == 'VMD':
                 r = self.survey.offset
                 for ifreq in range(nfreq):
@@ -217,9 +224,9 @@ class EM1D(Problem.BaseProblem):
 
             return  HzFHT, dHzFHTdsig.T
 
+        # for simulation
         else:
 
-            # if self.CondType == 'Real':
             if self.survey.srcType == 'VMD':
                 r = self.survey.offset
                 for ifreq in range(nfreq):

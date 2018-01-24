@@ -1,8 +1,7 @@
 import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter, EM1DSurveyFD, BaseEM1DMap
-from simpegem1d import BaseEM1DMap, BaseColeColeMap
+from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter, EM1DSurveyFD
 import numpy as np
 
 
@@ -34,29 +33,21 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         sig_half = 1e-1
         chi_half = 0.
 
-        expmap = BaseEM1DMap(mesh1D)
+        expmap = Maps.ExpMap(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
-        options = {'Frequency': FDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
-        colemap = BaseColeColeMap(mesh1D, **options)
 
         modelReal = expmap
-        modelComplex = colemap * expmap
         m_1D = np.log(np.ones(nlay)*sig_half)
 
         FDsurvey.rxType = 'Hz'
 
-        WT0, WT1, YBASE = DigFilter.LoadWeights()
-        options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
-
-        prob = EM1D(mesh1D, sigmaMap = modelReal, **options)
+        prob = EM1D(mesh1D, sigmaMap = modelReal)
         prob.pair(FDsurvey)
         prob.chi = np.zeros(FDsurvey.nlay)
 
-
         self.survey = FDsurvey
-        self.options = options
         self.modelReal = modelReal
         self.prob = prob
         self.mesh1D = mesh1D

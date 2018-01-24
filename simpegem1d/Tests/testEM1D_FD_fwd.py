@@ -1,7 +1,7 @@
 import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter, EM1DSurveyFD, BaseEM1DMap
+from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter, EM1DSurveyFD
 import numpy as np
 
 
@@ -32,7 +32,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         sig_half = 1e-2
         chi_half = 0.
 
-        expmap = BaseEM1DMap(mesh1D)
+        expmap = Maps.ExpMap(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
@@ -202,7 +202,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.survey.Nfreq = self.survey.frequency.size
         self.survey.Setup1Dsystem()
         self.prob.unpair()
-        mapping = BaseEM1DMap(mesh1D)
+        mapping = Maps.ExpMap(mesh1D)
         # 1. Verification for variable conductivity
         chi = np.array([0., 0., 0.])
         sig = np.array([0.01, 0.1, 0.01])
