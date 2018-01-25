@@ -2,7 +2,7 @@ from SimPEG import *
 from simpegem1d import *
 from scipy.constants import mu_0
 import numpy as np
-FDsurvey = BaseEM1D.EM1DSurveyFD()
+FDsurvey = EM1DSurveyFD()
 FDsurvey.rxLoc = np.array([0., 0., 100.+30.])
 FDsurvey.srcLoc = np.array([0., 0., 100.+30.])
 FDsurvey.fieldtype = 'secondary'
@@ -30,7 +30,7 @@ FDsurvey.SetOffset()
 sig_half = 1e-4
 sig_blk = 1e-2
 chi_half = 0.
-expmap = BaseEM1DMap(mesh1D)
+expmap = Maps.ExpMap(mesh1D)
 sig  = np.ones(nlay)*sig_half
 blk_ind = (-50>LocSigZ) & (-100<LocSigZ)
 sig[blk_ind] = sig_blk
@@ -41,7 +41,6 @@ WT0, WT1, YBASE = DigFilter.LoadWeights()
 prob = EM1D(
     mesh1D, sigmaMap=expmap, filter_type='key_101',
     jacSwitch=True,
-    CondType='Real',
     chi= np.zeros(FDsurvey.nlay)
 )
 if prob.ispaired:

@@ -50,7 +50,6 @@ class EM1D(Problem.BaseProblem):
         default=0.5
     )
 
-
     def __init__(self, mesh, **kwargs):
         Problem.BaseProblem.__init__(self, mesh, **kwargs)
 
@@ -58,9 +57,9 @@ class EM1D(Problem.BaseProblem):
             if self.verbose:
                 print (">> Use Key 201 filter for Hankel Tranform")
             fht = filters.key_201_2009()
-            self.WT0 = np.empty(201, float)
-            self.WT1 = np.empty(201, float)
-            self.YBASE  = np.empty(201, float)
+            self.WT0 = np.empty(201, complex)
+            self.WT1 = np.empty(201, complex)
+            self.YBASE = np.empty(201, complex)
             self.WT0 = fht.j0
             self.WT1 = fht.j1
             self.YBASE = fht.base
@@ -68,9 +67,9 @@ class EM1D(Problem.BaseProblem):
             if self.verbose:
                 print (">> Use Key 101 filter for Hankel Tranform")
             fht = filters.key_101_2009()
-            self.WT0 = np.empty(101, float)
-            self.WT1 = np.empty(101, float)
-            self.YBASE  = np.empty(101, float)
+            self.WT0 = np.empty(101, complex)
+            self.WT1 = np.empty(101, complex)
+            self.YBASE = np.empty(101, complex)
             self.WT0 = fht.j0
             self.WT1 = fht.j1
             self.YBASE = fht.base
@@ -78,9 +77,9 @@ class EM1D(Problem.BaseProblem):
             if self.verbose:
                 print (">> Use Anderson 801 filter for Hankel Tranform")
             fht = filters.anderson_801_1982()
-            self.WT0 = np.empty(801, float)
-            self.WT1 = np.empty(801, float)
-            self.YBASE  = np.empty(801, float)
+            self.WT0 = np.empty(801, complex)
+            self.WT1 = np.empty(801, complex)
+            self.YBASE = np.empty(801, complex)
             self.WT0 = fht.j0
             self.WT1 = fht.j1
             self.YBASE = fht.base
@@ -91,22 +90,28 @@ class EM1D(Problem.BaseProblem):
             # self.WT1 = WT1
             # self.YBASE = YBASE
 
+    @profile
     def HzKernel_layer(self, lamda, f, nlay, sig, chi, depth, h, z, flag):
 
         """
-            Kernel for vertical magnetic component (Hz) due to vertical magnetic
-            diopole (VMD) source in (kx,ky) domain
+            Kernel for vertical magnetic component (Hz) due to
+            vertical magnetic diopole (VMD) source in (kx,ky) domain
 
         """
         u0 = lamda
         rTE = np.zeros(lamda.size, dtype=complex)
-        if self.jacSwitch == True:
-            drTE = np.zeros((nlay, lamda.size), dtype=complex)
-            rTE, drTE = rTEfunjac(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
-        else:
-            rTE = rTEfunfwd(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
 
-        if flag=='secondary':
+        if self.jacSwitch:
+            drTE = np.zeros((nlay, lamda.size), dtype=complex)
+            rTE, drTE = rTEfunjac(
+                nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch
+            )
+        else:
+            rTE = rTEfunfwd(
+                nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch
+            )
+
+        if flag == 'secondary':
             # Note
             # Here only computes secondary field.
             # I am not sure why it does not work if we add primary term.
@@ -114,18 +119,18 @@ class EM1D(Problem.BaseProblem):
             kernel = 1/(4*np.pi)*(rTE*np.exp(-u0*(z+h)))*lamda**3/u0
 
         else:
-            kernel = 1/(4*np.pi)*(np.exp(u0*(z-h))+ rTE*np.exp(-u0*(z+h)))*lamda**3/u0
+            kernel = (
+                1./(4*np.pi) *
+                (np.exp(u0*(z-h))+rTE * np.exp(-u0*(z+h)))*lamda**3/u0
+            )
 
-        if self.jacSwitch == True:
+        if self.jacSwitch:
             jackernel = 1/(4*np.pi)*(drTE)*(np.exp(-u0*(z+h))*lamda**3/u0)
             Kernel = []
             Kernel.append(kernel)
             Kernel.append(jackernel)
-
         else:
-
             Kernel = kernel
-
         return  Kernel
 
     def HzkernelCirc_layer(self, lamda, f, nlay, sig, chi, depth, h, z, I, a, flag):
@@ -174,7 +179,7 @@ class EM1D(Problem.BaseProblem):
         )
         return sigma_complex
 
-    # @profile
+    @profile
     def fields(self, m):
         """
                 Return Bz or dBzdt
@@ -192,6 +197,7 @@ class EM1D(Problem.BaseProblem):
 
         nlay = self.survey.nlay
         depth = self.survey.depth
+        nfilt = self.YBASE.size
         h = self.survey.h
         z = self.survey.z
         HzFHT = np.empty(nfreq, dtype = complex)
@@ -201,24 +207,27 @@ class EM1D(Problem.BaseProblem):
 
         # for inversion
         if self.jacSwitch==True:
+            hz = np.empty(nfilt, complex)
+            dhz = np.empty((nfilt, nlay), complex)
             if self.survey.srcType == 'VMD':
                 r = self.survey.offset
                 for ifreq in range(nfreq):
                     sig = self.sigma_cole(f[ifreq])
-                    kernel    = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[0]
-                    jackernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)[1]
-                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
-                    dHzFHTdsig[:, ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, jackernel, r[ifreq])
-
+                    hz, dhz = self.HzKernel_layer(
+                        self.YBASE/r[ifreq], f[ifreq], nlay, sig, chi, depth, h, z, flag
+                    )
+                    HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
+                    dHzFHTdsig[:, ifreq] = np.dot(dhz, self.WT0)/r[ifreq]
             elif self.survey.srcType == 'CircularLoop':
                 I = self.survey.I
                 a = self.survey.a
                 for ifreq in range(nfreq):
                     sig = self.sigma_cole(f[ifreq])
-                    kernel    = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[0]
-                    jackernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)[1]
-                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
-                    dHzFHTdsig[:, ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, jackernel, a)
+                    hz, dhz = self.HzkernelCirc_layer(
+                        self.YBASE/a, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag
+                    )
+                    HzFHT[ifreq] = np.dot(hz, self.WT1)/a
+                    dHzFHTdsig[:, ifreq] = np.dot(dhz, self.WT1)/a
             else :
                 raise Exception("Src options are only VMD or CircularLoop!!")
 
@@ -226,21 +235,25 @@ class EM1D(Problem.BaseProblem):
 
         # for simulation
         else:
-
+            hz = np.empty(nfilt, complex)
             if self.survey.srcType == 'VMD':
                 r = self.survey.offset
                 for ifreq in range(nfreq):
                     sig = self.sigma_cole(f[ifreq])
-                    kernel = lambda x: self.HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)
-                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT0, kernel, r[ifreq])
+                    hz = self.HzKernel_layer(
+                        self.YBASE/r[ifreq], f[ifreq], nlay, sig, chi, depth, h, z, flag
+                    )
+                    HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
 
             elif self.survey.srcType == 'CircularLoop':
                 I = self.survey.I
                 a = self.survey.a
                 for ifreq in range(nfreq):
                     sig = self.sigma_cole(f[ifreq])
-                    kernel = lambda x: self.HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)
-                    HzFHT[ifreq] = EvalDigitalFilt(self.YBASE, self.WT1, kernel, a)
+                    hz = self.HzkernelCirc_layer(
+                        self.YBASE/a, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag
+                    )
+                    HzFHT[ifreq] = np.dot(hz, self.WT1)/a
             else :
                 raise Exception("Src options are only VMD or CircularLoop!!")
 
@@ -266,15 +279,16 @@ class EM1D(Problem.BaseProblem):
             resp = self.survey.projectFields(u)
             drespdsig = self.survey.projectFields(dudsig)
             if drespdsig.size == self.survey.Nch:
-                drespdsig = np.reshape(drespdsig, (-1,1), order='F')
+                drespdsig = np.reshape(drespdsig, (-1, 1), order='F')
             else:
-                drespdsig = np.reshape(drespdsig, (self.survey.Nch, drespdsig.shape[1]), order='F')
+                drespdsig = np.reshape(
+                    drespdsig, (self.survey.Nch, drespdsig.shape[1]), order='F'
+                )
         else:
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.sigmaMap.deriv(m)
-        Jv = np.dot(drespdsig, dsigdm*v)
+        Jv = np.dot(drespdsig, self.sigmaMap.deriv(m, v))
         return Jv
 
     # @profile
@@ -285,7 +299,8 @@ class EM1D(Problem.BaseProblem):
         if f is None:
             f = self.fields(m)
 
-        u, dudsig=f[0], f[1]
+        u, dudsig = f[0], f[1]
+
         if self.survey.switchFDTD == 'FD':
 
             resp = self.survey.projectFields(u)
@@ -302,7 +317,6 @@ class EM1D(Problem.BaseProblem):
 
             raise Exception('Not implemented!!')
 
-        dsigdm = self.sigmaMap.deriv(m)
-        Jtv = dsigdm*(np.dot(drespdsig.T, v))
+        Jtv = self.sigmaMap.deriv(m, np.dot(drespdsig.T, v))
         return Jtv
 
