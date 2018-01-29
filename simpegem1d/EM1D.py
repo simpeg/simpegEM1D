@@ -90,7 +90,6 @@ class EM1D(Problem.BaseProblem):
             # self.WT1 = WT1
             # self.YBASE = YBASE
 
-    @profile
     def HzKernel_layer(self, lamda, f, nlay, sig, chi, depth, h, z, flag):
 
         """
@@ -179,7 +178,6 @@ class EM1D(Problem.BaseProblem):
         )
         return sigma_complex
 
-    @profile
     def fields(self, m):
         """
                 Return Bz or dBzdt
@@ -320,3 +318,5 @@ class EM1D(Problem.BaseProblem):
         Jtv = self.sigmaMap.deriv(m, np.dot(drespdsig.T, v))
         return Jtv
 
+if __name__ == '__main__':
+    main()
