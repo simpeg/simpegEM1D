@@ -3,7 +3,7 @@ from SimPEG import *
 from simpegem1d import *
 from scipy.constants import mu_0
 import numpy as np
-
+    
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
@@ -87,7 +87,7 @@ def run_simulation():
 #     mopt = inv.run(m0)
     return resp, drespdsig
 
-n_sounding = 100
+n_sounding = 400
 n_layer = 22
 n_data = 6
 
@@ -124,5 +124,3 @@ comm.Gather(Jtv_local, Jtv, root=0)
 t_end = MPI.Wtime()
 if rank == 0:
     print ("Time %.1f ms" % ((t_end-t_start)*1e3))
-    print (Jv)
-    print (Jtv)    
