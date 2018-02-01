@@ -1,14 +1,21 @@
-import EM1D, BaseEM1D, DigFilter, EM1DAnal, Kernels, RTEfun, Waveform, Utils1D
+from .EM1D import EM1D
+from .BaseEM1D import *
+from .DigFilter import *
+from .EM1DAnal import *
+from .Kernels import *
+from .RTEfun import *
+from .Waveform import *
+from .Utils1D import *
 import os
 import glob
 import unittest
 
-# Need to ask Rowan
-if __name__ == '__main__':
-    test_file_strings = glob.glob('test_*.py')
-    module_strings = [str[0:len(str)-3] for str in test_file_strings]
-    suites = [unittest.defaultTestLoader.loadTestsFromName(str) for str
-              in module_strings]
-    testSuite = unittest.TestSuite(suites)
+# # Need to ask Rowan
+# if __name__ == '__main__':
+#     test_file_strings = glob.glob('test_*.py')
+#     module_strings = [str[0:len(str)-3] for str in test_file_strings]
+#     suites = [unittest.defaultTestLoader.loadTestsFromName(str) for str
+#               in module_strings]
+#     testSuite = unittest.TestSuite(suites)
 
-    unittest.TextTestRunner(verbosity=2).run(testSuite)
+#     unittest.TextTestRunner(verbosity=2).run(testSuite)

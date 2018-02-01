@@ -72,10 +72,11 @@ def CausalConv(array1, array2, time):
 
     if array1.shape == array2.shape == time.shape:
         out = np.convolve(array1, array2)
-        # print(time[1]-time[0]
+        # print time[1]-time[0]
         return out[0:np.size(time)]*(time[1]-time[0])
     else:
-        print("Give me same size of 1D arrays!!")
+        print ("Give me same size of 1D arrays!!")
+
 
 def RectFun(time, ta, tb):
     """

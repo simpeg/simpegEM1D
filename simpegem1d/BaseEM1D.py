@@ -2,11 +2,10 @@ from SimPEG import Maps, Survey, Utils
 import numpy as np
 import scipy.sparse as sp
 from scipy.constants import mu_0
-from EM1DAnal import ColeCole
-from DigFilter import transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
-from Waveform import CausalConv
+from .EM1DAnal import ColeCole
+from .DigFilter import transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
+from .Waveform import CausalConv
 from scipy.interpolate import interp1d
-
 
 # class BaseEMSurvey(object):
 #     """docstring for BaseEMSurvey"""
@@ -354,16 +353,14 @@ class EM1DSurveyFD(BaseEM1DSurvey):
         if self.rxType == 'Hz':
 
             if self.switchRI == 'all':
-
                 ureal = (u.real).copy()
                 uimag = (u.imag).copy()
                 if ureal.ndim == 1 or 0:
                     resp = np.r_[ureal, uimag]
-                elif ureal.ndim ==2:
+                elif ureal.ndim == 2:
                     resp = np.vstack((ureal, uimag))
                 else:
                     raise Exception('Not implemented!!')
-
 
             elif self.switchRI == 'Real':
 
@@ -383,39 +380,36 @@ class EM1DSurveyFD(BaseEM1DSurvey):
 
         return mu_0*resp
 
+# class BaseEM1DMap(Maps.IdentityMap):
+#     """BaseEM1DMap"""
+
+#     def __init__(self, mesh, **kwargs):
+#         Maps.IdentityMap.__init__(self, mesh)
+
+#     def _transform(self, m):
+#         """
+#         """
+#         return np.exp(m)
+
+#     #TODO: Need to think about this ...
+#     def deriv(self, m):
+#         return Utils.sdiag(np.exp(m))
 
 
+# class BaseColeColeMap(BaseEM1DMap):
+#     """BaseColeColeMap"""
 
-class BaseEM1DMap(Maps.IdentityMap):
-    """BaseEM1DMap"""
+#     def __init__(self, mesh,  **kwargs):
+#         Maps.IdentityMap.__init__(self, mesh)
+#         self.tau = kwargs['tau']
+#         self.eta = kwargs['eta']
+#         self.c = kwargs['c']
+#         self.frequency = kwargs['Frequency']
 
-    def __init__(self, mesh, **kwargs):
-        Maps.IdentityMap.__init__(self, mesh)
-
-    def _transform(self, m):
-        """
-        """
-        return np.exp(m)
-
-    #TODO: Need to think about this ...
-    def deriv(self, m):
-        return Utils.sdiag(np.exp(m))
-
-
-class BaseColeColeMap(BaseEM1DMap):
-    """BaseColeColeMap"""
-
-    def __init__(self, mesh,  **kwargs):
-        Maps.IdentityMap.__init__(self, mesh)
-        self.tau = kwargs['tau']
-        self.eta = kwargs['eta']
-        self.c = kwargs['c']
-        self.frequency = kwargs['Frequency']
-
-    def _transform(self, m):
-        """
-            Here m is going to be Nsd (The number of sounding) lists.
-        """
-        self.frequency
-        sigmaCole = ColeCole(self.frequency, m, self.eta, self.tau, self.c)
-        return sigmaCole
+#     def _transform(self, m):
+#         """
+#             Here m is going to be Nsd (The number of sounding) lists.
+#         """
+#         self.frequency
+#         sigmaCole = ColeCole(self.frequency, m, self.eta, self.tau, self.c)
+#         return sigmaCole

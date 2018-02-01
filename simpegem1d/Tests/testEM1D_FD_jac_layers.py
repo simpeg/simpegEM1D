@@ -1,14 +1,15 @@
 import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter
+from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter, EM1DSurveyFD
+import numpy as np
 
 
 class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def setUp(self):
 
-        FDsurvey = BaseEM1D.EM1DSurveyFD()
+        FDsurvey = EM1DSurveyFD()
         FDsurvey.rxLoc = np.array([0., 0., 100.+50.])
         FDsurvey.srcLoc = np.array([0., 0., 100.+50.])
         FDsurvey.fieldtype = 'secondary'
@@ -32,29 +33,21 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         sig_half = 1e-1
         chi_half = 0.
 
-        expmap = BaseEM1D.BaseEM1DMap(mesh1D)
+        expmap = Maps.ExpMap(mesh1D)
         tau = 1e-3
         eta = 2e-1
         c = 1.
-        options = {'Frequency': FDsurvey.frequency, 'tau': np.ones(nlay)*tau, 'eta':np.ones(nlay)*eta, 'c':np.ones(nlay)*c}
-        colemap = BaseEM1D.BaseColeColeMap(mesh1D, **options)
 
         modelReal = expmap
-        modelComplex = colemap * expmap
         m_1D = np.log(np.ones(nlay)*sig_half)
 
         FDsurvey.rxType = 'Hz'
 
-        WT0, WT1, YBASE = DigFilter.LoadWeights()
-        options = {'WT0': WT0, 'WT1': WT1, 'YBASE': YBASE}
-
-        prob = EM1D.EM1D(mesh1D, mapping = modelReal, **options)
+        prob = EM1D(mesh1D, sigmaMap = modelReal)
         prob.pair(FDsurvey)
         prob.chi = np.zeros(FDsurvey.nlay)
 
-
         self.survey = FDsurvey
-        self.options = options
         self.modelReal = modelReal
         self.prob = prob
         self.mesh1D = mesh1D
@@ -79,9 +72,6 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         self.prob.jacSwitch = True
         Hz, dHzdsig = self.prob.fields(m_1D)
 
-        dsigdm = self.prob.mapping.deriv(m_1D)
-        dHzdsig = dHzdsig
-
         def fwdfun(m):
             self.prob.jacSwitch = False
             resp = self.prob.survey.dpred(m)
@@ -90,8 +80,8 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
         def jacfun(m, dm):
             self.prob.jacSwitch = True
-            u = self.prob.fields(m)
-            Jvec = self.prob.Jvec(m, dm, u = u)
+            f = self.prob.fields(m)
+            Jvec = self.prob.Jvec(m, dm, f=f)
             return Jvec
 
         dm = m_1D*0.5
@@ -112,8 +102,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
             plt.show()
 
         if passed:
-            print "EM1DFD-layers Jvec works"
-
+            print ("EM1DFD-layers Jvec works")
 
     def test_EM1DFDJtvec_Layers(self):
         self.prob.CondType = 'Real'
@@ -142,16 +131,16 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         def misfit(m, dobs):
             self.prob.jacSwitch = True
             Hz = self.prob.fields(m)
-            dpred = self.survey.dpred(m, u = Hz)
+            dpred = self.survey.dpred(m, f = Hz)
             misfit = 0.5*np.linalg.norm(dpred-dobs)**2
-            dmisfit = self.prob.Jtvec(m, dr, u = Hz)
+            dmisfit = self.prob.Jtvec(m, dr, f = Hz)
             return misfit, dmisfit
 
         derChk = lambda m: misfit(m, dobs)
         passed = Tests.checkDerivative(derChk, m_ini, num=4, plotIt=False, eps = 1e-27)
         self.assertTrue(passed)
         if passed:
-            print "EM1DFD-layers Jtvec works"
+            print ("EM1DFD-layers Jtvec works")
 
 
 
