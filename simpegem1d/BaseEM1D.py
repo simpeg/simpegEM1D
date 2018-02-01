@@ -43,7 +43,10 @@ class BaseEM1DSurvey(Survey.BaseSurvey):
     def __init__(self, **kwargs):
         Survey.BaseSurvey.__init__(self, **kwargs)
 
-    def Setup1Dsystem(self):
+    def Setup1Dsystem(self, mesh_1d):
+        self.depth = -mesh_1d.gridN[:-1]
+        self.LocSigZ = -mesh_1d.gridCC
+
         if self.HalfSwitch == False:
             self.nlay = self.depth.size
         elif self.HalfSwitch == True:
