@@ -196,11 +196,17 @@ class EM1D(Problem.BaseProblem):
         nfilt = self.YBASE.size
         h = self.survey.h
         z = self.survey.z
+<<<<<<< HEAD
         HzFHT = np.empty(n_frequency, dtype = complex)
         dHzFHTdsig = np.empty((n_layer, n_frequency), dtype = complex)
         chi = self.chi
+=======
+        HzFHT = np.empty(nfreq, dtype = complex)
+        dHzFHTdsig = np.empty((nlay, nfreq), dtype = complex)
+        if np.isscalar(self.chi):
+            chi = np.ones_like(self.sigma)
+>>>>>>> 44b8885b416c23d1400a17fddb4f2465c87cb68e
         n_int = 31
-
         # for inversion
         if self.jacSwitch==True:
             hz = np.empty(nfilt, complex)
