@@ -1,9 +1,7 @@
-from SimPEG import *
+from SimPEG import Maps, Utils, Problem, Props
 import numpy as np
 from .BaseEM1D import BaseEM1DSurvey
-# from future import division
 from scipy.constants import mu_0
-# from Kernels import HzKernel_layer, HzkernelCirc_layer
 from .DigFilter import EvalDigitalFilt, LoadWeights
 from .RTEfun import rTEfunfwd, rTEfunjac
 from profilehooks import profile
@@ -90,7 +88,7 @@ class EM1D(Problem.BaseProblem):
             # self.WT1 = WT1
             # self.YBASE = YBASE
 
-    def HzKernel_layer(self, lamda, f, nlay, sig, chi, depth, h, z, flag):
+    def HzKernel_layer(self, lamda, f, n_layer, sig, chi, depth, h, z, flag):
 
         """
             Kernel for vertical magnetic component (Hz) due to
@@ -101,13 +99,13 @@ class EM1D(Problem.BaseProblem):
         rTE = np.zeros(lamda.size, dtype=complex)
 
         if self.jacSwitch:
-            drTE = np.zeros((nlay, lamda.size), dtype=complex)
+            drTE = np.zeros((n_layer, lamda.size), dtype=complex)
             rTE, drTE = rTEfunjac(
-                nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch
+                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
         else:
             rTE = rTEfunfwd(
-                nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch
+                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
 
         if flag == 'secondary':
@@ -132,7 +130,7 @@ class EM1D(Problem.BaseProblem):
             Kernel = kernel
         return  Kernel
 
-    def HzkernelCirc_layer(self, lamda, f, nlay, sig, chi, depth, h, z, I, a, flag):
+    def HzkernelCirc_layer(self, lamda, f, n_layer, sig, chi, depth, h, z, I, a, flag):
 
         """
 
@@ -150,10 +148,10 @@ class EM1D(Problem.BaseProblem):
         rTE = np.empty(lamda.size, dtype=complex)
         u0 = lamda
         if self.jacSwitch ==  True:
-            drTE = np.empty((nlay, lamda.size), dtype=complex)
-            rTE, drTE = rTEfunjac(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
+            drTE = np.empty((n_layer, lamda.size), dtype=complex)
+            rTE, drTE = rTEfunjac(n_layer, f, lamda, sig, chi, depth, self.survey.half_switch)
         else:
-            rTE = rTEfunfwd(nlay, f, lamda, sig, chi, depth, self.survey.HalfSwitch)
+            rTE = rTEfunfwd(n_layer, f, lamda, sig, chi, depth, self.survey.half_switch)
 
         if flag == 'secondary':
             kernel = I*a*0.5*(rTE*np.exp(-u0*(z+h)))*lamda**2/u0
@@ -187,42 +185,42 @@ class EM1D(Problem.BaseProblem):
             print ('>> Compute fields')
 
         f = self.survey.frequency
-        nfreq = self.survey.Nfreq
-        flag = self.survey.fieldtype
+        n_frequency = self.survey.n_frequency
+        flag = self.survey.field_type
         r = self.survey.offset
 
         self.model = m
 
-        nlay = self.survey.nlay
+        n_layer = self.survey.n_layer
         depth = self.survey.depth
         nfilt = self.YBASE.size
         h = self.survey.h
         z = self.survey.z
-        HzFHT = np.empty(nfreq, dtype = complex)
-        dHzFHTdsig = np.empty((nlay, nfreq), dtype = complex)
+        HzFHT = np.empty(n_frequency, dtype = complex)
+        dHzFHTdsig = np.empty((n_layer, n_frequency), dtype = complex)
         chi = self.chi
         n_int = 31
 
         # for inversion
         if self.jacSwitch==True:
             hz = np.empty(nfilt, complex)
-            dhz = np.empty((nfilt, nlay), complex)
-            if self.survey.srcType == 'VMD':
+            dhz = np.empty((nfilt, n_layer), complex)
+            if self.survey.src_type == 'VMD':
                 r = self.survey.offset
-                for ifreq in range(nfreq):
+                for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
                     hz, dhz = self.HzKernel_layer(
-                        self.YBASE/r[ifreq], f[ifreq], nlay, sig, chi, depth, h, z, flag
+                        self.YBASE/r[ifreq], f[ifreq], n_layer, sig, chi, depth, h, z, flag
                     )
                     HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
                     dHzFHTdsig[:, ifreq] = np.dot(dhz, self.WT0)/r[ifreq]
-            elif self.survey.srcType == 'CircularLoop':
+            elif self.survey.src_type == 'CircularLoop':
                 I = self.survey.I
                 a = self.survey.a
-                for ifreq in range(nfreq):
+                for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
                     hz, dhz = self.HzkernelCirc_layer(
-                        self.YBASE/a, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag
+                        self.YBASE/a, f[ifreq], n_layer, sig, chi, depth, h, z, I, a, flag
                     )
                     HzFHT[ifreq] = np.dot(hz, self.WT1)/a
                     dHzFHTdsig[:, ifreq] = np.dot(dhz, self.WT1)/a
@@ -234,22 +232,22 @@ class EM1D(Problem.BaseProblem):
         # for simulation
         else:
             hz = np.empty(nfilt, complex)
-            if self.survey.srcType == 'VMD':
+            if self.survey.src_type == 'VMD':
                 r = self.survey.offset
-                for ifreq in range(nfreq):
+                for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
                     hz = self.HzKernel_layer(
-                        self.YBASE/r[ifreq], f[ifreq], nlay, sig, chi, depth, h, z, flag
+                        self.YBASE/r[ifreq], f[ifreq], n_layer, sig, chi, depth, h, z, flag
                     )
                     HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
 
-            elif self.survey.srcType == 'CircularLoop':
+            elif self.survey.src_type == 'CircularLoop':
                 I = self.survey.I
                 a = self.survey.a
-                for ifreq in range(nfreq):
+                for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
                     hz = self.HzkernelCirc_layer(
-                        self.YBASE/a, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag
+                        self.YBASE/a, f[ifreq], n_layer, sig, chi, depth, h, z, I, a, flag
                     )
                     HzFHT[ifreq] = np.dot(hz, self.WT1)/a
             else :
@@ -268,12 +266,12 @@ class EM1D(Problem.BaseProblem):
 
         u, dudsig = f[0], f[1]
 
-        if self.survey.switchFDTD == 'FD':
+        if self.survey.switch_fd_td == 'FD':
 
             resp = self.survey.projectFields(u)
             drespdsig = self.survey.projectFields(dudsig)
 
-        elif self.survey.switchFDTD == 'TD':
+        elif self.survey.switch_fd_td == 'TD':
             resp = self.survey.projectFields(u)
             drespdsig = self.survey.projectFields(dudsig)
             if drespdsig.size == self.survey.Nch:
@@ -299,12 +297,12 @@ class EM1D(Problem.BaseProblem):
 
         u, dudsig = f[0], f[1]
 
-        if self.survey.switchFDTD == 'FD':
+        if self.survey.switch_fd_td == 'FD':
 
             resp = self.survey.projectFields(u)
             drespdsig = self.survey.projectFields(dudsig)
 
-        elif self.survey.switchFDTD == 'TD':
+        elif self.survey.switch_fd_td == 'TD':
             resp = self.survey.projectFields(u)
             drespdsig = self.survey.projectFields(dudsig)
             if drespdsig.size == self.survey.Nch:

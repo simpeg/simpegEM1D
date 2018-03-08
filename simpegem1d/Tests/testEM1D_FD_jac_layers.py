@@ -10,9 +10,9 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
     def setUp(self):
 
         FDsurvey = EM1DSurveyFD()
-        FDsurvey.rxLoc = np.array([0., 0., 100.+50.])
-        FDsurvey.srcLoc = np.array([0., 0., 100.+50.])
-        FDsurvey.fieldtype = 'secondary'
+        FDsurvey.rx_location = np.array([0., 0., 100.+50.])
+        FDsurvey.src_location = np.array([0., 0., 100.+50.])
+        FDsurvey.field_type = 'secondary'
 
         nearthick = np.logspace(-1, 1, 2)
         deepthick = np.logspace(1, 2, 5)
@@ -20,16 +20,12 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
         mesh1D = Mesh.TensorMesh([hx], [0.])
         depth = -mesh1D.gridN[:-1]
-        LocSigZ = -mesh1D.gridCC
-        nlay = depth.size
+        n_layer = depth.size
         topo = np.r_[0., 0., 100.]
         FDsurvey.depth = depth
         FDsurvey.topo = topo
-        FDsurvey.LocSigZ = LocSigZ
 
         FDsurvey.frequency = np.logspace(2, 4, 10)
-        FDsurvey.Nfreq = FDsurvey.frequency.size
-        FDsurvey.Setup1Dsystem()
         sig_half = 1e-1
         chi_half = 0.
 
@@ -39,13 +35,13 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         c = 1.
 
         modelReal = expmap
-        m_1D = np.log(np.ones(nlay)*sig_half)
+        m_1D = np.log(np.ones(n_layer)*sig_half)
 
         FDsurvey.rxType = 'Hz'
 
         prob = EM1D(mesh1D, sigmaMap = modelReal)
         prob.pair(FDsurvey)
-        prob.chi = np.zeros(FDsurvey.nlay)
+        prob.chi = np.zeros(FDsurvey.n_layer)
 
         self.survey = FDsurvey
         self.modelReal = modelReal
@@ -56,7 +52,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DFDJvec_Layers(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.srcType = 'CircularLoop'
+        self.prob.survey.src_type = 'CircularLoop'
 
         I = 1e0
         a = 1e1
@@ -65,7 +61,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
         sig_half = 0.01
         sig_blk = 0.1
-        sig = np.ones(self.prob.survey.nlay)*sig_half
+        sig = np.ones(self.prob.survey.n_layer)*sig_half
         sig[3] = sig_blk
         m_1D = np.log(sig)
 
@@ -106,7 +102,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DFDJtvec_Layers(self):
         self.prob.CondType = 'Real'
-        self.prob.survey.srcType = 'CircularLoop'
+        self.prob.survey.src_type = 'CircularLoop'
 
         I = 1e0
         a = 1e1
@@ -115,7 +111,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
         sig_half = 0.01
         sig_blk = 0.1
-        sig = np.ones(self.prob.survey.nlay)*sig_half
+        sig = np.ones(self.prob.survey.n_layer)*sig_half
         sig[3] = sig_blk
         m_true = np.log(sig)
 
@@ -123,7 +119,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         Hz_true = self.prob.fields(m_true)
         dobs = self.prob.survey.projectFields(u=Hz_true)
 
-        m_ini  = np.log(np.ones(self.prob.survey.nlay)*sig_half)
+        m_ini  = np.log(np.ones(self.prob.survey.n_layer)*sig_half)
         Hz_ini = self.prob.fields(m_ini)
         resp_ini = self.prob.survey.projectFields(u=Hz_ini)
         dr = resp_ini-dobs
@@ -141,8 +137,6 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         self.assertTrue(passed)
         if passed:
             print ("EM1DFD-layers Jtvec works")
-
-
 
 
 if __name__ == '__main__':

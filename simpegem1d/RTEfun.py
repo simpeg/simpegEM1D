@@ -61,7 +61,6 @@ def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     else :
 
         for j in range (nlay-1):
-
             utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j])*sig[j])
             utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j+1])*sig[j+1])
             const = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0)
