@@ -1,7 +1,7 @@
 import unittest
 from SimPEG import *
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnal, BaseEM1D, DigFilter, EM1DSurveyFD
+from simpegem1d import EM1D, EM1DAnalytics, BaseEM1D, DigFilter, EM1DSurveyFD
 import numpy as np
 
 

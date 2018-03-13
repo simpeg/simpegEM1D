@@ -2,7 +2,7 @@ from SimPEG import Maps, Survey, Utils
 import numpy as np
 import scipy.sparse as sp
 from scipy.constants import mu_0
-from .EM1DAnal import ColeCole
+from .EM1DAnalytics import ColeCole
 from .DigFilter import (
     transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
 )
@@ -23,7 +23,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
         default="Bz",
         choices =["Bz", "dBzdt"]
     )
-    srcType = properties.StringChoice(
+    src_type = properties.StringChoice(
         "Source type",
         default="VMD",
         choices=[
@@ -127,7 +127,7 @@ class EM1DSurveyFD(BaseEM1DSurvey):
         elif (
             self.switch_real_imag == "imag" or self.switch_real_imag == "real"
         ):
-            return int(self.frequency.size)
+            return int(self.n_frequency)
 
     def projectFields(self, u):
         """
@@ -408,38 +408,3 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             resp[:,i] = respint(self.time)
 
         return mu_0*resp
-
-
-# class BaseEM1DMap(Maps.IdentityMap):
-#     """BaseEM1DMap"""
-
-#     def __init__(self, mesh, **kwargs):
-#         Maps.IdentityMap.__init__(self, mesh)
-
-#     def _transform(self, m):
-#         """
-#         """
-#         return np.exp(m)
-
-#     #TODO: Need to think about this ...
-#     def deriv(self, m):
-#         return Utils.sdiag(np.exp(m))
-
-
-# class BaseColeColeMap(BaseEM1DMap):
-#     """BaseColeColeMap"""
-
-#     def __init__(self, mesh,  **kwargs):
-#         Maps.IdentityMap.__init__(self, mesh)
-#         self.tau = kwargs['tau']
-#         self.eta = kwargs['eta']
-#         self.c = kwargs['c']
-#         self.frequency = kwargs['Frequency']
-
-#     def _transform(self, m):
-#         """
-#             Here m is going to be Nsd (The number of sounding) lists.
-#         """
-#         self.frequency
-#         sigmaCole = ColeCole(self.frequency, m, self.eta, self.tau, self.c)
-#         return sigmaCole

@@ -191,7 +191,7 @@ def dBzdtAnalCircTCole(a, t, sigma):
 
     return dhzdtTD*mu_0
 
-def DiffusionDistnace(t, sigma):
+def diffusion_distance(t, sigma):
     """
         Compute diffusion distance
 
@@ -204,7 +204,7 @@ def DiffusionDistnace(t, sigma):
 
     return np.sqrt(2*t/mu_0/sigma)
 
-def SkinDepth(f, sigma):
+def skin_depth(f, sigma):
     """
         Compute skin depth
 
