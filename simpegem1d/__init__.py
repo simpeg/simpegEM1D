@@ -5,6 +5,7 @@ from .EM1DAnalytics import *
 from .Kernels import *
 from .RTEfun import rTEfunfwd, rTEfunjac
 from .Waveform import *
+from .Waveforms import skytem_HM_2015, skytem_LM_2015
 from .Utils1D import *
 from .GlobalEM1D import GlobalEM1DProblem, GlobalEM1DSurveyFD
 from .EM1DSimulation import (
