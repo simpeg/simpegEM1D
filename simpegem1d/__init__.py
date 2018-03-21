@@ -11,6 +11,9 @@ from .GlobalEM1D import GlobalEM1DProblem, GlobalEM1DSurveyFD
 from .EM1DSimulation import (
     get_vertical_discretization, set_mesh_1d, run_simulation_FD
 )
+from .Regularization import (
+    LateralConstraint, get_2d_mesh
+)
 import os
 import glob
 import unittest
