@@ -6,6 +6,7 @@ from simpegem1d.Waveform import TriangleFun, TriangleFunDeriv
 from scipy import io
 from scipy.interpolate import interp1d
 
+
 class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
     def setUp(self):

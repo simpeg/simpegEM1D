@@ -11,11 +11,13 @@ import numpy as np
 import scipy.sparse as sp
 from SimPEG import Problem, Props, Utils, Maps
 from .BaseEM1D import EM1DSurveyFD
-from .EM1DSimulation import run_simulation_FD, get_vertical_discretization
+from .EM1DSimulation import run_simulation_FD
 import properties
+
 
 def dot(args):
     return np.dot(args[0], args[1])
+
 
 class GlobalEM1DProblem(Problem.BaseProblem):
     """

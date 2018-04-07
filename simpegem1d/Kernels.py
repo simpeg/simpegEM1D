@@ -1,6 +1,6 @@
-import numpy as np
-from scipy.constants import mu_0
-from .DigFilter import EvalDigitalFilt
+# import numpy as np
+# from scipy.constants import mu_0
+# from .DigFilter import EvalDigitalFilt
 # from RTEfun import rTEfun
 
 # def HzKernel_layer(lamda, f, nlay, sig, chi, depth, h, z, flag):
@@ -53,29 +53,29 @@ from .DigFilter import EvalDigitalFilt
 #     return  kernel
 
 #TODO: Get rid of below two functions and put in in main class
-def HzFreq_layer(nlay, sig, chi, depth, f, z, h, r, flag, YBASE, WT0):
-    """
+# def HzFreq_layer(nlay, sig, chi, depth, f, z, h, r, flag, YBASE, WT0):
+#     """
 
-    """
-    nfreq = np.size(f)
-    HzFHT = np.zeros(nfreq, dtype = complex)
-    for ifreq in range(nfreq):
+#     """
+#     nfreq = np.size(f)
+#     HzFHT = np.zeros(nfreq, dtype = complex)
+#     for ifreq in range(nfreq):
 
-        kernel = lambda x: HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)
-        HzFHT[ifreq] = EvalDigitalFilt(YBASE, WT0, kernel, r)
+#         kernel = lambda x: HzKernel_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, flag)
+#         HzFHT[ifreq] = EvalDigitalFilt(YBASE, WT0, kernel, r)
 
-    return HzFHT
+#     return HzFHT
 
-def HzCircFreq_layer(nlay, sig, chi, depth, f, z, h, I, a, flag, YBASE, WT1):
+# def HzCircFreq_layer(nlay, sig, chi, depth, f, z, h, I, a, flag, YBASE, WT1):
 
-    """
+#     """
 
-    """
-    nfreq = np.size(f)
-    HzFHT = np.zeros(nfreq, dtype = complex)
-    for ifreq in range(nfreq):
+#     """
+#     nfreq = np.size(f)
+#     HzFHT = np.zeros(nfreq, dtype = complex)
+#     for ifreq in range(nfreq):
 
-        kernel = lambda x: HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)
-        HzFHT[ifreq] = EvalDigitalFilt(YBASE, WT1, kernel, a)
+#         kernel = lambda x: HzkernelCirc_layer(x, f[ifreq], nlay, sig, chi, depth, h, z, I, a, flag)
+#         HzFHT[ifreq] = EvalDigitalFilt(YBASE, WT1, kernel, a)
 
-    return HzFHT
+#     return HzFHT
