@@ -37,7 +37,9 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         m_1D = np.log(np.ones(nlay)*sig_half)
         FDsurvey.rx_type = 'Hz'
 
-        prob = EM1D(mesh1D, sigmaMap= modelReal, jacSwitch=False)
+        prob = EM1D(
+            mesh1D, sigmaMap= modelReal, jacSwitch=False
+        )
         prob.pair(FDsurvey)
         prob.chi = np.zeros(FDsurvey.n_layer)
 

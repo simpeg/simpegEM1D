@@ -259,6 +259,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         u/(2j*np.pi*self.frequency), self.time,
                         self.frequency, self.ftarg
                     )
+                    resp *= (-2/np.pi)
                 # Compute EM sensitivities
                 else:
                     resp = np.zeros((self.n_time, self.n_layer), dtype=float, order='F')
@@ -268,7 +269,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             u[:, i]/(2j*np.pi*self.frequency), self.time,
                             self.frequency, self.ftarg
                         )
-                        resp[:, i] = resp_i
+                        resp[:, i] = resp_i * (-2/np.pi)
 
             elif self.rx_type == 'dBzdt':
                 # Compute EM responses
@@ -278,6 +279,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         u, self.time,
                         self.frequency, self.ftarg
                     )
+                    resp *= (-2/np.pi)
                 # Compute EM sensitivities
                 else:
                     resp = np.zeros((self.n_time, self.n_layer), dtype=float, order='F')
@@ -287,7 +289,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             u[:, i], self.time,
                             self.frequency, self.ftarg
                         )
-                        resp[:, i] = resp_i
+                        resp[:, i] = resp_i*(-2/np.pi)
         return mu_0*resp
 
             # # Src waveform: General (it can be any waveform)
