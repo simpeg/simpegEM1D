@@ -10,7 +10,7 @@ else:
 import numpy as np
 import scipy.sparse as sp
 from SimPEG import Problem, Props, Utils, Maps
-from .BaseEM1D import EM1DSurveyFD
+from .Survey import EM1DSurveyFD
 from .EM1DSimulation import run_simulation_FD
 import properties
 

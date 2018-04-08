@@ -122,8 +122,12 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     def __init__(self, **kwargs):
         BaseEM1DSurvey.__init__(self, **kwargs)
 
-        if self.offset.size == 1:
-            self.offset = self.offset * np.ones(self.n_frequency)
+        if self.src_type == "VMD":
+            if self.offset is None:
+                raise Exception("offset is required!")
+
+            if self.offset.size == 1:
+                self.offset = self.offset * np.ones(self.n_frequency)
 
     @property
     def nD(self):
@@ -290,6 +294,9 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             self.frequency, self.ftarg
                         )
                         resp[:, i] = resp_i*(-2/np.pi)
+
+        # elif self.wave_type == 'general':
+
         return mu_0*resp
 
             # # Src waveform: General (it can be any waveform)

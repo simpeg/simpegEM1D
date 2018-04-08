@@ -2,7 +2,7 @@ import numpy as np
 from SimPEG import Mesh, Maps
 from .EM1DAnalytics import skin_depth, diffusion_distance
 from .EM1D import EM1D
-from .BaseEM1D import EM1DSurveyFD
+from .Survey import EM1DSurveyFD
 
 
 def get_vertical_discretization_frequency(

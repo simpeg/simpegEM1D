@@ -1,6 +1,6 @@
 from SimPEG import Maps, Utils, Problem, Props
 import numpy as np
-from .BaseEM1D import BaseEM1DSurvey
+from .Survey import BaseEM1DSurvey
 from scipy.constants import mu_0
 from .DigFilter import EvalDigitalFilt, LoadWeights
 from .RTEfun import rTEfunfwd, rTEfunjac
