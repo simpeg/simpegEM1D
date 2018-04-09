@@ -6,11 +6,14 @@ from .RTEfun import rTEfunfwd, rTEfunjac
 from .Waveform import *
 from .Waveforms import skytem_HM_2015, skytem_LM_2015
 from .Utils1D import *
-from .GlobalEM1D import GlobalEM1DProblem, GlobalEM1DSurveyFD
+from .GlobalEM1D import (
+    GlobalEM1DProblemFD, GlobalEM1DSurveyFD,
+    GlobalEM1DProblemTD, GlobalEM1DSurveyTD
+)
 from .EM1DSimulation import (
     get_vertical_discretization_frequency,
     get_vertical_discretization_time,
-    set_mesh_1d, run_simulation_FD
+    set_mesh_1d, run_simulation_FD, run_simulation_TD
 )
 from .Regularization import (
     LateralConstraint, get_2d_mesh

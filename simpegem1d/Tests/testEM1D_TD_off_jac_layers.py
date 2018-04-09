@@ -53,14 +53,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
         self.sig_half = sig_half
 
     def test_EM1DTDJvec_Layers(self):
-
-        I = 1e0
-        a = 1e1
-        self.prob.survey.I = I
-        self.prob.survey.a = a
-
-        sig_half = 0.01
-        sig = np.ones(self.prob.survey.n_layer)*sig_half
+        sig = np.ones(self.prob.survey.n_layer)*self.sig_half
         m_1D = np.log(sig)
 
         def fwdfun(m):
@@ -85,19 +78,13 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DTDJtvec_Layers(self):
 
-        I = 1e0
-        a = 1e1
-        self.prob.survey.I = I
-        self.prob.survey.a = a
-
-        sig_half = 0.01
         sig_blk = 0.1
-        sig = np.ones(self.prob.survey.n_layer)*sig_half
+        sig = np.ones(self.prob.survey.n_layer)*self.sig_half
         sig[3] = sig_blk
 
         m_true = np.log(sig)
         dobs = self.prob.survey.dpred(m_true)
-        m_ini = np.log(np.ones(self.prob.survey.n_layer)*sig_half)
+        m_ini = np.log(np.ones(self.prob.survey.n_layer)*self.sig_half)
         resp_ini = self.prob.survey.dpred(m_ini)
         dr = resp_ini-dobs
 

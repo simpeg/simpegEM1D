@@ -9,6 +9,7 @@ XXX
 """
 
 import numpy as np
+from scipy.integrate import fixed_quad
 
 
 class CurrentWaveforms:
@@ -200,3 +201,58 @@ def skytem_LM_2015():
     ]) * 1e-6
 
     return waveform
+
+
+def piecewise_ramp(step_func, t_off, t_currents, currents, n=20, eps=1e-10):
+    """
+    Computes response from piecewise linear current waveform
+    with a single pulse. This basically evaluates the convolution
+    between dI/dt and step-off response.
+
+    step_func: function handle to evaluate step-off response
+    t_off: time channels when the current is off
+    currents: input source currents
+    n: Gaussian quadrature order
+    """
+    dt = np.diff(t_currents)
+    dI = np.diff(currents)
+    dIdt = dI/dt
+    nt = t_currents.size
+    response = np.zeros(t_off.size, dtype=float)
+    pulse_time = t_currents.max()
+
+    for i in range(1, nt):
+        t_lag = pulse_time - t_currents[i]
+        time = t_lag + t_off
+        t0 = dt[i-1]
+        const = -dIdt[i-1]
+        if abs(const) > eps:
+            response += np.array(
+                [fixed_quad(step_func, t, t+t0, n=n)[0] for t in time]
+            ) * const
+    return response
+
+
+def piecewise_pulse(
+    step_func, t_off, t_currents, currents, T, n=20, n_pulse=2
+):
+    """
+    Computes response from double pulses (negative then positive)
+    T: Period (e.g. 25 Hz base frequency, 0.04 s period)
+    """
+    if n_pulse == 1:
+        response = piecewise_ramp(
+                step_func, t_off, t_currents, currents, n=n
+        )
+    elif n_pulse == 2:
+        response = (
+            piecewise_ramp(
+                step_func, t_off, t_currents, currents, n=n
+            ) -
+            piecewise_ramp(
+                step_func, t_off+T/2., t_currents, currents, n=n
+            ) * 0.5
+        )
+    else:
+        raise NotImplementedError("n_pulse must be either 1 or 2")
+    return response

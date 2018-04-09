@@ -80,7 +80,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
             derChk, m_1D, num=4, dx=dm, plotIt=False, eps=1e-15
         )
 
-        if self.showIt == True:
+        if self.showIt is True:
 
             ilay = 3
             temp_r = Utils.mkvc((dHzdsig[:, ilay].copy()).real)

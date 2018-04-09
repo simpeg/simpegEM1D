@@ -10,8 +10,8 @@ else:
 import numpy as np
 import scipy.sparse as sp
 from SimPEG import Problem, Props, Utils, Maps
-from .Survey import EM1DSurveyFD
-from .EM1DSimulation import run_simulation_FD
+from .Survey import EM1DSurveyFD, EM1DSurveyTD
+from .EM1DSimulation import run_simulation_FD, run_simulation_TD
 import properties
 
 
@@ -30,6 +30,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     )
 
     _Jmatrix = None
+    run_simulation = None
     n_cpu = None
     hz = None
     parallel = False
@@ -76,8 +77,12 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         return self.survey.offset
 
     @property
-    def frequency(self):
-        return self.survey.frequency
+    def a(self):
+        return self.survey.a
+
+    @property
+    def I(self):
+        return self.survey.I
 
     @property
     def field_type(self):
@@ -96,77 +101,15 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         return self.survey.half_switch
 
     @property
-    def switch_real_imag(self):
-        return self.survey.switch_real_imag
-
-    def output_args(self, i_sounding, jacSwitch=False):
-        output = (
-            self.rx_locations[i_sounding,:], self.src_locations[i_sounding,:],
-            self.topo[i_sounding,:], self.hz,
-            self.offset, self.frequency,
-            self.field_type, self.rx_type, self.src_type,
-            self.Sigma[i_sounding, :], jacSwitch
-        )
-        return output
-    @property
     def Sigma(self):
         if getattr(self, '_Sigma', None) is None:
             # Ordering: first z then x
             self._Sigma = self.sigma.reshape((self.n_sounding, self.n_layer))
         return self._Sigma
 
-    def forward(self, m, f=None):
-        self.model = m
-
-        if PARALLEL:
-            pool = Pool(self.n_cpu)
-            # This assumes the same # of layer for each of soundings
-            result = pool.map(
-                run_simulation_FD,
-                [
-                    self.output_args(i, jacSwitch=False) for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
-        else:
-            result = [
-                run_simulation_FD(self.output_args(i, jacSwitch=False)) for i in range(self.n_sounding)
-            ]
-        return np.hstack(result)
-
-    def getJ(self, m):
-        """
-             Compute d F / d sigma
-        """
-        if self._Jmatrix is not None:
-            return self._Jmatrix
-        if self.verbose:
-            print (">> Compute J")
-        self.model = m
-        if PARALLEL:
-            pool = Pool(self.n_cpu)
-            self._Jmatrix = pool.map(
-                run_simulation_FD,
-                [
-                    self.output_args(i, jacSwitch=True) for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
-
-        else:
-            # _Jmatrix is block diagnoal matrix (sparse)
-            self._Jmatrix = sp.block_diag(
-                [
-                    run_simulation_FD(self.output_args(i, jacSwitch=True)) for i in range(self.n_sounding)
-                ]
-            ).tocsr()
-        return self._Jmatrix
-
     def Jvec(self, m, v, f=None):
         J = self.getJ(m)
-        if PARALLEL:
+        if self.parallel:
             V = v.reshape((self.n_sounding, self.n_layer))
 
             pool = Pool(self.n_cpu)
@@ -184,7 +127,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 
     def Jtvec(self, m, v, f=None):
         J = self.getJ(m)
-        if PARALLEL:
+        if self.parallel:
             V = v.reshape((self.n_sounding, int(self.survey.nD/self.n_sounding)))
             pool = Pool(self.n_cpu)
 
@@ -214,7 +157,123 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         return toDelete
 
 
-class GlobalEM1DSurveyFD(EM1DSurveyFD):
+class GlobalEM1DProblemFD(GlobalEM1DProblem):
+
+    run_simulation = run_simulation_FD
+
+    @property
+    def frequency(self):
+        return self.survey.frequency
+
+    @property
+    def switch_real_imag(self):
+        return self.survey.switch_real_imag
+
+    def input_args(self, i_sounding, jacSwitch=False):
+        output = (
+            self.rx_locations[i_sounding, :],
+            self.src_locations[i_sounding, :],
+            self.topo[i_sounding, :], self.hz,
+            self.offset, self.frequency,
+            self.field_type, self.rx_type, self.src_type,
+            self.Sigma[i_sounding, :], jacSwitch
+        )
+        return output
+
+
+class GlobalEM1DProblemTD(GlobalEM1DProblem):
+
+    run_simulation = run_simulation_TD
+
+    @property
+    def wave_type(self):
+        return self.survey.wave_type
+
+    @property
+    def input_currents(self):
+        return self.survey.input_currents
+
+    @property
+    def time_input_currents(self):
+        return self.survey.time_input_currents
+
+    @property
+    def n_pulse(self):
+        return self.survey.n_pulse
+
+    @property
+    def base_frequency(self):
+        return self.survey.base_frequency
+
+    @property
+    def time(self):
+        return self.survey.time
+
+    def input_args(self, i_sounding, jacSwitch=False):
+        output = (
+            self.rx_locations[i_sounding, :],
+            self.src_locations[i_sounding, :],
+            self.topo[i_sounding, :], self.hz,
+            self.time,
+            self.field_type, self.rx_type, self.src_type, self.wave_type,
+            self.offset, self.a,
+            self.time_input_currents, self.input_currents,
+            self.n_pulse, self.base_frequency,
+            self.Sigma[i_sounding, :], jacSwitch
+        )
+        return output
+
+    def forward(self, m, f=None):
+        self.model = m
+
+        if self.parallel:
+            pool = Pool(self.n_cpu)
+            # This assumes the same # of layer for each of soundings
+            result = pool.map(
+                run_simulation_TD,
+                [
+                    self.input_args(i, jacSwitch=False) for i in range(self.n_sounding)
+                ]
+            )
+            pool.close()
+            pool.join()
+        else:
+            result = [
+                run_simulation_TD(self.input_args(i, jacSwitch=False)) for i in range(self.n_sounding)
+            ]
+        return np.hstack(result)
+
+    def getJ(self, m):
+        """
+             Compute d F / d sigma
+        """
+        if self._Jmatrix is not None:
+            return self._Jmatrix
+        if self.verbose:
+            print (">> Compute J")
+        self.model = m
+        if self.parallel:
+            pool = Pool(self.n_cpu)
+            self._Jmatrix = pool.map(
+                run_simulation_TD,
+                [
+                    self.input_args(i, jacSwitch=True) for i in range(self.n_sounding)
+                ]
+            )
+            pool.close()
+            pool.join()
+
+        else:
+            # _Jmatrix is block diagnoal matrix (sparse)
+            self._Jmatrix = sp.block_diag(
+                [
+                    run_simulation_TD(self.input_args(i, jacSwitch=True)) for i in range(self.n_sounding)
+                ]
+            ).tocsr()
+        return self._Jmatrix
+
+
+class GlobalEM1DSurvey(properties.HasProperties):
 
     # This assumes a multiple sounding locations
     rx_locations = properties.Array(
@@ -226,8 +285,6 @@ class GlobalEM1DSurveyFD(EM1DSurveyFD):
     topo = properties.Array(
         "Topography", dtype=float, shape=('*', 3)
     )
-    @Utils.count
-    @Utils.requires('prob')
 
     def dpred(self, m=None, f=None):
         """
@@ -249,6 +306,65 @@ class GlobalEM1DSurveyFD(EM1DSurveyFD):
         """
         return self.prob.n_layer
 
+    def read_xyz_data(self, fname):
+        """
+        Read csv file format
+        This is a place holder at this point
+        """
+        pass
+
+    def forward(self, m, f=None):
+        self.model = m
+
+        if self.parallel:
+            pool = Pool(self.n_cpu)
+            # This assumes the same # of layer for each of soundings
+            result = pool.map(
+                run_simulation_FD,
+                [
+                    self.input_args(i, jacSwitch=False) for i in range(self.n_sounding)
+                ]
+            )
+            pool.close()
+            pool.join()
+        else:
+            result = [
+                run_simulation_FD(self.input_args(i, jacSwitch=False)) for i in range(self.n_sounding)
+            ]
+        return np.hstack(result)
+
+    def getJ(self, m):
+        """
+             Compute d F / d sigma
+        """
+        if self._Jmatrix is not None:
+            return self._Jmatrix
+        if self.verbose:
+            print (">> Compute J")
+        self.model = m
+        if self.parallel:
+            pool = Pool(self.n_cpu)
+            self._Jmatrix = pool.map(
+                run_simulation_FD,
+                [
+                    self.input_args(i, jacSwitch=True) for i in range(self.n_sounding)
+                ]
+            )
+            pool.close()
+            pool.join()
+
+        else:
+            # _Jmatrix is block diagnoal matrix (sparse)
+            self._Jmatrix = sp.block_diag(
+                [
+                    run_simulation_FD(self.input_args(i, jacSwitch=True)) for i in range(self.n_sounding)
+                ]
+            ).tocsr()
+        return self._Jmatrix
+
+
+class GlobalEM1DSurveyFD(GlobalEM1DSurvey, EM1DSurveyFD):
+
     @property
     def nD(self):
         if self.switch_real_imag == "all":
@@ -264,3 +380,12 @@ class GlobalEM1DSurveyFD(EM1DSurveyFD):
         This is a place holder at this point
         """
         pass
+
+
+class GlobalEM1DSurveyTD(GlobalEM1DSurvey, EM1DSurveyTD):
+
+    @property
+    def nD(self):
+        return int(self.time.size) * self.n_rx
+
+

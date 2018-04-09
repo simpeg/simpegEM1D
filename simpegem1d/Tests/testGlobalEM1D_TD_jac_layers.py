@@ -2,8 +2,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from simpegem1d import (
-    GlobalEM1DProblemFD, GlobalEM1DSurveyFD,
-    get_vertical_discretization_frequency
+    GlobalEM1DProblemTD, GlobalEM1DSurveyTD,
+    get_vertical_discretization_time
 )
 from SimPEG import (
     Regularization, Inversion, InvProblem,
@@ -11,16 +11,20 @@ from SimPEG import (
     Tests
 )
 
+from simpegem1d import skytem_HM_2015
+wave = skytem_HM_2015()
+
+
 np.random.seed(41)
 
 
 class GlobalEM1DFD(unittest.TestCase):
 
     def setUp(self, parallel=True):
-        frequency = np.array([900, 7200, 56000], dtype=float)
-        hz = get_vertical_discretization_frequency(
-            frequency, sigma_background=1./10.
-        )
+        time = np.logspace(-6, -3, 21)
+        hz = get_vertical_discretization_time(time, facter_tmax=0.5, factor_tmin=10.)
+        time_input_currents = wave.current_times[-7:]
+        input_currents = wave.currents[-7:]
 
         n_sounding = 5
         dx = 20.
@@ -41,22 +45,29 @@ class GlobalEM1DFD(unittest.TestCase):
         src_locations = np.c_[x, y, z]
         topo = np.c_[x, y, z-30.].astype(float)
         mapping = Maps.ExpMap(mesh)
-        survey = GlobalEM1DSurveyFD(
+
+        survey = GlobalEM1DSurveyTD(
             rx_locations=rx_locations,
             src_locations=src_locations,
-            frequency=frequency,
-            offset=np.ones_like(frequency) * 8.,
+            topo=topo,
+            time=time,
             src_type="VMD",
-            rx_type="Hz",
+            rx_type="dBzdt",
             field_type='secondary',
-            topo=topo
+            wave_type='stepoff',
+            offset=np.r_[8.],
+            a=1.,
+            input_currents=input_currents,
+            time_input_currents=time_input_currents,
+            n_pulse=1,
+            base_frequency=20.,
         )
 
-        problem = GlobalEM1DProblemFD(
-            [], sigmaMap=mapping, hz=hz,
-            parallel=parallel
+        problem = GlobalEM1DProblemTD(
+            mesh, sigmaMap=mapping, hz=hz, parallel=parallel
         )
         problem.pair(survey)
+
         survey.makeSyntheticData(mSynth)
 
         # Now set up the problem to do some minimization

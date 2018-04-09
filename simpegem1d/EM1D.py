@@ -4,7 +4,6 @@ from .Survey import BaseEM1DSurvey
 from scipy.constants import mu_0
 from .DigFilter import EvalDigitalFilt, LoadWeights
 from .RTEfun import rTEfunfwd, rTEfunjac
-from profilehooks import profile
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 from empymod import filters
 
@@ -23,6 +22,7 @@ class EM1D(Problem.BaseProblem):
     jacSwitch = True
     filter_type = 'key_101'
     verbose = False
+    _Jmatrix_sigma = None
 
     sigma, sigmaMap, sigmaDeriv = Props.Invertible(
         "Electrical conductivity at infinite frequency(S/m)"
@@ -205,13 +205,12 @@ class EM1D(Problem.BaseProblem):
         h = self.survey.h
         z = self.survey.z
         HzFHT = np.empty(n_frequency, dtype=complex)
-        dHzFHTdsig = np.empty((n_layer, n_frequency), dtype=complex)
         chi = self.chi
         if np.isscalar(self.chi):
             chi = np.ones_like(self.sigma) * self.chi
-        n_int = 31
         # for inversion
         if self.jacSwitch:
+            dHzFHTdsig = np.empty((n_layer, n_frequency), dtype=complex)
             hz = np.empty(nfilt, complex)
             dhz = np.empty((nfilt, n_layer), complex)
             if self.survey.src_type == 'VMD':
@@ -268,68 +267,61 @@ class EM1D(Problem.BaseProblem):
 
             return HzFHT
 
-    # @profile
+    def getJ_sigma(self, m, f=None):
+        if self._Jmatrix_sigma is None:
+            if self.verbose:
+                print (">> Compute J")
+
+            if f is None:
+                f = self.fields(m)
+
+            u, dudsig = f[0], f[1]
+
+            if self.survey.switch_fd_td == 'FD':
+
+                self._Jmatrix_sigma = self.survey.projectFields(dudsig)
+
+            elif self.survey.switch_fd_td == 'TD':
+                self._Jmatrix_sigma = self.survey.projectFields(dudsig)
+                if self._Jmatrix_sigma.size == self.survey.n_time:
+                    self._Jmatrix_sigma = np.reshape(
+                        self._Jmatrix_sigma, (-1, 1), order='F'
+                    )
+                else:
+                    self._Jmatrix_sigma = np.reshape(
+                        self._Jmatrix_sigma,
+                        (self.survey.n_time, self._Jmatrix_sigma.shape[1]),
+                        order='F'
+                    )
+            else:
+
+                raise Exception('Not implemented!!')
+
+        return self._Jmatrix_sigma
+
     def Jvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
         """
-        if f is None:
+        J_sigma = self.getJ_sigma(m, f=f)
+        Jv = np.dot(J_sigma, self.sigmaMap.deriv(m, v))
 
-            f = self.fields(m)
-
-        u, dudsig = f[0], f[1]
-
-        if self.survey.switch_fd_td == 'FD':
-
-            resp = self.survey.projectFields(u)
-            drespdsig = self.survey.projectFields(dudsig)
-
-        elif self.survey.switch_fd_td == 'TD':
-            resp = self.survey.projectFields(u)
-            drespdsig = self.survey.projectFields(dudsig)
-            if drespdsig.size == self.survey.n_time:
-                drespdsig = np.reshape(drespdsig, (-1, 1), order='F')
-            else:
-                drespdsig = np.reshape(
-                    drespdsig, (self.survey.n_time, drespdsig.shape[1]), order='F'
-                )
-        else:
-
-            raise Exception('Not implemented!!')
-
-        Jv = np.dot(drespdsig, self.sigmaMap.deriv(m, v))
         return Jv
 
-    # @profile
     def Jtvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
         """
-        if f is None:
-            f = self.fields(m)
-
-        u, dudsig = f[0], f[1]
-
-        if self.survey.switch_fd_td == 'FD':
-
-            resp = self.survey.projectFields(u)
-            drespdsig = self.survey.projectFields(dudsig)
-
-        elif self.survey.switch_fd_td == 'TD':
-            resp = self.survey.projectFields(u)
-            drespdsig = self.survey.projectFields(dudsig)
-            if drespdsig.size == self.survey.n_time:
-                drespdsig = np.reshape(drespdsig, (-1, 1), order='F')
-            else:
-                drespdsig = np.reshape(
-                    drespdsig, (self.survey.n_time, drespdsig.shape[1]), order='F'
-                )
-        else:
-
-            raise Exception('Not implemented!!')
-
-        Jtv = self.sigmaMap.deriv(m, np.dot(drespdsig.T, v))
+        J_sigma = self.getJ_sigma(m, f=f)
+        Jtv = self.sigmaMap.deriv(m, np.dot(J_sigma.T, v))
         return Jtv
+
+    @property
+    def deleteTheseOnModelUpdate(self):
+        toDelete = []
+        if self._Jmatrix_sigma is not None:
+            toDelete += ['_Jmatrix_sigma']
+        return toDelete
 
 if __name__ == '__main__':
     main()

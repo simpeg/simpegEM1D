@@ -2,7 +2,7 @@ import numpy as np
 from SimPEG import Mesh, Maps
 from .EM1DAnalytics import skin_depth, diffusion_distance
 from .EM1D import EM1D
-from .Survey import EM1DSurveyFD
+from .Survey import EM1DSurveyFD, EM1DSurveyTD
 
 
 def get_vertical_discretization_frequency(
@@ -22,7 +22,6 @@ def get_vertical_discretization_frequency(
         i += 1
         hz = np.logspace(np.log10(hz_min), np.log10(hz_min*i), n_layer)
         z_sum = hz.sum()
-    print (z_max)
     return hz
 
 
@@ -42,7 +41,6 @@ def get_vertical_discretization_time(
         i += 1
         hz = np.logspace(np.log10(hz_min), np.log10(hz_min*i), n_layer)
         z_sum = hz.sum()
-    print (z_max)
     return hz
 
 
@@ -99,4 +97,71 @@ def run_simulation_FD(args):
         return drespdsig * prob.sigmaDeriv
     else:
         resp = FDsurvey.dpred(np.log(sigma))
+        return resp
+
+
+def run_simulation_TD(args):
+    """
+        args
+
+        rx_location: Recevier location (x, y, z)
+        src_location: Source location (x, y, z)
+        topo: Topographic location (x, y, z)
+        hz: Thickeness of the vertical layers
+        time: Time (s)
+        field_type: 'secondary'
+        rx_type:
+        src_type:
+        wave_type:
+        offset: Source-Receiver offset (for VMD)
+        a: Source-loop radius (for Circular Loop)
+        time_input_currents:
+        input_currents:
+        n_pulse:
+        base_frequency:
+        sigma:
+        jacSwitch:
+    """
+
+    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, sigma, jacSwitch = args
+
+    mesh_1d = set_mesh_1d(hz)
+    depth = -mesh_1d.gridN[:-1]
+
+    TDsurvey = EM1DSurveyTD(
+        rx_location=rx_location,
+        src_location=src_location,
+        topo=topo,
+        depth=depth,
+        time=time,
+        field_type=field_type,
+        rx_type=rx_type,
+        src_type=src_type,
+        wave_type=wave_type,
+        offset=offset,
+        a=a,
+        time_input_currents=time_input_currents,
+        input_currents=input_currents,
+        n_pulse=n_pulse,
+        base_frequency=base_frequency
+    )
+
+    # Use Exponential Map
+    # This is hard-wired at the moment
+    expmap = Maps.ExpMap(mesh_1d)
+    prob = EM1D(
+        mesh_1d, sigmaMap=expmap, filter_type='key_101',
+        jacSwitch=jacSwitch
+    )
+    if prob.ispaired:
+        prob.unpair()
+    if TDsurvey.ispaired:
+        TDsurvey.unpair()
+    prob.pair(TDsurvey)
+    if jacSwitch:
+        u, dudsig = prob.fields(np.log(sigma))
+        drespdsig = TDsurvey.projectFields(dudsig)
+        return drespdsig * prob.sigmaDeriv
+    else:
+        resp = TDsurvey.dpred(np.log(sigma))
         return resp
