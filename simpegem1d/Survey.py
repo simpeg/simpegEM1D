@@ -217,6 +217,10 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         "Input currents", dtype=float
     )
 
+    use_lowpass_filter = properties.Bool(
+        "Switch for low pass filter", default=False
+    )
+
     high_cut_frequency = properties.Float(
         "High cut frequency for low pass filter (Hz)", default=1e5
     )
@@ -254,6 +258,14 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         return self.n_time
 
+    @property
+    def low_pass_filter_values(self):
+        """
+            Low pass filter values
+        """
+
+        return self._low_pass_filter_values
+
     def set_frequency(self):
         """
         Compute Frequency reqired for frequency to time transform
@@ -285,6 +297,11 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         else:
             raise Exception("wave_type must be either general or stepoff")
 
+        if self.use_lowpass_filter:
+            filter_frequency, values = butter_lowpass_filter(self.high_cut_frequency)
+            lowpass_func = interp1d(filter_frequency, values, fill_value='extrapolate')
+            self._low_pass_filter_values = lowpass_func(frequency)
+
         self.frequency = frequency
         self.ftarg = ftarg
 
@@ -294,10 +311,14 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         """
         # Compute frequency domain reponses right at filter coefficient values
         # Src waveform: Step-off
+
+        if self.use_lowpass_filter:
+            factor = self._low_pass_filter_values.copy()
+
         if self.rx_type == 'Bz':
-            factor = 1./(2j*np.pi*self.frequency)
+            factor *= 1./(2j*np.pi*self.frequency)
         elif self.rx_type == 'dBzdt':
-            factor = 1.
+            factor *= 1.
         else:
             raise Exception("rx_type for TD must be either Bz or dBzdt")
         if self.wave_type == 'stepoff':

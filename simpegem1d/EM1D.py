@@ -324,7 +324,7 @@ class EM1D(Problem.BaseProblem):
 
     @property
     def deleteTheseOnModelUpdate(self):
-        toDelete = []        
+        toDelete = []
         if self.fix_Jmatrix is False:
             if self._Jmatrix_sigma is not None:
                 toDelete += ['_Jmatrix_sigma']
