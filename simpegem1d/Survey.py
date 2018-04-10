@@ -12,7 +12,7 @@ import properties
 from empymod import filters
 from empymod.utils import check_time
 from empymod.transform import ffht
-from .Waveforms import piecewise_pulse
+from .Waveforms import piecewise_pulse, butter_lowpass
 from profilehooks import profile
 
 
@@ -217,8 +217,9 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         "Input currents", dtype=float
     )
 
-    # 1. general
-    # 2. stepoff
+    high_cut_frequency = properties.Float(
+        "High cut frequency for low pass filter (Hz)", default=1e5
+    )
 
     def __init__(self, **kwargs):
         BaseEM1DSurvey.__init__(self, **kwargs)

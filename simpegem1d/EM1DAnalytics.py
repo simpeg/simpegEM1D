@@ -179,7 +179,7 @@ def BzAnalCircTCole(a, t, sigma):
     hzTD, f0 = transFilt(hz, wt, tbase, omega_int, t)
     return hzTD*mu_0
 
-def dBzdtAnalCircTCole(a, t, sigma):
+def dBzdtAnalCircTCole(a, t, sigma, lowpass=None):
 
     wt, tbase, omega_int = setFrequency(t)
     hz = HzanalCirc(sigma, omega_int/2/np.pi, 1., a, 'secondary')

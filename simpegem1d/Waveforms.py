@@ -256,3 +256,36 @@ def piecewise_pulse(
     else:
         raise NotImplementedError("n_pulse must be either 1 or 2")
     return response
+
+def butter_lowpass_filter(highcut_frequency, fs=1e6, period=0.04, order=1):
+    """
+    Butterworth low pass filter
+
+    Parameters
+    ----------
+
+    highcut_frequency: float
+        high-cut frequency for the low pass filter
+    fs: float
+        sampling rate, 1./ dt, (default = 1MHz)
+    period:
+        period of the signal (e.g. 25Hz base frequency, 0.04s)
+    order: int
+        The order of the butterworth filter
+
+    Returns
+    -------
+
+    frequency, h: ndarray, ndarray
+        Filter values (`h`) at frequencies (`frequency`) are provided.
+    """
+
+    # Nyquist frequency
+    nyq = 0.5 * fs
+    n_samples = period * fs
+    high = highcut_frequency / nyq
+    b, a = butter(order, high, btype='low')
+    w, h = freqz(b, a, worN=int(n_samples))
+    frequency = (fs * 0.5 / np.pi) * w
+
+    return frequency, h

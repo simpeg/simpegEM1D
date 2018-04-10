@@ -4,7 +4,11 @@ from .DigFilter import *
 from .EM1DAnalytics import *
 from .RTEfun import rTEfunfwd, rTEfunjac
 from .Waveform import *
-from .Waveforms import skytem_HM_2015, skytem_LM_2015
+from .Waveforms import (
+    skytem_HM_2015, skytem_LM_2015,
+    butter_lowpass_filter,
+    piecewise_pulse
+)
 from .Utils1D import *
 from .GlobalEM1D import (
     GlobalEM1DProblemFD, GlobalEM1DSurveyFD,

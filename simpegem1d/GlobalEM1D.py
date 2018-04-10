@@ -35,6 +35,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     hz = None
     parallel = False
     verbose = False
+    fix_Jmatrix=False
 
     def __init__(self, mesh, **kwargs):
         Utils.setKwargs(self, **kwargs)
@@ -152,8 +153,9 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         toDelete = []
         if self.sigmaMap is not None:
             toDelete += ['_Sigma']
-        if self._Jmatrix is not None:
-            toDelete += ['_Jmatrix']
+        if self.fix_Jmatrix is False:
+            if self._Jmatrix is not None:
+                toDelete += ['_Jmatrix']
         return toDelete
 
 
@@ -179,6 +181,55 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
             self.Sigma[i_sounding, :], jacSwitch
         )
         return output
+
+    def forward(self, m, f=None):
+        self.model = m
+
+        if self.parallel:
+            pool = Pool(self.n_cpu)
+            # This assumes the same # of layer for each of soundings
+            result = pool.map(
+                run_simulation_FD,
+                [
+                    self.input_args(i, jacSwitch=False) for i in range(self.n_sounding)
+                ]
+            )
+            pool.close()
+            pool.join()
+        else:
+            result = [
+                run_simulation_FD(self.input_args(i, jacSwitch=False)) for i in range(self.n_sounding)
+            ]
+        return np.hstack(result)
+
+    def getJ(self, m):
+        """
+             Compute d F / d sigma
+        """
+        if self._Jmatrix is not None:
+            return self._Jmatrix
+        if self.verbose:
+            print (">> Compute J")
+        self.model = m
+        if self.parallel:
+            pool = Pool(self.n_cpu)
+            self._Jmatrix = pool.map(
+                run_simulation_FD,
+                [
+                    self.input_args(i, jacSwitch=True) for i in range(self.n_sounding)
+                ]
+            )
+            pool.close()
+            pool.join()
+
+        else:
+            # _Jmatrix is block diagnoal matrix (sparse)
+            self._Jmatrix = sp.block_diag(
+                [
+                    run_simulation_FD(self.input_args(i, jacSwitch=True)) for i in range(self.n_sounding)
+                ]
+            ).tocsr()
+        return self._Jmatrix
 
 
 class GlobalEM1DProblemTD(GlobalEM1DProblem):
@@ -312,55 +363,6 @@ class GlobalEM1DSurvey(properties.HasProperties):
         This is a place holder at this point
         """
         pass
-
-    def forward(self, m, f=None):
-        self.model = m
-
-        if self.parallel:
-            pool = Pool(self.n_cpu)
-            # This assumes the same # of layer for each of soundings
-            result = pool.map(
-                run_simulation_FD,
-                [
-                    self.input_args(i, jacSwitch=False) for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
-        else:
-            result = [
-                run_simulation_FD(self.input_args(i, jacSwitch=False)) for i in range(self.n_sounding)
-            ]
-        return np.hstack(result)
-
-    def getJ(self, m):
-        """
-             Compute d F / d sigma
-        """
-        if self._Jmatrix is not None:
-            return self._Jmatrix
-        if self.verbose:
-            print (">> Compute J")
-        self.model = m
-        if self.parallel:
-            pool = Pool(self.n_cpu)
-            self._Jmatrix = pool.map(
-                run_simulation_FD,
-                [
-                    self.input_args(i, jacSwitch=True) for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
-
-        else:
-            # _Jmatrix is block diagnoal matrix (sparse)
-            self._Jmatrix = sp.block_diag(
-                [
-                    run_simulation_FD(self.input_args(i, jacSwitch=True)) for i in range(self.n_sounding)
-                ]
-            ).tocsr()
-        return self._Jmatrix
 
 
 class GlobalEM1DSurveyFD(GlobalEM1DSurvey, EM1DSurveyFD):

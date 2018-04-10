@@ -22,6 +22,7 @@ class EM1D(Problem.BaseProblem):
     jacSwitch = True
     filter_type = 'key_101'
     verbose = False
+    fix_Jmatrix = False
     _Jmatrix_sigma = None
 
     sigma, sigmaMap, sigmaDeriv = Props.Invertible(
@@ -267,11 +268,16 @@ class EM1D(Problem.BaseProblem):
 
             return HzFHT
 
+    def getJ_height(self, m, f=None):
+        """
+
+        """
+        pass
+
     def getJ_sigma(self, m, f=None):
         if self._Jmatrix_sigma is None:
             if self.verbose:
                 print (">> Compute J")
-
             if f is None:
                 f = self.fields(m)
 
@@ -318,9 +324,10 @@ class EM1D(Problem.BaseProblem):
 
     @property
     def deleteTheseOnModelUpdate(self):
-        toDelete = []
-        if self._Jmatrix_sigma is not None:
-            toDelete += ['_Jmatrix_sigma']
+        toDelete = []        
+        if self.fix_Jmatrix is False:
+            if self._Jmatrix_sigma is not None:
+                toDelete += ['_Jmatrix_sigma']
         return toDelete
 
 if __name__ == '__main__':
