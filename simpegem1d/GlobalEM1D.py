@@ -109,7 +109,8 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         return self._Sigma
 
     def fields(self, m):
-        print ("Compute fields")
+        if self.verbose:
+            print ("Compute fields")
         self.survey._pred = self.forward(m)
         return []
 

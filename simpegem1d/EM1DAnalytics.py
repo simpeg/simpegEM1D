@@ -37,6 +37,7 @@ def Hzanal(sig, f, r, flag):
         Hz = Hz-Hzp
     return Hz
 
+
 def HzanalCirc(sig, f, I, a, flag):
 
     """
@@ -61,6 +62,7 @@ def HzanalCirc(sig, f, I, a, flag):
         Hzp = I/2./a
         Hz = Hz-Hzp
     return Hz
+
 
 def dHzdsiganalCirc(sig, f, I, a, flag):
 
@@ -110,6 +112,7 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
             sigma[i,:] = Utils.mkvc(sig_inf - sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c))
     return sigma
 
+
 def BzAnalT(r, t, sigma):
 
     theta = np.sqrt((sigma*mu_0)/(4*t))
@@ -119,6 +122,7 @@ def BzAnalT(r, t, sigma):
     t2 = (1/np.sqrt(pi))*(9/tr + 4*tr)*np.exp(-tr**2)
     hz = (t1 - t2)/(4*pi*r**3)
     return mu_0*hz
+
 
 def BzAnalCircT(a, t, sigma):
     """
@@ -145,6 +149,7 @@ def BzAnalCircT(a, t, sigma):
     hz = (t1 + t2)/(2*a)
     return mu_0*hz
 
+
 def dBzdtAnalCircT(a, t, sigma):
     """
         Hz component of analytic solution for half-space (Circular-loop source)
@@ -169,6 +174,7 @@ def dBzdtAnalCircT(a, t, sigma):
     dhzdt = const*(t1+t2)
     return mu_0*dhzdt
 
+
 def BzAnalCircTCole(a, t, sigma):
 
     wt, tbase, omega_int = setFrequency(t)
@@ -179,17 +185,18 @@ def BzAnalCircTCole(a, t, sigma):
     hzTD, f0 = transFilt(hz, wt, tbase, omega_int, t)
     return hzTD*mu_0
 
-def dBzdtAnalCircTCole(a, t, sigma, lowpass=None):
+
+def dBzdtAnalCircTCole(a, t, sigma):
 
     wt, tbase, omega_int = setFrequency(t)
     hz = HzanalCirc(sigma, omega_int/2/np.pi, 1., a, 'secondary')
     # Treatment for inaccuracy in analytic solutions
     ind = omega_int < 0.2
     hz[ind] = 0.
-
     dhzdtTD = -transFiltImpulse(hz, wt, tbase, omega_int, t)
 
     return dhzdtTD*mu_0
+
 
 def diffusion_distance(t, sigma):
     """
@@ -203,6 +210,7 @@ def diffusion_distance(t, sigma):
     """
 
     return np.sqrt(2*t/mu_0/sigma)
+
 
 def skin_depth(f, sigma):
     """
