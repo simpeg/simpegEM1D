@@ -22,7 +22,9 @@ class GlobalEM1DFD(unittest.TestCase):
 
     def setUp(self, parallel=True):
         time = np.logspace(-6, -3, 21)
-        hz = get_vertical_discretization_time(time, facter_tmax=0.5, factor_tmin=10.)
+        hz = get_vertical_discretization_time(
+            time, facter_tmax=0.5, factor_tmin=10.
+        )
         time_input_currents = wave.current_times[-7:]
         input_currents = wave.currents[-7:]
 
@@ -101,7 +103,6 @@ class GlobalEM1DFD(unittest.TestCase):
 
     def test_adjoint(self):
         # Adjoint Test
-        # u = np.random.rand(self.mesh.nC * self.survey.nSrc)
         v = np.random.rand(self.mesh.nC)
         w = np.random.rand(self.survey.dobs.shape[0])
         wtJv = w.dot(self.p.Jvec(self.m0, v))

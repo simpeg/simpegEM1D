@@ -12,6 +12,7 @@ import numpy as np
 from scipy.integrate import fixed_quad
 from scipy.signal import butter, freqz
 
+
 class CurrentWaveforms:
     """Simple Class for CurrentWaveforms."""
     def __init__(self, name):
@@ -256,6 +257,7 @@ def piecewise_pulse(
     else:
         raise NotImplementedError("n_pulse must be either 1 or 2")
     return response
+
 
 def butter_lowpass_filter(highcut_frequency, fs=1e6, period=0.04, order=1):
     """

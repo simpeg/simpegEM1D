@@ -6,6 +6,7 @@ from .DigFilter import EvalDigitalFilt, LoadWeights
 from .RTEfun import rTEfunfwd, rTEfunjac
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 from empymod import filters
+from profilehooks import profile
 
 
 class EM1D(Problem.BaseProblem):
@@ -24,6 +25,8 @@ class EM1D(Problem.BaseProblem):
     verbose = False
     fix_Jmatrix = False
     _Jmatrix_sigma = None
+    _Jmatrix_height = None
+    _pred = None
 
     sigma, sigmaMap, sigmaDeriv = Props.Invertible(
         "Electrical conductivity at infinite frequency(S/m)"
@@ -35,7 +38,7 @@ class EM1D(Problem.BaseProblem):
     )
 
     eta, etaMap, etaDeriv = Props.Invertible(
-        "Electrical chargeability (V/V)",
+        "Electrical chargeability (V/V), 0 <= eta < 1",
         default=0.
     )
 
@@ -45,8 +48,12 @@ class EM1D(Problem.BaseProblem):
     )
 
     c, cMap, cDeriv = Props.Invertible(
-        "frequency Dependency",
+        "Frequency Dependency, 0 < c < 1",
         default=0.5
+    )
+
+    h, hMap, hDeriv = Props.Invertible(
+        "Receiver Height (m), h > 0",
     )
 
     def __init__(self, mesh, **kwargs):
@@ -84,12 +91,11 @@ class EM1D(Problem.BaseProblem):
             self.YBASE = fht.base
         else:
             raise NotImplementedError()
-            # WT0, WT1, YBASE = LoadWeights()
-            # self.WT0 = WT0
-            # self.WT1 = WT1
-            # self.YBASE = YBASE
 
-    def HzKernel_layer(self, lamda, f, n_layer, sig, chi, depth, h, z, flag):
+    def HzKernel_layer(
+        self, lamda, f, n_layer, sig, chi, depth, h, z,
+        flag, output_type='response'
+    ):
 
         """
             Kernel for vertical magnetic component (Hz) due to
@@ -99,40 +105,34 @@ class EM1D(Problem.BaseProblem):
         u0 = lamda
         rTE = np.zeros(lamda.size, dtype=complex)
 
-        if self.jacSwitch:
+        if output_type == 'sensitivity_sigma':
             drTE = np.zeros((n_layer, lamda.size), dtype=complex)
-            rTE, drTE = rTEfunjac(
+            drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
+            kernel = 1/(4*np.pi)*(drTE)*(np.exp(-u0*(z+h))*lamda**3/u0)
         else:
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
-
-        if flag == 'secondary':
-            # Note
-            # Here only computes secondary field.
-            # I am not sure why it does not work if we add primary term.
-            # This term can be analytically evaluated, where h = 0.
             kernel = 1/(4*np.pi)*(rTE*np.exp(-u0*(z+h)))*lamda**3/u0
+            if output_type == 'sensitivity_height':
+                kernel *= -2*u0
 
-        else:
-            kernel = (
-                1./(4*np.pi) *
-                (np.exp(u0*(z-h))+rTE * np.exp(-u0*(z+h)))*lamda**3/u0
-            )
+        return kernel
 
-        if self.jacSwitch:
-            jackernel = 1/(4*np.pi)*(drTE)*(np.exp(-u0*(z+h))*lamda**3/u0)
-            Kernel = []
-            Kernel.append(kernel)
-            Kernel.append(jackernel)
-        else:
-            Kernel = kernel
-        return Kernel
+        # Note
+        # Here only computes secondary field.
+        # I am not sure why it does not work if we add primary term.
+        # This term can be analytically evaluated, where h = 0.
+        #     kernel = (
+        #         1./(4*np.pi) *
+        #         (np.exp(u0*(z-h))+rTE * np.exp(-u0*(z+h)))*lamda**3/u0
+        #     )
 
     def HzkernelCirc_layer(
-        self, lamda, f, n_layer, sig, chi, depth, h, z, I, a, flag
+        self, lamda, f, n_layer, sig, chi, depth, h, z, I, a,
+        flag,  output_type='response'
     ):
 
         """
@@ -150,34 +150,47 @@ class EM1D(Problem.BaseProblem):
         w = 2*np.pi*f
         rTE = np.empty(lamda.size, dtype=complex)
         u0 = lamda
-        if self.jacSwitch:
+        if output_type == 'sensitivity_sigma':
             drTE = np.empty((n_layer, lamda.size), dtype=complex)
-            rTE, drTE = rTEfunjac(
+            drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
+            kernel = I*a*0.5*(drTE)*(np.exp(-u0*(z+h))*lamda**2/u0)
         else:
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
 
-        if flag == 'secondary':
-            kernel = I*a*0.5*(rTE*np.exp(-u0*(z+h)))*lamda**2/u0
-        else:
-            kernel = I*a*0.5*(
-                np.exp(u0*(z-h))+rTE*np.exp(-u0*(z+h))
-            )*lamda**2/u0
+            if flag == 'secondary':
+                kernel = I*a*0.5*(rTE*np.exp(-u0*(z+h)))*lamda**2/u0
+            else:
+                kernel = I*a*0.5*(
+                    np.exp(u0*(z-h))+rTE*np.exp(-u0*(z+h))
+                )*lamda**2/u0
 
-        if self.jacSwitch:
-            jackernel = I*a*0.5*(drTE)*(np.exp(-u0*(z+h))*lamda**2/u0)
-            Kernel = []
-            Kernel.append(kernel)
-            Kernel.append(jackernel)
-        else:
-            Kernel = kernel
+            if output_type == 'sensitivity_height':
+                kernel *= -2*u0
 
-        return Kernel
+        return kernel
 
     def sigma_cole(self, f):
+        """
+            Computes Pelton's Cole-Cole conductivity model
+            in frequency domain.
+
+            Parameter
+            ---------
+
+            f: ndarray
+                frequency (Hz)
+
+            Return
+            ------
+
+            sigma_complex: ndarray
+                Cole-Cole conductivity values at given frequencies.
+
+        """
         w = 2*np.pi*f
         sigma_complex = (
             self.sigma -
@@ -185,13 +198,10 @@ class EM1D(Problem.BaseProblem):
         )
         return sigma_complex
 
-    def fields(self, m):
+    def forward(self, m, output_type='response'):
         """
-                Return Bz or dBzdt
-
+            Return Bz or dBzdt
         """
-        if self.verbose:
-            print ('>> Compute fields')
 
         f = self.survey.frequency
         n_frequency = self.survey.n_frequency
@@ -203,45 +213,24 @@ class EM1D(Problem.BaseProblem):
         n_layer = self.survey.n_layer
         depth = self.survey.depth
         nfilt = self.YBASE.size
-        h = self.survey.h
-        z = self.survey.z
+
+        # h is an inversion parameter
+        if self.hMap is not None:
+            h = self.h
+        else:
+            h = self.survey.h
+        z = h + self.survey.dz
         HzFHT = np.empty(n_frequency, dtype=complex)
         chi = self.chi
+
         if np.isscalar(self.chi):
             chi = np.ones_like(self.sigma) * self.chi
-        # for inversion
-        if self.jacSwitch:
-            dHzFHTdsig = np.empty((n_layer, n_frequency), dtype=complex)
-            hz = np.empty(nfilt, complex)
-            dhz = np.empty((nfilt, n_layer), complex)
-            if self.survey.src_type == 'VMD':
-                r = self.survey.offset
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    hz, dhz = self.HzKernel_layer(
-                        self.YBASE/r[ifreq], f[ifreq], n_layer,
-                        sig, chi, depth, h, z, flag
-                    )
-                    HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
-                    dHzFHTdsig[:, ifreq] = np.dot(dhz, self.WT0)/r[ifreq]
-            elif self.survey.src_type == 'CircularLoop':
-                I = self.survey.I
-                a = self.survey.a
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    hz, dhz = self.HzkernelCirc_layer(
-                        self.YBASE/a, f[ifreq], n_layer,
-                        sig, chi, depth, h, z, I, a, flag
-                    )
-                    HzFHT[ifreq] = np.dot(hz, self.WT1)/a
-                    dHzFHTdsig[:, ifreq] = np.dot(dhz, self.WT1)/a
-            else:
-                raise Exception("Src options are only VMD or CircularLoop!!")
 
-            return HzFHT, dHzFHTdsig.T
+        if output_type == 'response':
+            if self.verbose:
+                print ('>> Compute response')
 
         # for simulation
-        else:
             hz = np.empty(nfilt, complex)
             if self.survey.src_type == 'VMD':
                 r = self.survey.offset
@@ -249,7 +238,8 @@ class EM1D(Problem.BaseProblem):
                     sig = self.sigma_cole(f[ifreq])
                     hz = self.HzKernel_layer(
                         self.YBASE/r[ifreq], f[ifreq], n_layer,
-                        sig, chi, depth, h, z, flag
+                        sig, chi, depth, h, z,
+                        flag, output_type=output_type
                     )
                     HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
 
@@ -260,7 +250,8 @@ class EM1D(Problem.BaseProblem):
                     sig = self.sigma_cole(f[ifreq])
                     hz = self.HzkernelCirc_layer(
                         self.YBASE/a, f[ifreq], n_layer,
-                        sig, chi, depth, h, z, I, a, flag
+                        sig, chi, depth, h, z, I, a,
+                        flag, output_type=output_type
                     )
                     HzFHT[ifreq] = np.dot(hz, self.WT1)/a
             else:
@@ -268,20 +259,119 @@ class EM1D(Problem.BaseProblem):
 
             return HzFHT
 
+        elif output_type == 'sensitivity_sigma':
+
+            dHzFHT_dsig = np.empty((n_frequency, n_layer), dtype=complex)
+            dhz = np.empty((nfilt, n_layer), complex)
+            if self.survey.src_type == 'VMD':
+                r = self.survey.offset
+                for ifreq in range(n_frequency):
+                    sig = self.sigma_cole(f[ifreq])
+                    dhz = self.HzKernel_layer(
+                        self.YBASE/r[ifreq], f[ifreq], n_layer,
+                        sig, chi, depth, h, z,
+                        flag, output_type=output_type
+                    )
+                    dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT0)/r[ifreq]
+            elif self.survey.src_type == 'CircularLoop':
+                I = self.survey.I
+                a = self.survey.a
+                for ifreq in range(n_frequency):
+                    sig = self.sigma_cole(f[ifreq])
+                    dhz = self.HzkernelCirc_layer(
+                        self.YBASE/a, f[ifreq], n_layer,
+                        sig, chi, depth, h, z, I, a,
+                        flag, output_type=output_type
+                    )
+                    dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT1)/a
+            else:
+                raise Exception("Src options are only VMD or CircularLoop!!")
+
+            return dHzFHT_dsig
+
+        elif output_type == 'sensitivity_height':
+            dHzFHT_dh = np.empty((n_frequency, 1), dtype=complex)
+            dhz = np.empty(nfilt, complex)
+            if self.survey.src_type == 'VMD':
+                r = self.survey.offset
+                for ifreq in range(n_frequency):
+                    sig = self.sigma_cole(f[ifreq])
+                    dhz = self.HzKernel_layer(
+                        self.YBASE/r[ifreq], f[ifreq], n_layer,
+                        sig, chi, depth, h, z,
+                        flag, output_type=output_type
+                    )
+                    dHzFHT_dh[ifreq] = np.dot(dhz, self.WT0)/r[ifreq]
+
+            elif self.survey.src_type == 'CircularLoop':
+                I = self.survey.I
+                a = self.survey.a
+                for ifreq in range(n_frequency):
+                    sig = self.sigma_cole(f[ifreq])
+                    dhz = self.HzkernelCirc_layer(
+                        self.YBASE/a, f[ifreq], n_layer,
+                        sig, chi, depth, h, z, I, a,
+                        flag, output_type=output_type
+                    )
+                    dHzFHT_dh[ifreq] = np.dot(dhz, self.WT1)/a
+            else:
+                raise Exception("Src options are only VMD or CircularLoop!!")
+
+            return dHzFHT_dh
+
+    @profile
+    def fields(self, m):
+        f = self.forward(m, output_type='response')
+        self.survey._pred = Utils.mkvc(self.survey.projectFields(f))
+        return f
+
     def getJ_height(self, m, f=None):
         """
 
         """
-        pass
+        if self.hMap is None:
+            return Utils.Zero()
 
-    def getJ_sigma(self, m, f=None):
-        if self._Jmatrix_sigma is None:
+        if self._Jmatrix_height is not None:
+            return self._Jmatrix_height
+        else:
+
             if self.verbose:
-                print (">> Compute J")
-            if f is None:
-                f = self.fields(m)
+                print (">> Compute J height ")
 
-            u, dudsig = f[0], f[1]
+            dudz = self.forward(m, output_type="sensitivity_height")
+            # u, dudz = f[0], f[1]
+
+            if self.survey.switch_fd_td == 'FD':
+
+                self._Jmatrix_height = self.survey.projectFields(dudz)
+
+            elif self.survey.switch_fd_td == 'TD':
+                self._Jmatrix_height = self.survey.projectFields(dudz)
+                self._Jmatrix_height = np.reshape(
+                        self._Jmatrix_height, (-1, 1), order='F'
+                )
+            else:
+
+                raise Exception('Not implemented!!')
+
+            return self._Jmatrix_height
+
+    @profile
+    def getJ_sigma(self, m, f=None):
+
+        if self.sigmaMap is None:
+            return Utils.Zero()
+
+        if self._Jmatrix_sigma is not None:
+            return self._Jmatrix_sigma
+        else:
+
+            if self.verbose:
+                print (">> Compute J sigma")
+
+            dudsig = self.forward(m, output_type="sensitivity_sigma")
+            # u, dudsig = f[0], f[1]
 
             if self.survey.switch_fd_td == 'FD':
 
@@ -303,23 +393,42 @@ class EM1D(Problem.BaseProblem):
 
                 raise Exception('Not implemented!!')
 
-        return self._Jmatrix_sigma
+            return self._Jmatrix_sigma
+
+    def getJ(self, m, f=None):
+        return (
+            self.getJ_sigma(m, f=f) * self.sigmaDeriv +
+            self.getJ_height(m, f=f) * self.hDeriv
+        )
 
     def Jvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
         """
-        J_sigma = self.getJ_sigma(m, f=f)
-        Jv = np.dot(J_sigma, self.sigmaMap.deriv(m, v))
 
+        J_sigma = self.getJ_sigma(m, f=f)
+        J_height = self.getJ_height(m, f=f)
+
+        if self.hMap is None:
+            Jv = np.dot(J_sigma, self.sigmaMap.deriv(m, v))
+        else:
+            Jv = np.dot(J_sigma, self.sigmaMap.deriv(m, v))
+            Jv += np.dot(J_height, self.hMap.deriv(m, v))
         return Jv
 
     def Jtvec(self, m, v, f=None):
         """
             Computing Jacobian^T multiplied by vector.
         """
+
         J_sigma = self.getJ_sigma(m, f=f)
-        Jtv = self.sigmaMap.deriv(m, np.dot(J_sigma.T, v))
+        J_height = self.getJ_height(m, f=f)
+
+        if self.hMap is None:
+            Jtv = self.sigmaMap.deriv(m, np.dot(J_sigma.T, v))
+        else:
+            Jtv = self.sigmaDeriv.T*np.dot(J_sigma.T, v)
+            Jtv += self.hDeriv.T*np.dot(J_height.T, v)
         return Jtv
 
     @property
@@ -328,7 +437,28 @@ class EM1D(Problem.BaseProblem):
         if self.fix_Jmatrix is False:
             if self._Jmatrix_sigma is not None:
                 toDelete += ['_Jmatrix_sigma']
+            if self._Jmatrix_height is not None:
+                toDelete += ['_Jmatrix_height']
         return toDelete
+
+    def depth_of_investigation(self, uncert, thres_hold=0.8):
+        thres_hold = 0.8
+        J = self.getJ(self.model)
+        S = np.cumsum(abs(np.dot(J.T, 1./uncert))[::-1])[::-1]
+        active = S-0.8 > 0.
+        doi = abs(self.survey.depth[active]).max()
+        return doi, active
+
+    def get_threshold(self, uncert):
+        _, active = self.depth_of_investigation(uncert)
+        JtJdiag = self.get_JtJdiag(uncert)
+        delta = JtJdiag[active].min()
+        return delta
+
+    def get_JtJdiag(self, uncert):
+        J = self.getJ(self.model)
+        JtJdiag = ((Utils.sdiag(1./uncert)*J)**2).sum(axis=0)
+        return JtJdiag
 
 if __name__ == '__main__':
     main()

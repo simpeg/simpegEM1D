@@ -3,6 +3,7 @@ from SimPEG import *
 import matplotlib.pyplot as plt
 from simpegem1d import EM1D, EM1DAnalytics, EM1DSurveyFD
 import numpy as np
+from scipy.constants import mu_0
 
 
 class EM1D_FD_FwdProblemTests(unittest.TestCase):
@@ -57,7 +58,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob.survey.offset = np.ones(self.prob.survey.n_frequency) * 10.
         sig_half = 0.01
         m_1D = np.log(np.ones(self.prob.survey.n_layer)*sig_half)
-        Hz = self.prob.fields(m_1D)
+        Hz = self.prob.forward(m_1D)
         Hzanal = EM1DAnalytics.Hzanal(
             sig_half, self.prob.survey.frequency,
             self.prob.survey.offset, 'secondary'
@@ -95,7 +96,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob.survey.src_type = 'VMD'
         sig_half = 0.01
         m_1D = np.ones(self.prob.survey.n_layer)*sig_half
-        Hz = self.prob.fields(m_1D)
+        Hz = self.prob.forward(m_1D)
         sigCole = EM1DAnalytics.ColeCole(
             self.survey.frequency, sig_half,
             self.eta, self.tau, self.c
@@ -125,7 +126,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob.survey.a = a
         sig_half = 0.01
         m_1D = np.log(np.ones(self.prob.survey.n_layer)*sig_half)
-        Hz = self.prob.fields(m_1D)
+        Hz = self.prob.forward(m_1D)
         Hzanal = EM1DAnalytics.HzanalCirc(
             sig_half, self.prob.survey.frequency,
             I, a, 'secondary'
@@ -169,7 +170,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
         sig_half = 0.01
         m_1D = np.ones(self.prob.survey.n_layer)*sig_half
-        Hz = self.prob.fields(m_1D)
+        Hz = self.prob.forward(m_1D)
         sigCole = EM1DAnalytics.ColeCole(
             self.survey.frequency, sig_half, self.eta, self.tau, self.c
         )
@@ -217,7 +218,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob.survey.offset = 10. * np.ones(self.survey.n_frequency)
 
         m_1D = np.log(sig)
-        Hz = self.prob.fields(m_1D)
+        Hz = self.prob.forward(m_1D)
         from scipy import io
         mat = io.loadmat('em1dfm/VMD_3lay.mat')
         freq = mat['data'][:, 0]
@@ -239,7 +240,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.prob.chi = chi
 
         m_1D = np.log(sig)
-        Hz = self.prob.fields(m_1D)
+        Hz = self.prob.forward(m_1D)
 
         # 2. Verification for variable susceptibility
         mat = io.loadmat('em1dfm/VMD_3lay_chi.mat')

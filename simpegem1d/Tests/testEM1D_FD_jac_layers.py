@@ -59,8 +59,10 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         sig[3] = sig_blk
         m_1D = np.log(sig)
 
-        self.prob.jacSwitch = True
-        Hz, dHzdsig = self.prob.fields(m_1D)
+        Hz = self.prob.forward(m_1D, output_type='response')
+        dHzdsig = self.prob.forward(
+            m_1D, output_type='sensitivity_sigma'
+        )
 
         def fwdfun(m):
             self.prob.jacSwitch = False
@@ -70,8 +72,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
 
         def jacfun(m, dm):
             self.prob.jacSwitch = True
-            f = self.prob.fields(m)
-            Jvec = self.prob.Jvec(m, dm, f=f)
+            Jvec = self.prob.Jvec(m, dm)
             return Jvec
 
         dm = m_1D*0.5
@@ -109,21 +110,18 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         sig[3] = sig_blk
         m_true = np.log(sig)
 
-        self.prob.jacSwitch = False
-        Hz_true = self.prob.fields(m_true)
-        dobs = self.prob.survey.projectFields(u=Hz_true)
+        dobs = self.prob.survey.dpred(m_true)
 
-        m_ini = np.log(np.ones(self.prob.survey.n_layer)*sig_half)
-        Hz_ini = self.prob.fields(m_ini)
-        resp_ini = self.prob.survey.projectFields(u=Hz_ini)
+        m_ini = np.log(
+            np.ones(self.prob.survey.n_layer)*sig_half
+        )
+        resp_ini = self.prob.survey.dpred(m_ini)
         dr = resp_ini-dobs
 
         def misfit(m, dobs):
-            self.prob.jacSwitch = True
-            f = self.prob.fields(m)
-            dpred = self.survey.dpred(m, f=f)
+            dpred = self.survey.dpred(m)
             misfit = 0.5*np.linalg.norm(dpred-dobs)**2
-            dmisfit = self.prob.Jtvec(m, dr, f=f)
+            dmisfit = self.prob.Jtvec(m, dr)
             return misfit, dmisfit
 
         derChk = lambda m: misfit(m, dobs)

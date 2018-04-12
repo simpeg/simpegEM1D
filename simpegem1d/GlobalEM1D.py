@@ -108,6 +108,11 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             self._Sigma = self.sigma.reshape((self.n_sounding, self.n_layer))
         return self._Sigma
 
+    def fields(self, m):
+        print ("Compute fields")
+        self.survey._pred = self.forward(m)
+        return []
+
     def Jvec(self, m, v, f=None):
         J = self.getJ(m)
         if self.parallel:
@@ -129,7 +134,9 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     def Jtvec(self, m, v, f=None):
         J = self.getJ(m)
         if self.parallel:
-            V = v.reshape((self.n_sounding, int(self.survey.nD/self.n_sounding)))
+            V = v.reshape(
+                (self.n_sounding, int(self.survey.nD/self.n_sounding))
+            )
             pool = Pool(self.n_cpu)
 
             Jtv = np.hstack(
@@ -144,9 +151,6 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         else:
 
             return J.T*v
-
-    def fields(m, f=None):
-        return None
 
     @property
     def deleteTheseOnModelUpdate(self):
@@ -182,8 +186,11 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
         )
         return output
 
-    def forward(self, m, f=None):
+    def forward(self, m):
         self.model = m
+
+        if self.verbose:
+            print (">> Compute response")
 
         if self.parallel:
             pool = Pool(self.n_cpu)
@@ -337,11 +344,19 @@ class GlobalEM1DSurvey(properties.HasProperties):
         "Topography", dtype=float, shape=('*', 3)
     )
 
-    def dpred(self, m=None, f=None):
+    _pred = None
+
+    @Utils.requires('prob')
+    def dpred(self, m, f=None):
         """
-            Compute predicted data with a given model, m
+            Return predicted data.
+            Predicted data, (`_pred`) are computed when
+            self.prob.fields is called.
         """
-        return self.prob.forward(m)
+        if f is None:
+            f = self.prob.fields(m)
+
+        return self._pred
 
     @property
     def n_rx(self):

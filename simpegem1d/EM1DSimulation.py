@@ -62,10 +62,10 @@ def run_simulation_FD(args):
         rx_type:
         src_type:
         sigma:
-        jacSwitch :
+        jac_switch :
     """
 
-    rx_location, src_location, topo, hz, offset, frequency, field_type, rx_type, src_type, sigma, jacSwitch = args
+    rx_location, src_location, topo, hz, offset, frequency, field_type, rx_type, src_type, sigma, jac_switch = args
     mesh_1d = set_mesh_1d(hz)
     depth = -mesh_1d.gridN[:-1]
     FDsurvey = EM1DSurveyFD(
@@ -83,17 +83,15 @@ def run_simulation_FD(args):
     # This is hard-wired at the moment
     expmap = Maps.ExpMap(mesh_1d)
     prob = EM1D(
-        mesh_1d, sigmaMap=expmap, filter_type='key_101',
-        jacSwitch=jacSwitch
+        mesh_1d, sigmaMap=expmap, filter_type='key_101'
     )
     if prob.ispaired:
         prob.unpair()
     if FDsurvey.ispaired:
         FDsurvey.unpair()
     prob.pair(FDsurvey)
-    if jacSwitch:
-        u, dudsig = prob.fields(np.log(sigma))
-        drespdsig = FDsurvey.projectFields(dudsig)
+    if jac_switch:
+        drespdsig = prob.getJ_sigma(np.log(sigma))
         return drespdsig * prob.sigmaDeriv
     else:
         resp = FDsurvey.dpred(np.log(sigma))
@@ -120,10 +118,10 @@ def run_simulation_TD(args):
         n_pulse:
         base_frequency:
         sigma:
-        jacSwitch:
+        jac_switch:
     """
 
-    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, sigma, jacSwitch = args
+    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, sigma, jac_switch = args
 
     mesh_1d = set_mesh_1d(hz)
     depth = -mesh_1d.gridN[:-1]
@@ -150,17 +148,15 @@ def run_simulation_TD(args):
     # This is hard-wired at the moment
     expmap = Maps.ExpMap(mesh_1d)
     prob = EM1D(
-        mesh_1d, sigmaMap=expmap, filter_type='key_101',
-        jacSwitch=jacSwitch
+        mesh_1d, sigmaMap=expmap, filter_type='key_101'
     )
     if prob.ispaired:
         prob.unpair()
     if TDsurvey.ispaired:
         TDsurvey.unpair()
     prob.pair(TDsurvey)
-    if jacSwitch:
-        u, dudsig = prob.fields(np.log(sigma))
-        drespdsig = TDsurvey.projectFields(dudsig)
+    if jac_switch:
+        drespdsig = prob.getJ_sigma(np.log(sigma))
         return drespdsig * prob.sigmaDeriv
     else:
         resp = TDsurvey.dpred(np.log(sigma))

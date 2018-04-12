@@ -8,7 +8,7 @@ def get_2d_mesh(n_sounding, hz):
     """
         Generate 2D mesh for regularization
 
-        xy:
+        hx:
         hz:
 
     """
@@ -60,12 +60,12 @@ class LateralConstraint(Sparse):
         # Kron vertically for nCz
         Grad = sp.sparse.kron(D, Utils.speye(hz.size))
         Avg = sp.sparse.kron(A, Utils.speye(hz.size))
-        
-        # Override the gradient operator in y-drection 
+
+        # Override the gradient operator in y-drection
         # This is because of ordering ... See def get_2d_mesh
         # y first then x
         self.regmesh._cellDiffyStencil = self.regmesh.cellDiffxStencil.copy()
-        # Override the gradient operator in x-drection 
+        # Override the gradient operator in x-drection
         self.regmesh._cellDiffxStencil = Grad
         # Do the same for the averaging operator
         self.regmesh._aveCC2Fy = self.regmesh.aveCC2Fx.copy()

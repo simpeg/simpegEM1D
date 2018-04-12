@@ -49,7 +49,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         chi = np.zeros(TDsurvey.n_layer)
 
         prob = EM1D(
-            mesh1D, sigmaMap=expmap, jacSwitch=False, chi=chi
+            mesh1D, sigmaMap=expmap, chi=chi
         )
         prob.pair(TDsurvey)
 
@@ -63,7 +63,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.expmap = expmap
 
     def test_em1dtd_circular_loop_single_pulse(self):
-        f = self.prob.fields(self.m_1D)
+        f = self.prob.forward(self.m_1D)
         BzTD = self.prob.survey.projectFields(f)
 
         def step_func_Bzdt(time):

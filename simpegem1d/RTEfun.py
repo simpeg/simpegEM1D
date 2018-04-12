@@ -2,7 +2,7 @@ import numpy as np
 from scipy.constants import mu_0
 from profilehooks import profile
 
-# @profile
+
 def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.
@@ -181,7 +181,6 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     dJ01 = []
     dJ11 = []
 
-
     M00.append(Mtemp00)
     M01.append(Mtemp01)
     M10.append(Mtemp10)
@@ -300,7 +299,7 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
             M10.append(Mtemp10)
             M11.append(Mtemp11)
 
-    rTE = M1sum01/M1sum11
+    # rTE = M1sum01/M1sum11
 
     if HalfSwitch ==  True:
 
@@ -437,5 +436,6 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
 
             drTE[i, :] = dJ1sum01/M1sum11 - M1sum01/(M1sum11**2)*dJ1sum11
 
-    return rTE, drTE
+    return drTE
+    # return rTE, drTE
 

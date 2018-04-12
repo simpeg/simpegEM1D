@@ -67,16 +67,23 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
     @property
     def h(self):
         """
-            Srource height
+            Source height
         """
         return self.src_location[2]-self.topo[2]
 
     @property
     def z(self):
         """
-            Srource height
+            Receiver height
         """
         return self.rx_location[2]-self.topo[2]
+
+    @property
+    def dz(self):
+        """
+            Source height - Rx height
+        """
+        return self.z - self.h
 
     @property
     def n_layer(self):
@@ -99,14 +106,10 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
     @Utils.requires('prob')
     def dpred(self, m, f=None):
         """
-
+            Computes predicted data
         """
         if f is None:
             f = self.prob.fields(m)
-        if self.prob.jacSwitch:
-            f = f[0]
-        else:
-            f = f
         return Utils.mkvc(self.projectFields(f))
 
 
@@ -225,6 +228,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         "High cut frequency for low pass filter (Hz)", default=1e5
     )
 
+    _pred = None
+
     def __init__(self, **kwargs):
         BaseEM1DSurvey.__init__(self, **kwargs)
         if self.time is None:
@@ -298,8 +303,12 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             raise Exception("wave_type must be either general or stepoff")
 
         if self.use_lowpass_filter:
-            filter_frequency, values = butter_lowpass_filter(self.high_cut_frequency)
-            lowpass_func = interp1d(filter_frequency, values, fill_value='extrapolate')
+            filter_frequency, values = butter_lowpass_filter(
+                self.high_cut_frequency
+            )
+            lowpass_func = interp1d(
+                filter_frequency, values, fill_value='extrapolate'
+            )
             self._low_pass_filter_values = lowpass_func(frequency)
 
         self.frequency = frequency
@@ -314,19 +323,18 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         if self.use_lowpass_filter:
             factor = self._low_pass_filter_values.copy()
+        else:
+            factor = np.ones_like(self.frequency, dtype=complex)
 
         if self.rx_type == 'Bz':
             factor *= 1./(2j*np.pi*self.frequency)
-        elif self.rx_type == 'dBzdt':
-            factor *= 1.
-        else:
-            raise Exception("rx_type for TD must be either Bz or dBzdt")
+
         if self.wave_type == 'stepoff':
             # Compute EM responses
             if u.size == self.n_frequency:
                 resp = np.empty(self.n_time, dtype=float)
                 resp, _ = ffht(
-                    u*factor, self.time,
+                    u.flatten()*factor, self.time,
                     self.frequency, self.ftarg
                 )
             # Compute EM sensitivities
@@ -350,7 +358,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                 resp = np.empty(self.n_time, dtype=float)
                 resp_int = np.empty(self.time_int.size, dtype=float)
                 resp_int, _ = ffht(
-                    u*factor, self.time_int,
+                    u.flatten()*factor, self.time_int,
                     self.frequency, self.ftarg
                 )
                 step_func = interp1d(
@@ -387,6 +395,17 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         return resp * (-2/np.pi) * mu_0
 
+    @Utils.requires('prob')
+    def dpred(self, m, f=None):
+        """
+            Return predicted data.
+            Predicted data, (`_pred`) are computed when
+            self.prob.fields is called.
+        """
+        if f is None:
+            f = self.prob.fields(m)
+
+        return self._pred
 
     ### Dummy codes for older version
     ### This can be used in later use for handling on-time data.
