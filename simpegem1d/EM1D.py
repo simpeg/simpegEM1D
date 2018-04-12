@@ -6,7 +6,7 @@ from .DigFilter import EvalDigitalFilt, LoadWeights
 from .RTEfun import rTEfunfwd, rTEfunjac
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 from empymod import filters
-from profilehooks import profile
+# from profilehooks import profile
 
 
 class EM1D(Problem.BaseProblem):
@@ -319,7 +319,7 @@ class EM1D(Problem.BaseProblem):
 
             return dHzFHT_dh
 
-    @profile
+    # @profile
     def fields(self, m):
         f = self.forward(m, output_type='response')
         self.survey._pred = Utils.mkvc(self.survey.projectFields(f))
@@ -347,7 +347,7 @@ class EM1D(Problem.BaseProblem):
 
             return self._Jmatrix_height
 
-    @profile
+    # @profile
     def getJ_sigma(self, m, f=None):
 
         if self.sigmaMap is None:

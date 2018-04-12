@@ -310,7 +310,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     def pulse_period_dual_moment(self):
         Tp = (
             self.time_input_currents_dual_moment.max() -
-            self.time_input_currents._dual_moment.min()
+            self.time_input_currents_dual_moment.min()
         )
         return Tp
 
