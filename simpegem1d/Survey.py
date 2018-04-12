@@ -24,12 +24,6 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
 
     frequency = properties.Array("Frequency (Hz)", dtype=float)
 
-    switch_fd_td = properties.StringChoice(
-        "Switch for time-domain or frequency-domain",
-        default="FD",
-        choices=["FD", "TD"]
-    )
-
     rx_location = properties.Array("Receiver location (x, y, z)", dtype=float)
     src_location = properties.Array("Source location (x, y, z)", dtype=float)
     rx_type = properties.StringChoice(
@@ -106,8 +100,11 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
     @Utils.requires('prob')
     def dpred(self, m, f=None):
         """
-            Computes predicted data
+            Computes predicted data.
+            Here we do not store predicted data
+            because projection (`d = P(f)`) is cheap.
         """
+
         if f is None:
             f = self.prob.fields(m)
         return Utils.mkvc(self.projectFields(f))
@@ -184,24 +181,16 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         "Time channels (s) at current off-time", dtype=float
     )
 
-    time_int = properties.Array(
-        "Time channels (s) for interpolation", dtype=float
-    )
-
-    switch_fd_td = properties.StringChoice(
-        "Switch for time-domain or frequency-domain",
-        default="TD",
-        choices=["FD", "TD"]
-    )
-
     wave_type = properties.StringChoice(
         "Source location",
         default="stepoff",
         choices=["stepoff", "general"]
     )
 
-    pulse_period = properties.Float(
-        "Pulse period (s)"
+    moment_type = properties.StringChoice(
+        "Source moment type",
+        default="single",
+        choices=["single", "dual"]
     )
 
     n_pulse = properties.Integer(
@@ -228,13 +217,33 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         "High cut frequency for low pass filter (Hz)", default=1e5
     )
 
+    # Predicted data
     _pred = None
+
+    # ------------- For dual moment ------------- #
+
+    time_dual_moment = properties.Array(
+        "Off-time channels (s) for the dual moment", dtype=float
+    )
+
+    time_input_currents_dual_moment = properties.Array(
+        "Time for input currents (dual moment)", dtype=float
+    )
+
+    input_currents_dual_moment = properties.Array(
+        "Input currents (dual moment)", dtype=float
+    )
+
+    base_frequency_dual_moment = properties.Float(
+        "Base frequency for the dual moment (Hz)"
+    )
 
     def __init__(self, **kwargs):
         BaseEM1DSurvey.__init__(self, **kwargs)
         if self.time is None:
             raise Exception("time is required!")
 
+        # Use Sin filter for frequency to time transform
         self.fftfilt = filters.key_81_CosSin_2009()
         self.set_frequency()
 
@@ -245,7 +254,33 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             if self.offset.size == 1:
                 self.offset = self.offset * np.ones(self.n_frequency)
 
-        # Use Sin filter
+    @property
+    def time_int(self):
+        """
+        Time channels (s) for interpolation"
+        """
+        if getattr(self, '_time_int', None) is None:
+
+            if self.moment_type == "single":
+                time = self.time
+
+            # Dual moment
+            else:
+                time = np.unique(np.r_[self.time, self.time_dual_moment])
+
+            tmin = time.min()
+            if self.n_pulse == 1:
+                tmax = time.max() + self.pulse_period
+            elif self.n_pulse == 2:
+                tmax = time.max() + self.pulse_period + self.period/2.
+            else:
+                raise NotImplementedError("n_pulse must be either 1 or 2")
+            n_time = int((np.log10(tmax)-np.log10(tmin))*10+1)
+            self._time_int = np.logspace(
+                np.log10(tmin), np.log10(tmax), n_time
+            )
+
+        return self._time_int
 
     @property
     def n_time(self):
@@ -256,40 +291,60 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         return 1./self.base_frequency
 
     @property
+    def pulse_period(self):
+        Tp = (
+            self.time_input_currents.max()-self.time_input_currents.min()
+        )
+        return Tp
+
+    # ------------- For dual moment ------------- #
+    @property
+    def n_time_dual_moment(self):
+        return int(self.time_dual_moment.size)
+
+    @property
+    def period_dual_moment(self):
+        return 1./self.base_frequency_dual_moment
+
+    @property
+    def pulse_period_dual_moment(self):
+        Tp = (
+            self.time_input_currents_dual_moment.max() -
+            self.time_input_currents._dual_moment.min()
+        )
+        return Tp
+
+    @property
     def nD(self):
         """
             # of data
         """
-
-        return self.n_time
+        if self.moment_type == "single":
+            return self.n_time
+        else:
+            return self.n_time + self.n_time_dual_moment
 
     @property
-    def low_pass_filter_values(self):
+    def lowpass_filter(self):
         """
             Low pass filter values
         """
+        if getattr(self, '_lowpass_filter', None) is None:
+            filter_frequency, values = butter_lowpass_filter(
+                self.high_cut_frequency
+            )
+            lowpass_func = interp1d(
+                filter_frequency, values, fill_value='extrapolate'
+            )
+            self._lowpass_filter = lowpass_func(self.frequency)
 
-        return self._low_pass_filter_values
+        return self._lowpass_filter
 
     def set_frequency(self):
         """
         Compute Frequency reqired for frequency to time transform
         """
         if self.wave_type == "general":
-            self.pulse_period = (
-                self.time_input_currents.max()-self.time_input_currents.min()
-            )
-            tmin = self.time.min()
-
-            if self.n_pulse == 1:
-                tmax = self.time.max() + self.pulse_period
-            elif self.n_pulse == 2:
-                tmax = self.time.max() + self.pulse_period + self.period/2.
-            else:
-                raise NotImplementedError("n_pulse must be either 1 or 2")
-            n_time = int((np.log10(tmax)-np.log10(tmin))*10+1)
-            self.time_int = np.logspace(np.log10(tmin), np.log10(tmax), n_time)
-
             _, frequency, ft, ftarg = check_time(
                 self.time_int, 0, 'sin',
                 {'pts_per_dec': 5, 'fftfilt': self.fftfilt}, 0
@@ -302,15 +357,6 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         else:
             raise Exception("wave_type must be either general or stepoff")
 
-        if self.use_lowpass_filter:
-            filter_frequency, values = butter_lowpass_filter(
-                self.high_cut_frequency
-            )
-            lowpass_func = interp1d(
-                filter_frequency, values, fill_value='extrapolate'
-            )
-            self._low_pass_filter_values = lowpass_func(frequency)
-
         self.frequency = frequency
         self.ftarg = ftarg
 
@@ -322,7 +368,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         # Src waveform: Step-off
 
         if self.use_lowpass_filter:
-            factor = self._low_pass_filter_values.copy()
+            factor = self.lowpass_filter.copy()
         else:
             factor = np.ones_like(self.frequency, dtype=complex)
 
@@ -370,13 +416,43 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     self.period, n_pulse=self.n_pulse
                 )
 
+                # Compute response for the dual moment
+                if self.moment_type == "dual":
+                    resp_dual_moment = np.empty(
+                        self.n_time_dual_moment, dtype=float
+                    )
+                    resp_dual_moment = piecewise_pulse(
+                        step_func, self.time_dual_moment,
+                        self.time_input_currents_dual_moment,
+                        self.input_currents_dual_moment,
+                        self.period_dual_moment,
+                        n_pulse=self.n_pulse
+                    )
+                    # concatenate dual moment response
+                    # so, ordering is the first moment data
+                    # then the second moment data.
+                    resp = np.r_[resp, resp_dual_moment]
+
             # Compute EM sensitivities
             else:
-                resp = np.zeros(
-                    (self.n_time, self.n_layer), dtype=float, order='F'
-                )
+
+                if self.moment_type == "single":
+                    resp = np.zeros(
+                        (self.n_time, self.n_layer), dtype=float, order='F'
+                    )
+                    resp_i = np.empty(self.time.size, dtype=float)
+                else:
+                    # For dual moment
+                    resp = np.zeros(
+                        (self.n_time+self.n_time_dual_moment, self.n_layer),
+                        dtype=float, order='F'
+                    )
+                    resp_i = np.empty(self.n_time, dtype=float)
+                    resp_dual_moment_i = np.empty(
+                        self.time_dual_moment.size, dtype=float
+                    )
+
                 resp_int_i = np.empty(self.time_int.size, dtype=float)
-                resp_i = np.empty(self.time.size, dtype=float)
 
                 for i in range(self.n_layer):
                     resp_int_i, _ = ffht(
@@ -391,24 +467,37 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         self.time_input_currents, self.input_currents,
                         self.period, n_pulse=self.n_pulse
                     )
-                    resp[:, i] = resp_i
+
+                    if self.moment_type == "single":
+                        resp[:, i] = resp_i
+                    else:
+                        resp_dual_moment_i = piecewise_pulse(
+                            step_func,
+                            self.time_dual_moment,
+                            self.time_input_currents_dual_moment,
+                            self.input_currents_dual_moment,
+                            self.period_dual_moment,
+                            n_pulse=self.n_pulse
+                        )
+                        resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
 
         return resp * (-2/np.pi) * mu_0
 
     @Utils.requires('prob')
     def dpred(self, m, f=None):
         """
-            Return predicted data.
-            Predicted data, (`_pred`) are computed when
-            self.prob.fields is called.
+            Computes predicted data.
+            Predicted data (`_pred`) are computed and stored
+            when self.prob.fields(m) is called.
         """
         if f is None:
             f = self.prob.fields(m)
 
         return self._pred
 
-    ### Dummy codes for older version
-    ### This can be used in later use for handling on-time data.
+    # ------------ Dummy codes for older version ------------ #
+    # This can be used in later use for handling on-time data.
+    # ------------------------------------------------------- #
 
     # def setWaveform(self, **kwargs):
     #     """

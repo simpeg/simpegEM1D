@@ -11,8 +11,8 @@ from profilehooks import profile
 
 class EM1D(Problem.BaseProblem):
     """
-        Pseudo analytic solutions for frequency and time domain EM problems
-        assumingLayered earth (1D).
+    Pseudo analytic solutions for frequency and time domain EM problems
+    assumingLayered earth (1D).
     """
     surveyPair = BaseEM1DSurvey
     mapPair = Maps.IdentityMap
@@ -137,12 +137,12 @@ class EM1D(Problem.BaseProblem):
 
         """
 
-                Kernel for vertical magnetic component (Hz) at the center
-                due to circular loop source in (kx,ky) domain
+        Kernel for vertical magnetic component (Hz) at the center
+        due to circular loop source in (kx,ky) domain
 
-                .. math::
+        .. math::
 
-                    H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} + \\r_{TE}e^{u_0|z-h|}] \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
+            H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} + \\r_{TE}e^{u_0|z-h|}] \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
 
 
         """
@@ -175,20 +175,20 @@ class EM1D(Problem.BaseProblem):
 
     def sigma_cole(self, f):
         """
-            Computes Pelton's Cole-Cole conductivity model
-            in frequency domain.
+        Computes Pelton's Cole-Cole conductivity model
+        in frequency domain.
 
-            Parameter
-            ---------
+        Parameter
+        ---------
 
-            f: ndarray
-                frequency (Hz)
+        f: ndarray
+            frequency (Hz)
 
-            Return
-            ------
+        Return
+        ------
 
-            sigma_complex: ndarray
-                Cole-Cole conductivity values at given frequencies.
+        sigma_complex: ndarray
+            Cole-Cole conductivity values at given frequencies.
 
         """
         w = 2*np.pi*f
@@ -340,20 +340,10 @@ class EM1D(Problem.BaseProblem):
                 print (">> Compute J height ")
 
             dudz = self.forward(m, output_type="sensitivity_height")
-            # u, dudz = f[0], f[1]
 
-            if self.survey.switch_fd_td == 'FD':
-
-                self._Jmatrix_height = self.survey.projectFields(dudz)
-
-            elif self.survey.switch_fd_td == 'TD':
-                self._Jmatrix_height = self.survey.projectFields(dudz)
-                self._Jmatrix_height = np.reshape(
-                        self._Jmatrix_height, (-1, 1), order='F'
-                )
-            else:
-
-                raise Exception('Not implemented!!')
+            self._Jmatrix_height = (
+                self.survey.projectFields(dudz)
+            ).reshape([-1, 1])
 
             return self._Jmatrix_height
 
@@ -371,27 +361,8 @@ class EM1D(Problem.BaseProblem):
                 print (">> Compute J sigma")
 
             dudsig = self.forward(m, output_type="sensitivity_sigma")
-            # u, dudsig = f[0], f[1]
 
-            if self.survey.switch_fd_td == 'FD':
-
-                self._Jmatrix_sigma = self.survey.projectFields(dudsig)
-
-            elif self.survey.switch_fd_td == 'TD':
-                self._Jmatrix_sigma = self.survey.projectFields(dudsig)
-                if self._Jmatrix_sigma.size == self.survey.n_time:
-                    self._Jmatrix_sigma = np.reshape(
-                        self._Jmatrix_sigma, (-1, 1), order='F'
-                    )
-                else:
-                    self._Jmatrix_sigma = np.reshape(
-                        self._Jmatrix_sigma,
-                        (self.survey.n_time, self._Jmatrix_sigma.shape[1]),
-                        order='F'
-                    )
-            else:
-
-                raise Exception('Not implemented!!')
+            self._Jmatrix_sigma = self.survey.projectFields(dudsig)
 
             return self._Jmatrix_sigma
 
