@@ -322,3 +322,34 @@ def rotate_to_x_axis(xy, observation_point):
     # Hy: hx sin theta - hy cos theta
     # Hz: hz
     return xy_rot, xy_obs_rot, angle
+
+
+def get_geotem_wave(pulse_period, n_segment=3):
+    t = 0.
+    T = pulse_period
+    time_input_currents = np.r_[0., T/2., np.linspace(3*T/4., T, n_segment)]
+    input_currents = np.sin(np.pi/T*time_input_currents)
+    return time_input_currents, input_currents
+
+
+def get_nanotem_wave(ramp_off_time):
+    time_input_currents = np.r_[0, ramp_off_time]
+    input_currents = np.r_[1, 0.]
+    return time_input_currents, input_currents
+
+
+def get_flight_direction_from_fiducial(fiducial, lines, easting, northing):
+    lines_unique = np.unique(lines)
+    n_line = lines_unique.size
+    flight_direction = np.empty(fiducial.size, dtype=float)
+    i_start = 0
+    for i_line, line_unique in enumerate(lines_unique):
+        ind_line = lines == line_unique
+        x0, x1 = easting[ind_line][0], easting[ind_line][-1]
+        y0, y1 = northing[ind_line][0], northing[ind_line][-1]
+        dx = x1-x0
+        dy = y1-y0
+        n = ind_line.sum()
+        flight_direction[i_start:i_start+n] = np.arctan2(dy, dx)
+        i_start += n
+    return flight_direction
