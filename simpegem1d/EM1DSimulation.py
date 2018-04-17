@@ -121,7 +121,7 @@ def run_simulation_TD(args):
         jac_switch:
     """
 
-    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, sigma, jac_switch = args
+    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, use_lowpass_filter, high_cut_frequency, moment_type, time_dual_moment, time_input_currents_dual_moment, input_currents_dual_moment, base_frequency_dual_moment, sigma, jac_switch = args
 
     mesh_1d = set_mesh_1d(hz)
     depth = -mesh_1d.gridN[:-1]
@@ -141,7 +141,13 @@ def run_simulation_TD(args):
         time_input_currents=time_input_currents,
         input_currents=input_currents,
         n_pulse=n_pulse,
-        base_frequency=base_frequency
+        base_frequency=base_frequency,
+        high_cut_frequency=high_cut_frequency,
+        moment_type=moment_type,
+        time_dual_moment=time_dual_moment,
+        time_input_currents_dual_moment=time_input_currents_dual_moment,
+        input_currents_dual_moment=input_currents_dual_moment,
+        base_frequency_dual_moment=base_frequency_dual_moment
     )
 
     # Use Exponential Map

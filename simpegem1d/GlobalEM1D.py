@@ -9,7 +9,7 @@ else:
 
 import numpy as np
 import scipy.sparse as sp
-from SimPEG import Problem, Props, Utils, Maps
+from SimPEG import Problem, Props, Utils, Maps, Survey
 from .Survey import EM1DSurveyFD, EM1DSurveyTD
 from .EM1DSimulation import run_simulation_FD, run_simulation_TD
 import properties
@@ -34,8 +34,9 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     n_cpu = None
     hz = None
     parallel = False
+    parallel_jvec_jtvec = False
     verbose = False
-    fix_Jmatrix=False
+    fix_Jmatrix = False
 
     def __init__(self, mesh, **kwargs):
         Utils.setKwargs(self, **kwargs)
@@ -59,7 +60,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 
     @property
     def n_sounding(self):
-        return self.survey.n_rx
+        return self.survey.n_sounding
 
     @property
     def rx_locations(self):
@@ -68,6 +69,10 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     @property
     def src_locations(self):
         return self.survey.src_locations
+
+    @property
+    def data_index(self):
+        return self.survey.data_index
 
     @property
     def topo(self):
@@ -116,7 +121,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 
     def Jvec(self, m, v, f=None):
         J = self.getJ(m)
-        if self.parallel:
+        if self.parallel and self.parallel_jvec_jtvec:
             V = v.reshape((self.n_sounding, self.n_layer))
 
             pool = Pool(self.n_cpu)
@@ -134,16 +139,13 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 
     def Jtvec(self, m, v, f=None):
         J = self.getJ(m)
-        if self.parallel:
-            V = v.reshape(
-                (self.n_sounding, int(self.survey.nD/self.n_sounding))
-            )
+        if self.parallel and self.parallel_jvec_jtvec:
             pool = Pool(self.n_cpu)
 
             Jtv = np.hstack(
                 pool.map(
                     dot,
-                    [(J[i].T, V[i, :]) for i in range(self.n_sounding)]
+                    [(J[i].T, v[self.data_index[i]]) for i in range(self.n_sounding)]
                 )
             )
             pool.close()
@@ -229,7 +231,8 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
             )
             pool.close()
             pool.join()
-
+            if self.parallel_jvec_jtvec is False:
+                self._Jmatrix = sp.block_diag(self._Jmatrix).tocsr()
         else:
             # _Jmatrix is block diagnoal matrix (sparse)
             self._Jmatrix = sp.block_diag(
@@ -268,17 +271,60 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
     def time(self):
         return self.survey.time
 
+    @property
+    def use_lowpass_filter(self):
+        return self.survey.use_lowpass_filter
+
+    @property
+    def high_cut_frequency(self):
+        return self.survey.high_cut_frequency
+
+    @property
+    def moment_type(self):
+        return self.survey.moment_type
+
+    @property
+    def time_dual_moment(self):
+        return self.survey.time_dual_moment
+
+    @property
+    def time_input_currents_dual_moment(self):
+        return self.survey.time_input_currents_dual_moment
+
+    @property
+    def input_currents_dual_moment(self):
+        return self.survey.input_currents_dual_moment
+
+    @property
+    def base_frequency_dual_moment(self):
+        return self.survey.base_frequency_dual_moment
+
     def input_args(self, i_sounding, jacSwitch=False):
         output = (
             self.rx_locations[i_sounding, :],
             self.src_locations[i_sounding, :],
-            self.topo[i_sounding, :], self.hz,
-            self.time,
-            self.field_type, self.rx_type, self.src_type, self.wave_type,
-            self.offset, self.a,
-            self.time_input_currents, self.input_currents,
-            self.n_pulse, self.base_frequency,
-            self.Sigma[i_sounding, :], jacSwitch
+            self.topo[i_sounding, :],
+            self.hz,
+            self.time[i_sounding],
+            self.field_type[i_sounding],
+            self.rx_type[i_sounding],
+            self.src_type[i_sounding],
+            self.wave_type[i_sounding],
+            self.offset[i_sounding],
+            self.a[i_sounding],
+            self.time_input_currents[i_sounding],
+            self.input_currents[i_sounding],
+            self.n_pulse[i_sounding],
+            self.base_frequency[i_sounding],
+            self.use_lowpass_filter[i_sounding],
+            self.high_cut_frequency[i_sounding],
+            self.moment_type[i_sounding],
+            self.time_dual_moment[i_sounding],
+            self.time_input_currents_dual_moment[i_sounding],
+            self.input_currents_dual_moment[i_sounding],
+            self.base_frequency_dual_moment[i_sounding],
+            self.Sigma[i_sounding, :],
+            jacSwitch
         )
         return output
 
@@ -321,7 +367,8 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
             )
             pool.close()
             pool.join()
-
+            if self.parallel_jvec_jtvec is False:
+                self._Jmatrix = sp.block_diag(self._Jmatrix).tocsr()
         else:
             # _Jmatrix is block diagnoal matrix (sparse)
             self._Jmatrix = sp.block_diag(
@@ -332,7 +379,7 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
         return self._Jmatrix
 
 
-class GlobalEM1DSurvey(properties.HasProperties):
+class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
 
     # This assumes a multiple sounding locations
     rx_locations = properties.Array(
@@ -360,7 +407,7 @@ class GlobalEM1DSurvey(properties.HasProperties):
         return self._pred
 
     @property
-    def n_rx(self):
+    def n_sounding(self):
         """
             # of Receiver locations
         """
@@ -386,11 +433,11 @@ class GlobalEM1DSurveyFD(GlobalEM1DSurvey, EM1DSurveyFD):
     @property
     def nD(self):
         if self.switch_real_imag == "all":
-            return int(self.n_frequency * 2) * self.n_rx
+            return int(self.n_frequency * 2) * self.n_sounding
         elif (
             self.switch_real_imag == "imag" or self.switch_real_imag == "real"
         ):
-            return int(self.n_frequency) * self.n_rx
+            return int(self.n_frequency) * self.n_sounding
 
     def read_xyz_data(self, fname):
         """
@@ -400,10 +447,159 @@ class GlobalEM1DSurveyFD(GlobalEM1DSurvey, EM1DSurveyFD):
         pass
 
 
-class GlobalEM1DSurveyTD(GlobalEM1DSurvey, EM1DSurveyTD):
+class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
+
+    # --------------- Essential inputs ---------------- #
+    src_type = None
+
+    rx_type = None
+
+    field_type = None
+
+    time = []
+
+    wave_type = None
+
+    moment_type = None
+
+    time_input_currents = []
+
+    input_currents = []
+
+    # --------------- Selective inputs ---------------- #
+    n_pulse = properties.Array(
+        "The number of pulses",
+        default=None
+    )
+
+    base_frequency = properties.Array(
+        "Base frequency (Hz)",
+        dtype=float, default=None
+    )
+
+    offset = properties.Array(
+        "Src-Rx offsets", dtype=float, default=None,
+        shape=('*', '*')
+    )
+
+    I = properties.Array(
+        "Src loop current", dtype=float, default=None
+    )
+
+    a = properties.Array(
+        "Src loop radius", dtype=float, default=None
+    )
+
+    use_lowpass_filter = properties.Array(
+        "Switch for low pass filter",
+        dtype=bool, default=None
+    )
+
+    high_cut_frequency = properties.Array(
+        "High cut frequency for low pass filter (Hz)",
+        dtype=float, default=None
+    )
+
+    # ------------- For dual moment ------------- #
+
+    time_dual_moment = []
+
+    time_input_currents_dual_moment = []
+
+    input_currents_dual_moment = []
+
+    base_frequency_dual_moment = properties.Array(
+        "Base frequency for the dual moment (Hz)",
+        dtype=float, default=None
+    )
+
+    def __init__(self, **kwargs):
+        GlobalEM1DSurvey.__init__(self, **kwargs)
+        self.set_parameters()
+
+    def set_parameters(self):
+        print (">> Set parameters")
+        if self.n_pulse is None:
+            self.n_pulse = np.ones(self.n_sounding, dtype=int) * 2
+
+        if self.base_frequency is None:
+            self.base_frequency = np.ones(
+                (self.n_sounding), dtype=float
+            ) * 30
+
+        if self.offset is None:
+            self.offset = np.empty((self.n_sounding, 1), dtype=float)
+
+        if self.I is None:
+            self.I = np.empty(self.n_sounding, dtype=float)
+
+        if self.a is None:
+            self.a = np.empty(self.n_sounding, dtype=float)
+
+        if self.use_lowpass_filter is None:
+            self.use_lowpass_filter = np.zeros(self.n_sounding, dtype=bool)
+
+        if self.high_cut_frequency is None:
+            self.high_cut_frequency = np.empty(self.n_sounding, dtype=float)
+
+        if self.moment_type is None:
+            self.moment_type = np.array(["single"], dtype=str).repeat(
+                self.n_sounding, axis=0
+            )
+
+        # List
+        if not self.time_input_currents:
+            self.time_input_currents = [
+                np.empty(1, dtype=float) for i in range(self.n_sounding)
+            ]
+        # List
+        if not self.input_currents:
+            self.input_currents = [
+                np.empty(1, dtype=float) for i in range(self.n_sounding)
+            ]
+
+        # List
+        if not self.time_dual_moment:
+            self.time_dual_moment = [
+                np.empty(1, dtype=float) for i in range(self.n_sounding)
+            ]
+        # List
+        if not self.time_input_currents_dual_moment:
+            self.time_input_currents_dual_moment = [
+                np.empty(1, dtype=float) for i in range(self.n_sounding)
+            ]
+        # List
+        if not self.input_currents_dual_moment:
+            self.input_currents_dual_moment = [
+                np.empty(1, dtype=float) for i in range(self.n_sounding)
+            ]
+
+        if self.base_frequency_dual_moment is None:
+            self.base_frequency_dual_moment = np.empty(
+                (self.n_sounding), dtype=float
+            )
+
+    @property
+    def nD_vec(self):
+        # Need to generalize this for the dual moment data
+        if getattr(self, '_nD_vec', None) is None:
+            self._nD_vec = np.array(
+                [time.size for time in self.time], dtype=int
+            )
+        return self._nD_vec
+
+    @property
+    def data_index(self):
+        # Need to generalize this for the dual moment data
+        if getattr(self, '_data_index', None) is None:
+            self._data_index = [
+                    np.arange(self.nD_vec[i_sounding])+np.sum(self.nD_vec[:i_sounding]) for i_sounding in range(self.n_sounding)
+            ]
+        return self._data_index
 
     @property
     def nD(self):
-        return int(self.time.size) * self.n_rx
-
-
+        # Need to generalize this for the dual moment data
+        if getattr(self, '_nD', None) is None:
+            self._nD = self.nD_vec.sum()
+        return self._nD

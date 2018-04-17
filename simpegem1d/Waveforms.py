@@ -291,3 +291,34 @@ def butter_lowpass_filter(highcut_frequency, fs=1e6, period=0.04, order=1):
     frequency = (fs * 0.5 / np.pi) * w
 
     return frequency, h
+
+
+def rotate_origin_only(xy, radians):
+    """Only rotate a point around the origin (0, 0)."""
+    xx = xy[:, 0] * np.cos(radians) + xy[:, 1] * np.sin(radians)
+    yy = -xy[:, 0] * np.sin(radians) + xy[:, 1] * np.cos(radians)
+    return np.c_[xx, yy]
+
+
+def rotate_to_x_axis(xy, observation_point):
+    """
+    Moves each of two sequential points to origin (0,0)
+    then rotate to x-axis
+    """
+    n_pts = xy.shape[0]
+    dxy = np.empty((n_pts-1, 2), dtype=float, order='F')
+    dxy_obs = np.empty((n_pts-1, 2), dtype=float, order='F')
+    angle = np.empty(n_pts-1, dtype=float)
+    dxy = np.diff(xy, axis=0)
+    print (dxy)
+    dxy_obs = observation_point.repeat(n_pts-1).reshape((2, n_pts-1)).T
+    angle = np.arctan2(dxy[:, 1], dxy[:, 0])
+    # this is for self-check
+    xy_rot = rotate_origin_only(dxy, angle)
+    xy_obs_rot = rotate_origin_only(dxy_obs, angle)
+
+    # For computation of Hx, Hy angle is required
+    # Hx: hx cos theta + hy sin theta
+    # Hy: hx sin theta - hy cos theta
+    # Hz: hz
+    return xy_rot, xy_obs_rot, angle

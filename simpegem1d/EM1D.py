@@ -92,7 +92,7 @@ class EM1D(Problem.BaseProblem):
         else:
             raise NotImplementedError()
 
-    def HzKernel_layer(
+    def hz_kernel_vertical_magnetic_dipole(
         self, lamda, f, n_layer, sig, chi, depth, h, z,
         flag, output_type='response'
     ):
@@ -104,18 +104,19 @@ class EM1D(Problem.BaseProblem):
         """
         u0 = lamda
         rTE = np.zeros(lamda.size, dtype=complex)
+        coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
 
         if output_type == 'sensitivity_sigma':
             drTE = np.zeros((n_layer, lamda.size), dtype=complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
-            kernel = 1/(4*np.pi)*(drTE)*(np.exp(-u0*(z+h))*lamda**3/u0)
+            kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
-            kernel = 1/(4*np.pi)*(rTE*np.exp(-u0*(z+h)))*lamda**3/u0
+            kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             if output_type == 'sensitivity_height':
                 kernel *= -2*u0
 
@@ -130,7 +131,7 @@ class EM1D(Problem.BaseProblem):
         #         (np.exp(u0*(z-h))+rTE * np.exp(-u0*(z+h)))*lamda**3/u0
         #     )
 
-    def HzkernelCirc_layer(
+    def hz_kernel_circular_loop(
         self, lamda, f, n_layer, sig, chi, depth, h, z, I, a,
         flag,  output_type='response'
     ):
@@ -144,30 +145,61 @@ class EM1D(Problem.BaseProblem):
 
             H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} + \\r_{TE}e^{u_0|z-h|}] \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
 
-
         """
 
         w = 2*np.pi*f
         rTE = np.empty(lamda.size, dtype=complex)
         u0 = lamda
+        coefficient_wavenumber = I*a*0.5*lamda**2/u0
+
         if output_type == 'sensitivity_sigma':
             drTE = np.empty((n_layer, lamda.size), dtype=complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
-            kernel = I*a*0.5*(drTE)*(np.exp(-u0*(z+h))*lamda**2/u0)
+            kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
 
             if flag == 'secondary':
-                kernel = I*a*0.5*(rTE*np.exp(-u0*(z+h)))*lamda**2/u0
+                kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             else:
-                kernel = I*a*0.5*(
-                    np.exp(u0*(z-h))+rTE*np.exp(-u0*(z+h))
-                )*lamda**2/u0
+                kernel = rTE * (
+                    np.exp(-u0*(z+h)) + np.exp(u0*(z-h))
+                ) * coefficient_wavenumber
 
+            if output_type == 'sensitivity_height':
+                kernel *= -2*u0
+
+        return kernel
+
+    def hz_kernel_horizontal_electric_dipole(
+        self, lamda, f, n_layer, sig, chi, depth, h, z,
+        flag, output_type='response'
+    ):
+
+        """
+            Kernel for vertical magnetic field (Hz) due to
+            horizontal electric diopole (HED) source in (kx,ky) domain
+
+        """
+        u0 = lamda
+        rTE = np.zeros(lamda.size, dtype=complex)
+        coefficient_wavenumber = 1/(4*np.pi)*lamda**2/u0
+
+        if output_type == 'sensitivity_sigma':
+            drTE = np.zeros((n_layer, lamda.size), dtype=complex)
+            drTE = rTEfunjac(
+                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
+            )
+            kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
+        else:
+            rTE = rTEfunfwd(
+                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
+            )
+            kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             if output_type == 'sensitivity_height':
                 kernel *= -2*u0
 
@@ -230,13 +262,13 @@ class EM1D(Problem.BaseProblem):
             if self.verbose:
                 print ('>> Compute response')
 
-        # for simulation
+            # for simulation
             hz = np.empty(nfilt, complex)
             if self.survey.src_type == 'VMD':
                 r = self.survey.offset
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    hz = self.HzKernel_layer(
+                    hz = self.hz_kernel_vertical_magnetic_dipole(
                         self.YBASE/r[ifreq], f[ifreq], n_layer,
                         sig, chi, depth, h, z,
                         flag, output_type=output_type
@@ -248,8 +280,19 @@ class EM1D(Problem.BaseProblem):
                 a = self.survey.a
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    hz = self.HzkernelCirc_layer(
+                    hz = self.hz_kernel_circular_loop(
                         self.YBASE/a, f[ifreq], n_layer,
+                        sig, chi, depth, h, z, I, a,
+                        flag, output_type=output_type
+                    )
+                    HzFHT[ifreq] = np.dot(hz, self.WT1)/a
+
+            elif self.survey.src_type == "piecewise_line":
+                for ifreq in range(n_frequency):
+                    sig = self.sigma_cole(f[ifreq])
+                    # Need to compute y
+                    hz = self.hz_kernel_horizontal_electric_dipole(
+                        self.YBASE/r[ifreq]*y, f[ifreq], n_layer,
                         sig, chi, depth, h, z, I, a,
                         flag, output_type=output_type
                     )
@@ -267,7 +310,7 @@ class EM1D(Problem.BaseProblem):
                 r = self.survey.offset
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.HzKernel_layer(
+                    dhz = self.hz_kernel_vertical_magnetic_dipole(
                         self.YBASE/r[ifreq], f[ifreq], n_layer,
                         sig, chi, depth, h, z,
                         flag, output_type=output_type
@@ -278,7 +321,7 @@ class EM1D(Problem.BaseProblem):
                 a = self.survey.a
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.HzkernelCirc_layer(
+                    dhz = self.hz_kernel_circular_loop(
                         self.YBASE/a, f[ifreq], n_layer,
                         sig, chi, depth, h, z, I, a,
                         flag, output_type=output_type
@@ -296,7 +339,7 @@ class EM1D(Problem.BaseProblem):
                 r = self.survey.offset
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.HzKernel_layer(
+                    dhz = self.hz_kernel_vertical_magnetic_dipole(
                         self.YBASE/r[ifreq], f[ifreq], n_layer,
                         sig, chi, depth, h, z,
                         flag, output_type=output_type
@@ -308,7 +351,7 @@ class EM1D(Problem.BaseProblem):
                 a = self.survey.a
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.HzkernelCirc_layer(
+                    dhz = self.hz_kernel_circular_loop(
                         self.YBASE/a, f[ifreq], n_layer,
                         sig, chi, depth, h, z, I, a,
                         flag, output_type=output_type

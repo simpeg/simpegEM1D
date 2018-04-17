@@ -26,16 +26,17 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
 
     rx_location = properties.Array("Receiver location (x, y, z)", dtype=float)
     src_location = properties.Array("Source location (x, y, z)", dtype=float)
-    rx_type = properties.StringChoice(
-        "Source type",
-        default="Bz",
-        choices=["Bz", "dBzdt"]
+
+    src_path = properties.Array(
+        "Source path (xi, yi, zi), i=0,...N",
+        dtype=float
     )
+
     src_type = properties.StringChoice(
         "Source type",
         default="VMD",
         choices=[
-            "VMD", "CircularLoop"
+            "VMD", "CircularLoop", "piecewise_segment"
         ]
     )
     offset = properties.Array("Src-Rx offsets", dtype=float)
@@ -96,6 +97,23 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
         """
 
         return int(self.frequency.size)
+
+    @property
+    def src_paths_on_x(self):
+        """
+            # of frequency
+        """
+        if getattr(self, '_src_paths_on_x', None) is None:
+            offset = np.unique(self.offset)
+            if offset.size != 1:
+                raise Exception(
+                    "For the sourth paths, only single offset works!"
+                )
+            xy_rot, xy_obs_rot, angle = rotate_to_x_axis(
+                np.flipud(xy), np.r_[offset, 0.]
+            )
+
+        return self._src_paths
 
     @Utils.requires('prob')
     def dpred(self, m, f=None):

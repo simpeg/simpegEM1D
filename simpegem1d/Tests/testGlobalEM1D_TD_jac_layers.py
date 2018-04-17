@@ -46,23 +46,48 @@ class GlobalEM1DFD(unittest.TestCase):
         rx_locations = np.c_[x, y, z]
         src_locations = np.c_[x, y, z]
         topo = np.c_[x, y, z-30.].astype(float)
+
+        n_sounding = rx_locations.shape[0]
+
+        rx_type_global = np.array(
+            ["dBzdt"], dtype=str
+        ).repeat(n_sounding, axis=0)
+        field_type_global = np.array(
+            ['secondary'], dtype=str
+        ).repeat(n_sounding, axis=0)
+        wave_type_global = np.array(
+            ['general'], dtype=str
+        ).repeat(n_sounding, axis=0)
+
+        time_global = [time for i in range(n_sounding)]
+
+        src_type_global = np.array(
+            ["CircularLoop"], dtype=str
+        ).repeat(n_sounding, axis=0)
+        a_global = np.array(
+            [13.], dtype=float
+        ).repeat(n_sounding, axis=0)
+        input_currents_global = [
+            input_currents for i in range(n_sounding)
+        ]
+        time_input_currents_global = [
+            time_input_currents for i in range(n_sounding)
+        ]
+
         mapping = Maps.ExpMap(mesh)
 
         survey = GlobalEM1DSurveyTD(
             rx_locations=rx_locations,
             src_locations=src_locations,
             topo=topo,
-            time=time,
-            src_type="VMD",
-            rx_type="dBzdt",
-            field_type='secondary',
-            wave_type='stepoff',
-            offset=np.r_[8.],
-            a=1.,
-            input_currents=input_currents,
-            time_input_currents=time_input_currents,
-            n_pulse=1,
-            base_frequency=20.,
+            time=time_global,
+            src_type=src_type_global,
+            rx_type=rx_type_global,
+            field_type=field_type_global,
+            wave_type=wave_type_global,
+            a=a_global,
+            input_currents=input_currents_global,
+            time_input_currents=time_input_currents_global
         )
 
         problem = GlobalEM1DProblemTD(
