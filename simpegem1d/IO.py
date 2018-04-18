@@ -133,10 +133,7 @@ class ModelIO(properties.HasProperties):
         )
 
         if show_line:
-            ax.plot(
-                self.topography[ind_line, 0], self.topography[ind_line, 0],
-                'k.', ms=1
-            )
+            ax.plot(self.topography[ind_line,0], self.topography[ind_line,0], 'k.', ms=1)
 
         if show_colorbar:
             from mpl_toolkits import axes_grid1
@@ -145,9 +142,7 @@ class ModelIO(properties.HasProperties):
             cb = plt.colorbar(out, cax=cax)
             cb.set_label("Conductivity (S/m)")
         ax.set_aspect(aspect)
-        ax.set_title(
-            ("Conductivity at %.1f m below surface") % (self.mesh_1d.vectorCCx[i_layer])
-        )
+        ax.set_title(("Conductivity at %.1f m below surface")%(self.mesh_1d.vectorCCx[i_layer]))
         ax.set_xlabel("Easting (m)")
         ax.set_xlabel("Northing (m)")
         ax.grid(True)
@@ -163,7 +158,7 @@ class ModelIO(properties.HasProperties):
         show_colorbar=True, aspect=1,
         contourOpts={}
     ):
-        fig, ax = plt.subplots(1, 1, figsize=(15, 5))
+        fig, ax = plt.subplots(1,1, figsize=(15, 5))
         ind_line = self.line == self.unique_line[i_line]
         if sigma is not None:
             Sigma = np.exp(xc[i_iteration]).reshape(
@@ -173,7 +168,7 @@ class ModelIO(properties.HasProperties):
             Sigma = self.Sigma
 
         if line_direction.lower() == 'x':
-            yz = self.xyz_sigma[:, ind_line, :][:, :, [1, 2]].reshape(
+            yz = self.xyz_sigma[:, ind_line, :][:,:,[1,2]].reshape(
                 (int(self.hz.size*ind_line.sum()), 2), order='F'
             )
 
@@ -194,14 +189,10 @@ class ModelIO(properties.HasProperties):
 
         contourOpts['cmap'] = cmap
         im = Utils.plot2Ddata(
-            yz, Utils.mkvc(Sigma[:, ind_line]), scale='log', ncontour=40,
-            dataloc=False, ax=ax,
+            yz, Utils.mkvc(Sigma[:, ind_line]), scale='log', ncontour=40, dataloc=False, ax=ax,
             contourOpts=contourOpts
         )
-        ax.fill_between(
-            self.topography[ind_line, 1], self.topography[ind_line, 2],
-            y2=yz[:, 1].max(), color='w'
-        )
+        ax.fill_between(self.topography[ind_line, 1], self.topography[ind_line, 2], y2=yz[:,1].max(), color='w')
 
         out = ax.scatter(
             self.topography[ind_line, 0], self.topography[ind_line, 1],
@@ -211,8 +202,7 @@ class ModelIO(properties.HasProperties):
 
         if show_layer:
             ax.plot(
-                self.topography[ind_line, 1],
-                self.topography[ind_line]-mesh_1d.vectorCCx[i_layer],
+                self.topography[ind_line, 1], self.topography[ind_line]-mesh_1d.vectorCCx[i_layer],
                 '--', lw=1, color='grey'
             )
 
