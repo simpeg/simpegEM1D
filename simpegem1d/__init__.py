@@ -8,7 +8,7 @@ from .Waveforms import (
     skytem_HM_2015, skytem_LM_2015,
     butter_lowpass_filter,
     piecewise_pulse, get_geotem_wave, get_nanotem_wave,
-    get_flight_direction_from_fiducial
+    get_flight_direction_from_fiducial, get_rx_locations_from_flight_direction
 )
 from .Utils1D import *
 from .GlobalEM1D import (
@@ -23,6 +23,7 @@ from .EM1DSimulation import (
 from .Regularization import (
     LateralConstraint, get_2d_mesh
 )
+from .IO import ModelIO
 import os
 import glob
 import unittest

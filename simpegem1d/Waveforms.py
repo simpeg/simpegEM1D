@@ -353,3 +353,14 @@ def get_flight_direction_from_fiducial(fiducial, lines, easting, northing):
         flight_direction[i_start:i_start+n] = np.arctan2(dy, dx)
         i_start += n
     return flight_direction
+
+
+def get_rx_locations_from_flight_direction(
+    flight_direction, src_locations, offset=120, dz=-45
+):
+    dx = offset*np.cos(np.deg2rad(flight_direction))
+    dy = offset*np.sin(np.deg2rad(flight_direction))
+    rx_locations = np.c_[
+        src_locations[:, 0]-dx, src_locations[:, 1]-dy, src_locations[:, 2]+dz
+    ]
+    return rx_locations
