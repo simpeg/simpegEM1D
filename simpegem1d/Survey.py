@@ -453,7 +453,6 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
             # Compute EM sensitivities
             else:
-
                 if self.moment_type == "single":
                     resp = np.zeros(
                         (self.n_time, self.n_layer), dtype=float, order='F'
@@ -498,7 +497,6 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             n_pulse=self.n_pulse
                         )
                         resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
-
         return resp * (-2/np.pi) * mu_0
 
     @Utils.requires('prob')

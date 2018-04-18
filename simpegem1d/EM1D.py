@@ -406,7 +406,8 @@ class EM1D(Problem.BaseProblem):
             dudsig = self.forward(m, output_type="sensitivity_sigma")
 
             self._Jmatrix_sigma = self.survey.projectFields(dudsig)
-
+            if self._Jmatrix_sigma.ndim == 1:
+                self._Jmatrix_sigma = self._Jmatrix_sigma.reshape([-1, 1])
             return self._Jmatrix_sigma
 
     def getJ(self, m, f=None):
@@ -437,11 +438,10 @@ class EM1D(Problem.BaseProblem):
 
         J_sigma = self.getJ_sigma(m, f=f)
         J_height = self.getJ_height(m, f=f)
-
         if self.hMap is None:
             Jtv = self.sigmaMap.deriv(m, np.dot(J_sigma.T, v))
         else:
-            Jtv = self.sigmaDeriv.T*np.dot(J_sigma.T, v)
+            Jtv = (self.sigmaDeriv.T*np.dot(J_sigma.T, v))
             Jtv += self.hDeriv.T*np.dot(J_height.T, v)
         return Jtv
 
