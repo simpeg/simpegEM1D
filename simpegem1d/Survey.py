@@ -13,7 +13,6 @@ from empymod import filters
 from empymod.utils import check_time
 from empymod.transform import ffht
 from .Waveforms import piecewise_pulse, butter_lowpass_filter
-from profilehooks import profile
 
 
 class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):

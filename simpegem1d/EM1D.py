@@ -6,7 +6,6 @@ from .DigFilter import EvalDigitalFilt, LoadWeights
 from .RTEfun import rTEfunfwd, rTEfunjac
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 from empymod import filters
-# from profilehooks import profile
 
 
 class EM1D(Problem.BaseProblem):
