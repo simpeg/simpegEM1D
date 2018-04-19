@@ -1,24 +1,31 @@
 language: python
 python:
-  - "3.6"
-virtualenv:
-  system_site_packages: true
+  - 3.6
+
+  matrix:
+    - TEST_DIR=tests/
+
+# Setup anaconda
 before_install:
-  - sudo apt-get install -qq gcc gfortran libblas-dev liblapack-dev python-numpy python-scipy python-matplotlib python-pip
-  - sudo pip install scipy --upgrade
-  - sudo pip install numpy --upgrade
-  - cd ../
-  - git clone https://github.com/simpeg/simpeg.git
-  - cd simpeg/SimPEG/
-  - python setup.py
-  - cd ../../
-  - echo export PYTHONPATH=$PYTHONPATH:/home/travis/build/simpeg/simpeg >> .bashrc
-  - source .bashrc
-  - cd simpegEM1D
+# Install packages
+  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then
+      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
+    else
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    fi
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b -p $HOME/miniconda
+  - export PATH=/home/travis/anaconda/bin:/home/travis/miniconda/bin:$PATH
+  - conda update --yes conda
+
 # command to install dependencies
-install: "pip install -r requirements.txt --use-mirrors"
+install:
+  - pip install -r requirements.txt
+  - python setup.py install
 # command to run tests
-script: nosetests -v
+
+script:
+  - nosetests $TEST_DIR --with-cov --cov SimPEG --cov-config .coveragerc -v -s
 
 notifications:
   email:
