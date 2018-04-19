@@ -7,9 +7,9 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - ipywidgets
   - mkl
   - pip:
     - pymatsolver
     - SimPEG
     - discretize
+    - multiprocess
