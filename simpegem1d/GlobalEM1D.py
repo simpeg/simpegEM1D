@@ -13,6 +13,7 @@ from SimPEG import Problem, Props, Utils, Maps, Survey
 from .Survey import EM1DSurveyFD, EM1DSurveyTD
 from .EM1DSimulation import run_simulation_FD, run_simulation_TD
 import properties
+import warning
 
 
 def dot(args):
@@ -518,6 +519,10 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
         self.set_parameters()
 
     def set_parameters(self):
+        # TODO: need to put some validation process
+        # e.g. for VMD `offset` must be required
+        # e.g. for CircularLoop `a` must be required
+
         print (">> Set parameters")
         if self.n_pulse is None:
             self.n_pulse = np.ones(self.n_sounding, dtype=int) * 2
