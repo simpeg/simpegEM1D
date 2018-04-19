@@ -13,5 +13,6 @@ dependencies:
     - empymod
     - pymatsolver
     - multiprocess
-    - git+https://github.com/simpeg/discretize.git@master
-    - git+https://github.com/simpeg/simpeg.git@master
+    - SimPEG
+    - discretize
+    - git+https://github.com/simpeg/simpegEM1D.git@master

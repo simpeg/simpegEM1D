@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.constants import mu_0
-from profilehooks import profile
 
 
 def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
