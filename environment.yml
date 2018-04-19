@@ -1,0 +1,15 @@
+name: simpegEM1D-environment
+
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - scipy
+  - matplotlib
+  - ipywidgets
+  - mkl
+  - pip:
+    - pymatsolver
+    - SimPEG
+    - discretize

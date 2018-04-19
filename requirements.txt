@@ -1,4 +1,11 @@
+numpy
+scipy
+matplotlib
+jupyter
+mkl
+discretize
+pymatsolver
 SimPEG
 empymod
 multiprocess
-
+profilehooks
