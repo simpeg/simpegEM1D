@@ -188,7 +188,7 @@ class EM1DSurveyFD(BaseEM1DSurvey):
                 raise NotImplementedError()
         else:
             raise NotImplementedError()
-        return mu_0*resp
+        return resp
 
 
 class EM1DSurveyTD(BaseEM1DSurvey):
