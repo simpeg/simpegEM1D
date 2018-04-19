@@ -1,6 +1,4 @@
-numpy
-scipy
-ipython
-matplotlib
+SimPEG
 empymod
 multiprocessing
+
