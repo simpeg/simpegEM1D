@@ -1,17 +1,18 @@
 language: python
 python:
 - 3.6
+- "nightly"
+matrix:
+  allow_failures:
+    - python: "nightly"
 
 sudo: false
 
 env:
-  - TEST_DIR=tests
+  - TEST_dir=tests
 
 before_install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then
-      wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
     fi
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
@@ -20,9 +21,9 @@ before_install:
 
 install:
   - conda env create -f environment.yml
-  - source activate emcyl-environment
+  - source activate simpegem1d-environment
   - export MPLBACKEND="agg"
   - pip install -r requirements_dev.txt
 
 script:
-  - nosetests $TEST_DIR  -v -s
+  - travis_wait 40 nosetests $TEST -v -s

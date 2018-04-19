@@ -1,4 +1,4 @@
-name: simpegEM1D-environment
+name: simpegem1d-environment
 
 channels:
   - conda-forge
@@ -7,9 +7,10 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
+  - ipywidgets
   - mkl
   - pip:
     - pymatsolver
-    - SimPEG
-    - discretize
     - multiprocess
+    - git+https://github.com/simpeg/discretize.git@master
+    - git+https://github.com/simpeg/simpeg.git@master
