@@ -6,8 +6,8 @@ electromagnetic (EM) geophysical surveys. Particularly it is designed to
 handle inducitve loop source with a single receiver coil or magnetometer.
 A main interest of the package is hanndling airborne EM survey, which
 can quickly map electrical conductivity of the subsurface at large area.
-This package is under an opensource geophysical simulation and inversion software,
-SimPEG's ecosystem
+
+This package is under ecosystem of an opensource geophysical simulation and inversion software, SimPEG, and hence installation of SimPEG is required.
 
 
 Documentation:
