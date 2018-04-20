@@ -28,7 +28,7 @@ class GlobalEM1DFD(unittest.TestCase):
         time_input_currents = wave.current_times[-7:]
         input_currents = wave.currents[-7:]
 
-        n_sounding = 5
+        n_sounding = 50
         dx = 20.
         hx = np.ones(n_sounding) * dx
         mesh = Mesh.TensorMesh([hx, hz], x0='00')
@@ -91,7 +91,7 @@ class GlobalEM1DFD(unittest.TestCase):
         )
 
         problem = GlobalEM1DProblemTD(
-            mesh, sigmaMap=mapping, hz=hz, parallel=parallel
+            mesh, sigmaMap=mapping, hz=hz, parallel=parallel, n_cpu=5
         )
         problem.pair(survey)
 

@@ -22,7 +22,7 @@ class GlobalEM1DFD(unittest.TestCase):
             frequency, sigma_background=1./10.
         )
 
-        n_sounding = 5
+        n_sounding = 50
         dx = 20.
         hx = np.ones(n_sounding) * dx
         mesh = Mesh.TensorMesh([hx, hz], x0='00')
@@ -54,7 +54,7 @@ class GlobalEM1DFD(unittest.TestCase):
 
         problem = GlobalEM1DProblemFD(
             [], sigmaMap=mapping, hz=hz,
-            parallel=parallel
+            parallel=parallel, n_cpu=5
         )
         problem.pair(survey)
         survey.makeSyntheticData(mSynth)
