@@ -17,3 +17,6 @@ Build Status:
 
 Bugs & Issues:
 [https://github.com/simpeg/simpegem1d/issues](https://github.com/simpeg/simpegem1d/issues)
+
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/simpeg/simpegEM1D/test_travis?filepath=%2Fsimpegem1d%2Fnotebooks)
+

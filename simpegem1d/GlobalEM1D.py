@@ -13,7 +13,7 @@ from SimPEG import Problem, Props, Utils, Maps, Survey
 from .Survey import EM1DSurveyFD, EM1DSurveyTD
 from .EM1DSimulation import run_simulation_FD, run_simulation_TD
 import properties
-import warning
+import warnings
 
 
 def dot(args):

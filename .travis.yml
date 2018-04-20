@@ -1,39 +1,32 @@
 language: python
-
 python:
-  - 3.6
+- 3.6
+- "nightly"
+matrix:
+  allow_failures:
+    - python: "nightly"
+
+sudo: false
 
 env:
-  matrix:
-    - TEST_DIR=tests/
+  - TEST_dir=tests
 
-# Setup anaconda
 before_install:
-# Install packages
   - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then
-      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
+      wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
     else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+      wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
     fi
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
-  - export PATH=/home/travis/anaconda/bin:/home/travis/miniconda/bin:$PATH
+  - export PATH=$HOME/anaconda/bin:$HOME/miniconda/bin:$PATH
   - conda update --yes conda
 
-# command to install dependencies
 install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then
-      conda install --quiet --yes pip python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib cython ipython h5py vtk;
-    else
-      conda install --quiet --yes pip python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib cython ipython h5py;
-    fi
-  - pip install -r requirements.txt
-  - python setup.py install
-# command to run tests
+  - conda env create -f environment.yml
+  - source activate simpegem1d-environment
+  - export MPLBACKEND="agg"
+  - pip install -r requirements_dev.txt
 
 script:
-  - nosetests $TEST_DIR --with-cov --cov SimPEG --cov-config .coveragerc -v -s
-
-notifications:
-  email:
-    - skang@eoas.ubc.ca
+  - travis_wait 40 nosetests $TEST -v -s
