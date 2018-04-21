@@ -9,6 +9,3 @@ dependencies:
   - matplotlib
   - ipywidgets
   - mkl
-  - pip:
-    - pymatsolver
-    - git+https://github.com/simpeg/discretize.git@master
