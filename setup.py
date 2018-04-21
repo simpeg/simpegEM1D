@@ -35,9 +35,8 @@ setup(
     packages = find_packages(),
     install_requires = [
         'SimPEG>=0.4.1',
-        'disretize',
         'empymod',
-        'multiprocess',
+        'multiprocess'
     ],
     author = 'Seogi Kang',
     author_email = 'skang@eoas.ubc.ca',
