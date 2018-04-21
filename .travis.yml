@@ -30,4 +30,4 @@ install:
   - python setup.py install
 
 script:
-  - travis_wait 10 nosetests $TEST_DIR -v -s
+  - travis_wait 20 nosetests $TEST_DIR -v -s

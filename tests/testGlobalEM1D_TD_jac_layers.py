@@ -28,7 +28,7 @@ class GlobalEM1DFD(unittest.TestCase):
         time_input_currents = wave.current_times[-7:]
         input_currents = wave.currents[-7:]
 
-        n_sounding = 50
+        n_sounding = 10
         dx = 20.
         hx = np.ones(n_sounding) * dx
         mesh = Mesh.TensorMesh([hx, hz], x0='00')

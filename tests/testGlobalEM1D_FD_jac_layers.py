@@ -22,7 +22,7 @@ class GlobalEM1DFD(unittest.TestCase):
             frequency, sigma_background=1./10.
         )
 
-        n_sounding = 50
+        n_sounding = 10
         dx = 20.
         hx = np.ones(n_sounding) * dx
         mesh = Mesh.TensorMesh([hx, hz], x0='00')
