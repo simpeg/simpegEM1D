@@ -31,3 +31,5 @@ install:
 
 script:
   - travis_wait 20 nosetests $TEST_DIR -v -s
+
+after_success: coveralls
