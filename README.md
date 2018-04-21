@@ -1,7 +1,14 @@
 simpegEM1D
 ==========
 
-Frequency and time domain EM forward modeling and inversion program
+simpegEM1D is a geophysical simulation and inversion software for an
+electromagnetic (EM) geophysical surveys. Particularly it is designed to
+handle inducitve loop source with a single receiver coil or magnetometer.
+A main interest of the package is hanndling airborne EM survey, which
+can quickly map electrical conductivity of the subsurface at large area.
+
+This package is under ecosystem of an opensource geophysical simulation and inversion software, SimPEG, and hence installation of SimPEG is required.
+
 
 Documentation:
 [http://simpegem1d.readthedocs.org/](http://simpegem1d.readthedocs.org/)
@@ -18,5 +25,4 @@ Build Status:
 Bugs & Issues:
 [https://github.com/simpeg/simpegem1d/issues](https://github.com/simpeg/simpegem1d/issues)
 
-[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/simpeg/simpegEM1D/test_travis?filepath=%2Fsimpegem1d%2Fnotebooks)
-
+https://mybinder.org/v2/gh/simpeg/simpegEM1D/master?filepath=%2Fnotebooks
