@@ -34,7 +34,6 @@ setup(
     version = '0.0.1',
     packages = find_packages(),
     install_requires = [
-        'SimPEG>=0.4.1',
         'empymod',
         'multiprocess'
     ],
