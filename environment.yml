@@ -11,4 +11,4 @@ dependencies:
   - mkl
   - pip:
     - pymatsolver
-    - discretize
+    - git+https://github.com/simpeg/discretize.git@master
