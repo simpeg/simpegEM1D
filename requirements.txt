@@ -11,7 +11,6 @@ pymatsolver
 pytest
 empymod
 multiprocess
-profilehooks
 git+https://github.com/simpeg/discretize.git@master
 git+https://github.com/simpeg/simpeg.git@master
 
