@@ -1,16 +1,3 @@
-numpy
-scipy
-matplotlib
-sympy
-nbsphinx
-sphinx
-sphinx_rtd_theme
-nose
-nose-cov
-pymatsolver
-pytest
 empymod
 multiprocess
-git+https://github.com/simpeg/discretize.git@master
-git+https://github.com/simpeg/simpeg.git@master
-
+SimPEG
