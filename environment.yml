@@ -10,9 +10,5 @@ dependencies:
   - ipywidgets
   - mkl
   - pip:
-    - empymod
     - pymatsolver
-    - multiprocess
-    - SimPEG
     - discretize
-    - git+https://github.com/simpeg/simpegEM1D.git@master

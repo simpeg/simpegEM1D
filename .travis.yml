@@ -23,8 +23,9 @@ before_install:
   - conda update --yes conda
 
 install:
+  - conda env create -f environment.yml
+  - source activate emcyl-environment
   - export MPLBACKEND="agg"
-  - pip install -r requirements.txt
   - python setup.py install
 
 script:
