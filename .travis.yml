@@ -9,7 +9,7 @@ matrix:
 sudo: false
 
 env:
-  - TEST_dir=tests
+  - TEST_DIR=tests
 
 before_install:
   - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then
@@ -30,4 +30,4 @@ install:
   - python setup.py install
 
 script:
-  - travis_wait 40 nosetests $TEST_dir -v -s
+  - travis_wait 10 nosetests $TEST_DIR -v -s
