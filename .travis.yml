@@ -24,7 +24,7 @@ before_install:
 
 install:
   - conda env create -f environment.yml
-  - source activate emcyl-environment
+  - source activate simpegem1d-environment
   - export MPLBACKEND="agg"
   - python setup.py install
 
