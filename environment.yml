@@ -15,4 +15,4 @@ dependencies:
     - multiprocess
     - SimPEG
     - discretize
-    - git+https://github.com/simpeg/simpegEM1D.git@master
+    - git+https://github.com/simpeg/simpegEM1D.git@test_travis
