@@ -27,6 +27,7 @@ install:
   - source activate simpegem1d-environment
   - export MPLBACKEND="agg"
   - python setup.py install
+  - pip install -r requirements_dev.txt
 
 script:
   - travis_wait 40 nosetests $TEST_dir -v -s
