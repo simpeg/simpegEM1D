@@ -1,7 +1,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-from simpegem1d import (
+from simpegEM1D import (
     GlobalEM1DProblemFD, GlobalEM1DSurveyFD,
     get_vertical_discretization_frequency
 )

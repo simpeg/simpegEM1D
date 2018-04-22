@@ -1,7 +1,7 @@
 import unittest
 from SimPEG import Mesh, Maps, Utils
 import matplotlib.pyplot as plt
-from simpegem1d import (
+from simpegEM1D import (
     EM1D, EM1DSurveyTD, EM1DAnalytics, piecewise_pulse, set_mesh_1d,
     skytem_HM_2015, skytem_LM_2015, get_vertical_discretization_time
 )

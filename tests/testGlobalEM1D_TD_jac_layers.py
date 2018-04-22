@@ -1,7 +1,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-from simpegem1d import (
+from simpegEM1D import (
     GlobalEM1DProblemTD, GlobalEM1DSurveyTD,
     get_vertical_discretization_time
 )
@@ -11,7 +11,7 @@ from SimPEG import (
     Tests
 )
 
-from simpegem1d import skytem_HM_2015
+from simpegEM1D import skytem_HM_2015
 wave = skytem_HM_2015()
 
 
