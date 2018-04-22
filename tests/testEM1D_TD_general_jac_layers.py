@@ -2,8 +2,8 @@ import unittest
 from SimPEG import *
 import numpy as np
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DSurveyTD
-from simpegem1d.Waveform import TriangleFun, TriangleFunDeriv
+from simpegEM1D_temp import EM1D, EM1DSurveyTD
+from simpegEM1D_temp.Waveform import TriangleFun, TriangleFunDeriv
 
 
 class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):

@@ -2,9 +2,9 @@ import unittest
 import numpy as np
 from SimPEG import Maps, Utils, Mesh
 import matplotlib.pyplot as plt
-from simpegem1d import EM1D, EM1DAnalytics, EM1DSurveyTD
+from simpegEM1D_temp import EM1D, EM1DAnalytics, EM1DSurveyTD
 from scipy import io
-from simpegem1d.DigFilter import setFrequency
+from simpegEM1D_temp.DigFilter import setFrequency
 
 
 class EM1D_TD_FwdProblemTests(unittest.TestCase):
