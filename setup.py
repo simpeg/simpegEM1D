@@ -31,7 +31,7 @@ with open('README.md') as f:
 
 setup(
     name = 'simpegEM1D',
-    version = '0.0.1',
+    version = '0.0.2',
     packages = find_packages(),
     install_requires = [
         'SimPEG>=0.4.1',
