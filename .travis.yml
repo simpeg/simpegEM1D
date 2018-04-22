@@ -27,6 +27,7 @@ install:
   - source activate simpegEM1D-environment
   - export MPLBACKEND="agg"
   - pip install -r requirements_dev.txt
+  - pip install coveralls
   - python setup.py install
 
 script:
