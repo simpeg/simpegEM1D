@@ -9,7 +9,6 @@ can quickly map electrical conductivity of the subsurface at large area.
 This package is under ecosystem of an opensource geophysical simulation and inversion software, SimPEG, and hence installation of SimPEG is required.
 
 [![Build Status](https://travis-ci.org/simpeg/simpegEM1D.svg?branch=master)](https://travis-ci.org/simpeg/simpegEM1D)
-
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/simpeg/simpegEM1D/master?filepath=notebooks)
 
 Documentation:
