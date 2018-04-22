@@ -24,7 +24,7 @@ before_install:
 
 install:
   - conda env create -f environment.yml
-  - source activate simpegem1d-environment
+  - source activate simpegEM1D-environment
   - export MPLBACKEND="agg"
   - pip install -r requirements_dev.txt
   - python setup.py install

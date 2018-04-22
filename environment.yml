@@ -1,4 +1,4 @@
-name: simpegem1d-environment
+name: simpegEM1D-environment
 
 channels:
   - conda-forge
