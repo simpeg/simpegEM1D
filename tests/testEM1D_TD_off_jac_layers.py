@@ -1,7 +1,7 @@
 import unittest
 from SimPEG import Mesh, Utils, Maps, Tests
 import matplotlib.pyplot as plt
-from simpegEM1D_temp import EM1D, EM1DSurveyTD
+from simpegEM1D import EM1D, EM1DSurveyTD
 import numpy as np
 
 

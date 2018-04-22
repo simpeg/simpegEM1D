@@ -1,8 +1,8 @@
 import unittest
 from SimPEG import Mesh, Maps, Utils
 import matplotlib.pyplot as plt
-from simpegEM1D_temp import EM1D, EM1DSurveyTD, EM1DAnalytics
-from simpegEM1D_temp.Waveforms import piecewise_ramp
+from simpegEM1D import EM1D, EM1DSurveyTD, EM1DAnalytics
+from simpegEM1D.Waveforms import piecewise_ramp
 import numpy as np
 from scipy import io
 from scipy.interpolate import interp1d
