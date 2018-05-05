@@ -2,7 +2,6 @@ from SimPEG import Maps, Utils, Problem, Props
 import numpy as np
 from .Survey import BaseEM1DSurvey
 from scipy.constants import mu_0
-from .DigFilter import EvalDigitalFilt, LoadWeights
 from .RTEfun import rTEfunfwd, rTEfunjac
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 
@@ -63,13 +62,14 @@ class EM1D(Problem.BaseProblem):
         # it will set it to the default (key_201_2009).
         ht, htarg = check_hankel('fht', [self.hankel_filter,
                                          self.hankel_pts_per_dec], 1)
-        self.fhtfilt = htarg[0]
-        self.fhtfilt_pts_per_dec = htarg[1]
-        if self.verbose:
-            print(">> Use " + self.fhtfilt.name +
-                  " filter for Hankel Transform")
 
-        if self.fhtfilt_pts_per_dec != 0:
+        self.fhtfilt = htarg[0]                 # Store filter
+        self.hankel_filter = self.fhtfilt.name  # Store name
+        self.hankel_pts_per_dec = htarg[1]      # Store pts_per_dec
+        if self.verbose:
+            print(">> Use "+self.hankel_filter+" filter for Hankel Transform")
+
+        if self.hankel_pts_per_dec != 0:
             raise NotImplementedError()
 
 
@@ -221,8 +221,8 @@ class EM1D(Problem.BaseProblem):
         flag = self.survey.field_type
 
         # Get lambd and offset, will depend on pts_per_dec
-        lambd, r = get_spline_values(self.fhtfilt, self.survey.offset,
-                                     self.fhtfilt_pts_per_dec)
+        r = self.survey.offset
+        lambd, _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
 
         self.model = m
 
@@ -236,7 +236,6 @@ class EM1D(Problem.BaseProblem):
         else:
             h = self.survey.h
         z = h + self.survey.dz
-        HzFHT = np.empty(n_frequency, dtype=complex)
         chi = self.chi
 
         if np.isscalar(self.chi):
@@ -249,8 +248,8 @@ class EM1D(Problem.BaseProblem):
             # for simulation
             hz = np.empty((n_frequency, nfilt), complex)
             hz0 = np.zeros((n_frequency, nfilt), complex)  # For zero kernels
+
             if self.survey.src_type == 'VMD':
-                r = self.survey.offset
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
                     hz[ifreq, :] = self.hz_kernel_vertical_magnetic_dipole(
@@ -262,8 +261,8 @@ class EM1D(Problem.BaseProblem):
                 #     on frequency (lambd[ifreq, :], or before
                 #     self.YBASE/r[ifreq])? Shouldn't it only depend on offset?
                 #     Because this might be an issue if we want to use Lagged
-                #     Convolution or Splined DLF, as those can alter the used
-                #     offsets...
+                #     Convolution or Splined DLF, as those alter the used
+                #     wavenumbers...
 
                 PJ = (hz, hz0, hz0)  # PJ0
 
@@ -299,73 +298,84 @@ class EM1D(Problem.BaseProblem):
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
 
-            # Carry out Hankel DLF
-            # ab=66 => 33 (vertical magnetic src and rec)
-            HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.fhtfilt_pts_per_dec,
-                        factAng=np.full_like(r, 1.), ab=33)
-
-            return HzFHT
-
         elif output_type == 'sensitivity_sigma':
 
-            dHzFHT_dsig = np.empty((n_frequency, n_layer), dtype=complex)
-            dhz = np.empty((nfilt, n_layer), complex)
+            # for simulation
+            hz = np.empty((n_frequency, n_layer, nfilt), complex)
+            hz0 = np.zeros((n_frequency, n_layer, nfilt), complex)  # For 0 krn
+
             if self.survey.src_type == 'VMD':
                 r = self.survey.offset
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_vertical_magnetic_dipole(
-                        self.fhtfilt.base/r[ifreq], f[ifreq], n_layer,
+                    hz[ifreq, :, :] = self.hz_kernel_vertical_magnetic_dipole(
+                        lambd[ifreq, :], f[ifreq], n_layer,
                         sig, chi, depth, h, z,
                         flag, output_type=output_type
                     )
-                    dHzFHT_dsig[ifreq, :] = np.dot(dhz,
-                                                   self.fhtfilt.j0)/r[ifreq]
+
+                PJ = (hz, hz0, hz0)  # PJ0
+
             elif self.survey.src_type == 'CircularLoop':
                 I = self.survey.I
                 a = self.survey.a
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_circular_loop(
-                        self.fhtfilt.base/a, f[ifreq], n_layer,
+                    hz[ifreq, :, :] = self.hz_kernel_circular_loop(
+                        lambd[ifreq, :], f[ifreq], n_layer,
                         sig, chi, depth, h, z, I, a,
                         flag, output_type=output_type
                     )
-                    dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.fhtfilt.j1)/a
+                # ??? D.W. lambd here was self.YBASE/a?
+                # ??? D.W. The result after DLF was divided by a?
+
+                PJ = (hz0, hz, hz0)  # PJ1
+
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
-
-            return dHzFHT_dsig
 
         elif output_type == 'sensitivity_height':
-            dHzFHT_dh = np.empty((n_frequency, 1), dtype=complex)
-            dhz = np.empty(nfilt, complex)
+
+            # for simulation
+            hz = np.empty((n_frequency, nfilt), complex)
+            hz0 = np.zeros((n_frequency, nfilt), complex)  # For zero kernels
+
             if self.survey.src_type == 'VMD':
-                r = self.survey.offset
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_vertical_magnetic_dipole(
-                        self.fhtfilt.base/r[ifreq], f[ifreq], n_layer,
+                    hz[ifreq, :] = self.hz_kernel_vertical_magnetic_dipole(
+                        lamb[ifreq, :], f[ifreq], n_layer,
                         sig, chi, depth, h, z,
                         flag, output_type=output_type
                     )
-                    dHzFHT_dh[ifreq] = np.dot(dhz, self.fhtfilt.j0)/r[ifreq]
+
+                PJ = (hz, hz0, hz0)  # PJ0
 
             elif self.survey.src_type == 'CircularLoop':
                 I = self.survey.I
                 a = self.survey.a
                 for ifreq in range(n_frequency):
                     sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_circular_loop(
-                        self.fhtfilt.base/a, f[ifreq], n_layer,
+                    hz = self.hz_kernel_circular_loop(
+                        lambd[ifreq, :], f[ifreq], n_layer,
                         sig, chi, depth, h, z, I, a,
                         flag, output_type=output_type
                     )
-                    dHzFHT_dh[ifreq] = np.dot(dhz, self.fhtfilt.j1)/a
+                # ??? D.W. lambd here was self.YBASE/a?
+                # ??? D.W. The result after DLF was divided by a?
+
+                PJ = (hz0, hz, hz0)  # PJ1
+
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
 
-            return dHzFHT_dh
+        # Carry out Hankel DLF
+        # ab=66 => 33 (vertical magnetic src and rec)
+        HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
+                    factAng=np.full_like(r, 1.), ab=33)
+
+        return HzFHT
+
 
     # @profile
     def fields(self, m):
