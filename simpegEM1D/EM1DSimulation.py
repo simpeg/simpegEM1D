@@ -83,7 +83,7 @@ def run_simulation_FD(args):
     # This is hard-wired at the moment
     expmap = Maps.ExpMap(mesh_1d)
     prob = EM1D(
-        mesh_1d, sigmaMap=expmap, filter_type='key_101'
+        mesh_1d, sigmaMap=expmap, hankel_filter='key_101_2009'
     )
     if prob.ispaired:
         prob.unpair()
@@ -154,7 +154,7 @@ def run_simulation_TD(args):
     # This is hard-wired at the moment
     expmap = Maps.ExpMap(mesh_1d)
     prob = EM1D(
-        mesh_1d, sigmaMap=expmap, filter_type='key_101'
+        mesh_1d, sigmaMap=expmap, hankel_filter='key_101_2009'
     )
     if prob.ispaired:
         prob.unpair()
