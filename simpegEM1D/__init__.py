@@ -6,7 +6,7 @@ from .RTEfun import rTEfunfwd, rTEfunjac
 from .Waveform import *
 from .Waveforms import (
     skytem_HM_2015, skytem_LM_2015,
-    butter_lowpass_filter,
+    butter_lowpass_filter, butterworth_type_filter,
     piecewise_pulse, get_geotem_wave, get_nanotem_wave,
     get_flight_direction_from_fiducial, get_rx_locations_from_flight_direction
 )

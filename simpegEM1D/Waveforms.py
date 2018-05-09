@@ -293,6 +293,36 @@ def butter_lowpass_filter(highcut_frequency, fs=1e6, period=0.04, order=1):
     return frequency, h
 
 
+def butterworth_type_filter(frequency, highcut_frequency, order=2):
+    """
+    Butterworth low pass filter
+
+    Parameters
+    ----------
+
+    highcut_frequency: float
+        high-cut frequency for the low pass filter
+    fs: float
+        sampling rate, 1./ dt, (default = 1MHz)
+    period:
+        period of the signal (e.g. 25Hz base frequency, 0.04s)
+    order: int
+        The order of the butterworth filter
+
+    Returns
+    -------
+
+    frequency, h: ndarray, ndarray
+        Filter values (`h`) at frequencies (`frequency`) are provided.
+    """
+
+    # Nyquist frequency
+    h = 1./(1+1j*(frequency/highcut_frequency))**order
+    highcut_frequency = 300*1e3
+    h *= 1./(1+1j*(frequency/highcut_frequency))**1
+    return h
+
+
 def rotate_origin_only(xy, radians):
     """Only rotate a point around the origin (0, 0)."""
     xx = xy[:, 0] * np.cos(radians) + xy[:, 1] * np.sin(radians)
