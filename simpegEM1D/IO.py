@@ -364,7 +364,7 @@ class ModelIO(properties.HasProperties):
             z_temp = -(Z[i_xy, :] - z[i_xy])
             self._Pz.append(mesh_1d.getInterpolationMat(z_temp[actind_temp]))
 
-    def interpolate_to_3d(self, physical_property_1d):
+    def interpolate_from_1d_to_3d(self, physical_property_1d):
         physical_property_2d = self.P*(
             physical_property_1d.reshape(
                 (self.hz.size, self.n_sounding), order='F'
