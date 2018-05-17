@@ -215,7 +215,7 @@ class EM1D(Problem.BaseProblem):
 
         return kernel
 
-    def sigma_cole(self, f):
+    def sigma_cole(self, f, n_filt):
         """
         Computes Pelton's Cole-Cole conductivity model
         in frequency domain.
@@ -223,20 +223,33 @@ class EM1D(Problem.BaseProblem):
         Parameter
         ---------
 
+        n_filter: int
+            the number of filter values
         f: ndarray
             frequency (Hz)
 
         Return
         ------
 
-        sigma_complex: ndarray
-            Cole-Cole conductivity values at given frequencies.
+        sigma_complex: ndarray (nlay x n_frequency*n_filter)
+            Cole-Cole conductivity values at given frequencies
 
         """
-        w = 2*np.pi*f
+
+        n = n_frequency*n_filter
+        sigma_complex = np.empty(
+            (nlay, n), dtype=complex, order=C
+        )
+
+        sigma = np.tile(self.sigma, (n, 1))
+        eta = np.tile(self.eta, (n, 1))
+        tau = np.tile(self.tau, (n, 1))
+        c = np.tile(self.c, (n, 1))
+        w = np.tile(2*np.pi*f.reshape([-1, 1]), (1, n))
+
         sigma_complex = (
-            self.sigma -
-            self.sigma*self.eta/(1+(1-self.eta)*(1j*w*self.tau)**self.c)
+            sigma -
+            sigma*eta/(1+(1-eta)*(1j*w*tau)**c)
         )
         return sigma_complex
 
@@ -245,16 +258,16 @@ class EM1D(Problem.BaseProblem):
             Return Bz or dBzdt
         """
 
-        f = self.survey.frequency
+        self.model = m
+
         n_frequency = self.survey.n_frequency
         flag = self.survey.field_type
-        r = self.survey.offset
-
-        self.model = m
 
         n_layer = self.survey.n_layer
         depth = self.survey.depth
-        nfilt = self.YBASE.size
+        n_filter = self.YBASE.size
+
+        f = np.repeat(self.survey.frequency, n_filter)
 
         # h is an inversion parameter
         if self.hMap is not None:
@@ -262,51 +275,58 @@ class EM1D(Problem.BaseProblem):
         else:
             h = self.survey.h
         z = h + self.survey.dz
+
         HzFHT = np.empty(n_frequency, dtype=complex)
         chi = self.chi
 
         if np.isscalar(self.chi):
             chi = np.ones_like(self.sigma) * self.chi
 
+        # TODO: potentially store?
+        sig = self.sigma_cole(f, n_filter)
+
         if output_type == 'response':
             if self.verbose:
                 print ('>> Compute response')
 
             # for simulation
-            hz = np.empty(nfilt, complex)
+            hz = np.empty(n_filter*n_frequency, complex)
+
             if self.survey.src_type == 'VMD':
-                r = self.survey.offset
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    hz = self.hz_kernel_vertical_magnetic_dipole(
-                        self.YBASE/r[ifreq], f[ifreq], n_layer,
-                        sig, chi, depth, h, z,
-                        flag, output_type=output_type
-                    )
-                    HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
+                r = np.repeat(self.survey.offset, n_filter)
+                ybase = np.tile(self.YBASE, (n_frequency))
+                wt0 = np.tile(self.WT0, (n_frequency))
+                hz = self.hz_kernel_vertical_magnetic_dipole(
+                    ybase/r, f, n_layer,
+                    sig, chi, depth, h, z,
+                    flag, output_type=output_type
+                )
 
-            elif self.survey.src_type == 'CircularLoop':
-                I = self.survey.I
-                a = self.survey.a
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    hz = self.hz_kernel_circular_loop(
-                        self.YBASE/a, f[ifreq], n_layer,
-                        sig, chi, depth, h, z, I, a,
-                        flag, output_type=output_type
-                    )
-                    HzFHT[ifreq] = np.dot(hz, self.WT1)/a
+                # Call Dieter's code?
+                # HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
 
-            elif self.survey.src_type == "piecewise_line":
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    # Need to compute y
-                    hz = self.hz_kernel_horizontal_electric_dipole(
-                        self.YBASE/r[ifreq]*y, f[ifreq], n_layer,
-                        sig, chi, depth, h, z, I, a,
-                        flag, output_type=output_type
-                    )
-                    HzFHT[ifreq] = np.dot(hz, self.WT1)/a
+            # elif self.survey.src_type == 'CircularLoop':
+            #     I = self.survey.I
+            #     a = self.survey.a
+            #     for ifreq in range(n_frequency):
+            #         sig = self.sigma_cole(f[ifreq])
+            #         hz = self.hz_kernel_circular_loop(
+            #             self.YBASE/a, f[ifreq], n_layer,
+            #             sig, chi, depth, h, z, I, a,
+            #             flag, output_type=output_type
+            #         )
+            #         HzFHT[ifreq] = np.dot(hz, self.WT1)/a
+
+            # elif self.survey.src_type == "piecewise_line":
+            #     for ifreq in range(n_frequency):
+            #         sig = self.sigma_cole(f[ifreq])
+            #         # Need to compute y
+            #         hz = self.hz_kernel_horizontal_electric_dipole(
+            #             self.YBASE/r[ifreq]*y, f[ifreq], n_layer,
+            #             sig, chi, depth, h, z, I, a,
+            #             flag, output_type=output_type
+            #         )
+            #         HzFHT[ifreq] = np.dot(hz, self.WT1)/a
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
 
@@ -315,60 +335,62 @@ class EM1D(Problem.BaseProblem):
         elif output_type == 'sensitivity_sigma':
 
             dHzFHT_dsig = np.empty((n_frequency, n_layer), dtype=complex)
-            dhz = np.empty((nfilt, n_layer), complex)
+            dhz = np.empty((n_filter, n_layer), complex)
             if self.survey.src_type == 'VMD':
-                r = self.survey.offset
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_vertical_magnetic_dipole(
-                        self.YBASE/r[ifreq], f[ifreq], n_layer,
-                        sig, chi, depth, h, z,
-                        flag, output_type=output_type
-                    )
-                    dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT0)/r[ifreq]
-            elif self.survey.src_type == 'CircularLoop':
-                I = self.survey.I
-                a = self.survey.a
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_circular_loop(
-                        self.YBASE/a, f[ifreq], n_layer,
-                        sig, chi, depth, h, z, I, a,
-                        flag, output_type=output_type
-                    )
-                    dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT1)/a
-            else:
-                raise Exception("Src options are only VMD or CircularLoop!!")
+                r = np.repeat(self.survey.offset, n_filter)
+                ybase = np.tile(self.YBASE, (n_frequency))
+                dhz = self.hz_kernel_vertical_magnetic_dipole(
+                    ybase/r, f, n_layer,
+                    sig, chi, depth, h, z,
+                    flag, output_type=output_type
+                )
 
-            return dHzFHT_dsig
+                # Use Dieter's code?
+                # dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT0)/r[ifreq]
 
-        elif output_type == 'sensitivity_height':
-            dHzFHT_dh = np.empty((n_frequency, 1), dtype=complex)
-            dhz = np.empty(nfilt, complex)
-            if self.survey.src_type == 'VMD':
-                r = self.survey.offset
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_vertical_magnetic_dipole(
-                        self.YBASE/r[ifreq], f[ifreq], n_layer,
-                        sig, chi, depth, h, z,
-                        flag, output_type=output_type
-                    )
-                    dHzFHT_dh[ifreq] = np.dot(dhz, self.WT0)/r[ifreq]
+        #     elif self.survey.src_type == 'CircularLoop':
+        #         I = self.survey.I
+        #         a = self.survey.a
+        #         for ifreq in range(n_frequency):
+        #             sig = self.sigma_cole(f[ifreq])
+        #             dhz = self.hz_kernel_circular_loop(
+        #                 self.YBASE/a, f[ifreq], n_layer,
+        #                 sig, chi, depth, h, z, I, a,
+        #                 flag, output_type=output_type
+        #             )
+        #             dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT1)/a
+        #     else:
+        #         raise Exception("Src options are only VMD or CircularLoop!!")
 
-            elif self.survey.src_type == 'CircularLoop':
-                I = self.survey.I
-                a = self.survey.a
-                for ifreq in range(n_frequency):
-                    sig = self.sigma_cole(f[ifreq])
-                    dhz = self.hz_kernel_circular_loop(
-                        self.YBASE/a, f[ifreq], n_layer,
-                        sig, chi, depth, h, z, I, a,
-                        flag, output_type=output_type
-                    )
-                    dHzFHT_dh[ifreq] = np.dot(dhz, self.WT1)/a
-            else:
-                raise Exception("Src options are only VMD or CircularLoop!!")
+        #     return dHzFHT_dsig
+
+        # elif output_type == 'sensitivity_height':
+        #     dHzFHT_dh = np.empty((n_frequency, 1), dtype=complex)
+        #     dhz = np.empty(n_filter, complex)
+        #     if self.survey.src_type == 'VMD':
+        #         r = self.survey.offset
+        #         for ifreq in range(n_frequency):
+        #             sig = self.sigma_cole(f[ifreq])
+        #             dhz = self.hz_kernel_vertical_magnetic_dipole(
+        #                 self.YBASE/r[ifreq], f[ifreq], n_layer,
+        #                 sig, chi, depth, h, z,
+        #                 flag, output_type=output_type
+        #             )
+        #             dHzFHT_dh[ifreq] = np.dot(dhz, self.WT0)/r[ifreq]
+
+        #     elif self.survey.src_type == 'CircularLoop':
+        #         I = self.survey.I
+        #         a = self.survey.a
+        #         for ifreq in range(n_frequency):
+        #             sig = self.sigma_cole(f[ifreq])
+        #             dhz = self.hz_kernel_circular_loop(
+        #                 self.YBASE/a, f[ifreq], n_layer,
+        #                 sig, chi, depth, h, z, I, a,
+        #                 flag, output_type=output_type
+        #             )
+        #             dHzFHT_dh[ifreq] = np.dot(dhz, self.WT1)/a
+        #     else:
+        #         raise Exception("Src options are only VMD or CircularLoop!!")
 
             return dHzFHT_dh
 

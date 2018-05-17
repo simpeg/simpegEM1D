@@ -6,26 +6,51 @@ from scipy.constants import mu_0
 def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.
-        Only one for loop for multiple layers. Do not use for loop for lambda,
-        which has 801 times of loops (actually, this makes the code really slow).
-    """
-    Mtemp00 = np.zeros(lamda.size, dtype=complex)
-    Mtemp10 = np.zeros(lamda.size, dtype=complex)
-    Mtemp01 = np.zeros(lamda.size, dtype=complex)
-    Mtemp11 = np.zeros(lamda.size, dtype=complex)
+        Only one for loop for multiple layers.
 
-    M1sum00 = np.zeros(lamda.size, dtype=complex)
-    M1sum10 = np.zeros(lamda.size, dtype=complex)
-    M1sum01 = np.zeros(lamda.size, dtype=complex)
-    M1sum11 = np.zeros(lamda.size, dtype=complex)
+        Parameters
+        ----------
+        nlay : int
+            The number layers
+        f : complex, ndarray
+            Frequency (Hz); size = (n_frequency*n_lambda x 1)
+        lamda : complex, ndarray
+            Frequency (Hz); size = (n_frequency*n_lambda x 1)
+        sig: compelx, ndarray
+            Conductivity (S/m); size = (n_frequency*nlay x 1)
+        chi: compelx, ndarray
+            Susceptibility (SI); size = (n_frequency*nlay x 1)
+        depth: float, ndarray
+            Top boundary of the layers
+        HalfSwitch: bool
+            Switch for halfspace
+
+        Returns
+        -------
+        rTE: compex, ndarray
+            Reflection coefficients;
+            size = (n_frequency*n_lambda x 1)
+    """
+
+    n = lamda.size
+
+    Mtemp00 = np.zeros(n, dtype=complex)
+    Mtemp10 = np.zeros(n, dtype=complex)
+    Mtemp01 = np.zeros(n, dtype=complex)
+    Mtemp11 = np.zeros(n, dtype=complex)
+
+    M1sum00 = np.zeros(n, dtype=complex)
+    M1sum10 = np.zeros(n, dtype=complex)
+    M1sum01 = np.zeros(n, dtype=complex)
+    M1sum11 = np.zeros(n, dtype=complex)
 
     thick = -np.diff(depth)
     w = 2*np.pi*f
 
-    rTE = np.zeros(lamda.size, dtype=complex)
-    utemp0 = np.zeros(lamda.size, dtype=complex)
-    utemp1 = np.zeros(lamda.size, dtype=complex)
-    const = np.zeros(lamda.size, dtype=complex)
+    rTE = np.zeros(n, dtype=complex)
+    utemp0 = np.zeros(n, dtype=complex)
+    utemp1 = np.zeros(n, dtype=complex)
+    const = np.zeros(n, dtype=complex)
 
     utemp0 = lamda
     utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0])
@@ -46,12 +71,12 @@ def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     M0sum01 = Mtemp01
     M0sum11 = Mtemp11
 
-    if HalfSwitch == True:
+    if HalfSwitch:
 
-        M1sum00 = np.zeros(lamda.size, dtype=complex)
-        M1sum10 = np.zeros(lamda.size, dtype=complex)
-        M1sum01 = np.zeros(lamda.size, dtype=complex)
-        M1sum11 = np.zeros(lamda.size, dtype=complex)
+        M1sum00 = np.zeros(n, dtype=complex)
+        M1sum10 = np.zeros(n, dtype=complex)
+        M1sum01 = np.zeros(n, dtype=complex)
+        M1sum11 = np.zeros(n, dtype=complex)
 
         M1sum00 = M0sum00
         M1sum10 = M0sum10
@@ -106,49 +131,73 @@ def matmul(a00, a10, a01, a11, b00, b10, b01, b11):
 # TODO: make this to take a vector rather than a single frequency
 def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     """
-        Compute reflection coefficients for Transverse Electric (TE) mode.
-        Only one for loop for multiple layers. Do not use for loop for lambda,
-        which has 801 times of loops (actually, this makes the code really slow).
+        Compute sensitivity of reflection coefficients for
+        Transverse Electric (TE) mode with regard to conductivity
+
+        Parameters
+        ----------
+        nlay : int
+            The number layers
+        f : complex, ndarray
+            Frequency (Hz); size = (n_frequency*n_lambd x 1)
+        lamda : complex, ndarray
+            Frequency (Hz); size = (n_frequency*n_lambda x 1)
+        sig: compelx, ndarray
+            Conductivity (S/m); size = (nlay x 1)
+        chi: compelx, ndarray
+            Susceptibility (SI); size = (nlay x 1)
+        depth: float, ndarray
+            Top boundary of the layers
+        HalfSwitch: bool
+            Switch for halfspace
+
+        Returns
+        -------
+        rTE: compex, ndarray
+            Derivative of reflection coefficients;
+            size = (n_frequency*n_lambda x 1)
     """
     # Initializing arrays
-    Mtemp00 = np.zeros(lamda.size, dtype=complex)
-    Mtemp10 = np.zeros(lamda.size, dtype=complex)
-    Mtemp01 = np.zeros(lamda.size, dtype=complex)
-    Mtemp11 = np.zeros(lamda.size, dtype=complex)
+    n = lamda.size
 
-    M1sum00 = np.zeros(lamda.size, dtype=complex)
-    M1sum10 = np.zeros(lamda.size, dtype=complex)
-    M1sum01 = np.zeros(lamda.size, dtype=complex)
-    M1sum11 = np.zeros(lamda.size, dtype=complex)
+    Mtemp00 = np.zeros(n, dtype=complex)
+    Mtemp10 = np.zeros(n, dtype=complex)
+    Mtemp01 = np.zeros(n, dtype=complex)
+    Mtemp11 = np.zeros(n, dtype=complex)
 
-    M0sum00 = np.zeros(lamda.size, dtype=complex)
-    M0sum10 = np.zeros(lamda.size, dtype=complex)
-    M0sum01 = np.zeros(lamda.size, dtype=complex)
-    M0sum11 = np.zeros(lamda.size, dtype=complex)
+    M1sum00 = np.zeros(n, dtype=complex)
+    M1sum10 = np.zeros(n, dtype=complex)
+    M1sum01 = np.zeros(n, dtype=complex)
+    M1sum11 = np.zeros(n, dtype=complex)
 
-    dMtemp00 = np.zeros(lamda.size, dtype=complex)
-    dMtemp10 = np.zeros(lamda.size, dtype=complex)
-    dMtemp01 = np.zeros(lamda.size, dtype=complex)
-    dMtemp11 = np.zeros(lamda.size, dtype=complex)
+    M0sum00 = np.zeros(n, dtype=complex)
+    M0sum10 = np.zeros(n, dtype=complex)
+    M0sum01 = np.zeros(n, dtype=complex)
+    M0sum11 = np.zeros(n, dtype=complex)
 
-    dj0temp00 = np.zeros(lamda.size, dtype=complex)
-    dj0temp10 = np.zeros(lamda.size, dtype=complex)
-    dj0temp01 = np.zeros(lamda.size, dtype=complex)
-    dj0temp11 = np.zeros(lamda.size, dtype=complex)
+    dMtemp00 = np.zeros(n, dtype=complex)
+    dMtemp10 = np.zeros(n, dtype=complex)
+    dMtemp01 = np.zeros(n, dtype=complex)
+    dMtemp11 = np.zeros(n, dtype=complex)
 
-    dj1temp00 = np.zeros(lamda.size, dtype=complex)
-    dj1temp10 = np.zeros(lamda.size, dtype=complex)
-    dj1temp01 = np.zeros(lamda.size, dtype=complex)
-    dj1temp11 = np.zeros(lamda.size, dtype=complex)
+    dj0temp00 = np.zeros(n, dtype=complex)
+    dj0temp10 = np.zeros(n, dtype=complex)
+    dj0temp01 = np.zeros(n, dtype=complex)
+    dj0temp11 = np.zeros(n, dtype=complex)
+
+    dj1temp00 = np.zeros(n, dtype=complex)
+    dj1temp10 = np.zeros(n, dtype=complex)
+    dj1temp01 = np.zeros(n, dtype=complex)
+    dj1temp11 = np.zeros(n, dtype=complex)
 
     thick = -np.diff(depth)
     w = 2*np.pi*f
 
-    rTE = np.zeros(lamda.size, dtype=complex)
-    drTE = np.zeros((nlay, lamda.size) , dtype=complex)
-    utemp0 = np.zeros(lamda.size, dtype=complex)
-    utemp1 = np.zeros(lamda.size, dtype=complex)
-    const = np.zeros(lamda.size, dtype=complex)
+    rTE = np.zeros(n, dtype=complex)
+    drTE = np.zeros((nlay, n), dtype=complex)
+    utemp0 = np.zeros(n, dtype=complex)
+    utemp1 = np.zeros(n, dtype=complex)
+    const = np.zeros(n, dtype=complex)
 
     utemp0 = lamda
     utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0])
@@ -191,12 +240,12 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     M0sum01 = Mtemp01.copy()
     M0sum11 = Mtemp11.copy()
 
-    if HalfSwitch == True:
+    if HalfSwitch:
 
-        M1sum00 = np.zeros(lamda.size, dtype=complex)
-        M1sum10 = np.zeros(lamda.size, dtype=complex)
-        M1sum01 = np.zeros(lamda.size, dtype=complex)
-        M1sum11 = np.zeros(lamda.size, dtype=complex)
+        M1sum00 = np.zeros(n, dtype=complex)
+        M1sum10 = np.zeros(n, dtype=complex)
+        M1sum01 = np.zeros(n, dtype=complex)
+        M1sum11 = np.zeros(n, dtype=complex)
 
         M1sum00 = M0sum00.copy()
         M1sum10 = M0sum10.copy()
@@ -205,17 +254,17 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
 
     else:
 
-        for j in range (nlay-1):
+        for j in range(nlay-1):
 
-            dJ_10Mtemp00 = np.zeros(lamda.size, dtype=complex)
-            dJ_10Mtemp10 = np.zeros(lamda.size, dtype=complex)
-            dJ_10Mtemp01 = np.zeros(lamda.size, dtype=complex)
-            dJ_10Mtemp11 = np.zeros(lamda.size, dtype=complex)
+            dJ_10Mtemp00 = np.zeros(n, dtype=complex)
+            dJ_10Mtemp10 = np.zeros(n, dtype=complex)
+            dJ_10Mtemp01 = np.zeros(n, dtype=complex)
+            dJ_10Mtemp11 = np.zeros(n, dtype=complex)
 
-            dJ01Mtemp00 = np.zeros(lamda.size, dtype=complex)
-            dJ01Mtemp10 = np.zeros(lamda.size, dtype=complex)
-            dJ01Mtemp01 = np.zeros(lamda.size, dtype=complex)
-            dJ01Mtemp11 = np.zeros(lamda.size, dtype=complex)
+            dJ01Mtemp00 = np.zeros(n, dtype=complex)
+            dJ01Mtemp10 = np.zeros(n, dtype=complex)
+            dJ01Mtemp01 = np.zeros(n, dtype=complex)
+            dJ01Mtemp11 = np.zeros(n, dtype=complex)
 
             utemp0  = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j])*sig[j])
             utemp1  = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j+1])*sig[j+1])
@@ -242,7 +291,7 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
 
             dudsig = 0.5*1j*w*mu_0*(1+chi[j])/utemp0
 
-            if j==0:
+            if j == 0:
 
                 const1a = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0**2)
                 const1b = const1a*utemp0
@@ -301,15 +350,15 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
 
     # rTE = M1sum01/M1sum11
 
-    if HalfSwitch ==  True:
+    if HalfSwitch:
 
         utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0])
         dudsig = 0.5*1j*w*mu_0*(1+chi[0])/utemp0
 
-        dJ1sum00 = np.zeros(lamda.size, dtype=complex)
-        dJ1sum10 = np.zeros(lamda.size, dtype=complex)
-        dJ1sum01 = np.zeros(lamda.size, dtype=complex)
-        dJ1sum11 = np.zeros(lamda.size, dtype=complex)
+        dJ1sum00 = np.zeros(n, dtype=complex)
+        dJ1sum10 = np.zeros(n, dtype=complex)
+        dJ1sum01 = np.zeros(n, dtype=complex)
+        dJ1sum11 = np.zeros(n, dtype=complex)
 
         dJ1sum00 = dudsig*dj0Mtemp00
         dJ1sum10 = dudsig*dj0Mtemp10
@@ -345,15 +394,15 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
 
         for i in range (nlay):
 
-            dJ0sum00 = np.zeros(lamda.size, dtype=complex)
-            dJ0sum10 = np.zeros(lamda.size, dtype=complex)
-            dJ0sum01 = np.zeros(lamda.size, dtype=complex)
-            dJ0sum11 = np.zeros(lamda.size, dtype=complex)
+            dJ0sum00 = np.zeros(n, dtype=complex)
+            dJ0sum10 = np.zeros(n, dtype=complex)
+            dJ0sum01 = np.zeros(n, dtype=complex)
+            dJ0sum11 = np.zeros(n, dtype=complex)
 
-            dJ1sum00 = np.zeros(lamda.size, dtype=complex)
-            dJ1sum10 = np.zeros(lamda.size, dtype=complex)
-            dJ1sum01 = np.zeros(lamda.size, dtype=complex)
-            dJ1sum11 = np.zeros(lamda.size, dtype=complex)
+            dJ1sum00 = np.zeros(n, dtype=complex)
+            dJ1sum10 = np.zeros(n, dtype=complex)
+            dJ1sum01 = np.zeros(n, dtype=complex)
+            dJ1sum11 = np.zeros(n, dtype=complex)
 
             if i==0:
 
@@ -408,14 +457,14 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
                     dJ0sum01 = dJ1sum01
                     dJ0sum11 = dJ1sum11
 
-            elif i==nlay-1:
+            elif i == nlay-1:
 
                 dJ0sum00 = M00[0]
                 dJ0sum10 = M10[0]
                 dJ0sum01 = M01[0]
                 dJ0sum11 = M11[0]
 
-                for j in range (nlay-1):
+                for j in range(nlay-1):
 
                     if j < nlay-2:
 
@@ -437,5 +486,6 @@ def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
             drTE[i, :] = dJ1sum01/M1sum11 - M1sum01/(M1sum11**2)*dJ1sum11
 
     return drTE
+    # Still worthwhile to output both?
     # return rTE, drTE
 
