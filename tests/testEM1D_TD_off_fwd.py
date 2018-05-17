@@ -43,7 +43,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         chi = np.zeros(TDsurvey.n_layer)
 
         prob = EM1D(
-            mesh1D, sigmaMap=expmap, jacSwitch=False, chi=chi
+            mesh1D, sigmaMap=expmap, chi=chi
         )
         prob.pair(TDsurvey)
 
@@ -101,7 +101,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             self.survey.unpair()
 
         self.prob = EM1D(
-            self.mesh1D, sigmaMap=self.expmap, jacSwitch=False, chi=self.chi,
+            self.mesh1D, sigmaMap=self.expmap, chi=self.chi,
             eta=self.eta, tau=self.tau, c=self.c
         )
         self.prob.pair(self.survey)
