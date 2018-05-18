@@ -2,10 +2,12 @@ from SimPEG import Maps, Utils, Problem, Props
 import numpy as np
 from .Survey import BaseEM1DSurvey
 from scipy.constants import mu_0
-from .DigFilter import EvalDigitalFilt, LoadWeights
-from .RTEfun import rTEfunfwd, rTEfunjac
+from .RTEfun_vec import rTEfunfwd, rTEfunjac
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
+
 from empymod import filters
+from empymod.transform import dlf, get_spline_values
+from empymod.utils import check_hankel
 
 
 class EM1D(Problem.BaseProblem):
@@ -15,11 +17,9 @@ class EM1D(Problem.BaseProblem):
     """
     surveyPair = BaseEM1DSurvey
     mapPair = Maps.IdentityMap
-    WT1 = None
-    WT0 = None
-    YBASE = None
     chi = None
-    filter_type = 'key_101'
+    hankel_filter = 'key_101_2009'  # Default: Hankel filter
+    hankel_pts_per_dec = None       # Default: Standard DLF
     verbose = False
     fix_Jmatrix = False
     _Jmatrix_sigma = None
@@ -57,50 +57,20 @@ class EM1D(Problem.BaseProblem):
     def __init__(self, mesh, **kwargs):
         Problem.BaseProblem.__init__(self, mesh, **kwargs)
 
-        if self.filter_type == 'key_201':
-            if self.verbose:
-                print (">> Use Key 201 filter for Hankel Tranform")
-            fht = filters.key_201_2009()
-            self.WT0 = np.empty(201, complex)
-            self.WT1 = np.empty(201, complex)
-            self.YBASE = np.empty(201, complex)
-            self.WT0 = fht.j0
-            self.WT1 = fht.j1
-            self.YBASE = fht.base
-        elif self.filter_type == 'key_101':
-            if self.verbose:
-                print (">> Use Key 101 filter for Hankel Tranform")
-            fht = filters.key_101_2009()
-            self.WT0 = np.empty(101, complex)
-            self.WT1 = np.empty(101, complex)
-            self.YBASE = np.empty(101, complex)
-            self.WT0 = fht.j0
-            self.WT1 = fht.j1
-            self.YBASE = fht.base
-        elif self.filter_type == 'key_51':
-            if self.verbose:
-                print (">> Use Key 51 filter for Hankel Tranform")
-            fht = filters.key_51_2012()
-            self.WT0 = np.empty(51, complex)
-            self.WT1 = np.empty(51, complex)
-            self.YBASE = np.empty(51, complex)
-            self.WT0 = fht.j0
-            self.WT1 = fht.j1
-            self.YBASE = fht.base
-        elif self.filter_type == 'anderson_801':
-            if self.verbose:
-                print (">> Use Anderson 801 filter for Hankel Tranform")
-            fht = filters.anderson_801_1982()
-            self.WT0 = np.empty(801, complex)
-            self.WT1 = np.empty(801, complex)
-            self.YBASE = np.empty(801, complex)
-            self.WT0 = fht.j0
-            self.WT1 = fht.j1
-            self.YBASE = fht.base
-        else:
+        # Check input arguments. If self.hankel_filter is not a valid filter,
+        # it will set it to the default (key_201_2009).
+        ht, htarg = check_hankel('fht', [self.hankel_filter,
+                                         self.hankel_pts_per_dec], 1)
+
+        self.fhtfilt = htarg[0]                 # Store filter
+        self.hankel_filter = self.fhtfilt.name  # Store name
+        self.hankel_pts_per_dec = htarg[1]      # Store pts_per_dec
+        if self.verbose:
+            print(">> Use "+self.hankel_filter+" filter for Hankel Transform")
+
+        if self.hankel_pts_per_dec != 0:
             raise NotImplementedError()
 
-    # TODO: make this to take a vector rather than a single frequency
     def hz_kernel_vertical_magnetic_dipole(
         self, lamda, f, n_layer, sig, chi, depth, h, z,
         flag, output_type='response'
@@ -112,11 +82,11 @@ class EM1D(Problem.BaseProblem):
 
         """
         u0 = lamda
-        rTE = np.zeros(lamda.size, dtype=complex)
+        rTE = np.empty((lamda.shape), dtype=complex)
         coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros((n_layer, lamda.size), dtype=complex)
+            drTE = np.zeros((n_layer, ), dtype=complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
@@ -153,22 +123,28 @@ class EM1D(Problem.BaseProblem):
 
         .. math::
 
-            H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} + \\r_{TE}e^{u_0|z-h|}] \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
+            H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} +
+            \\r_{TE}e^{u_0|z-h|}]
+            \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
 
         """
 
+        n_frequency = self.survey.n_frequency
+        n_layer = self.survey.n_layer
+        n_filter = self.n_filter
+
         w = 2*np.pi*f
-        rTE = np.empty(lamda.size, dtype=complex)
         u0 = lamda
         coefficient_wavenumber = I*a*0.5*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.empty((n_layer, lamda.size), dtype=complex)
+            drTE = np.empty((n_frequency, n_layer, n_filter), complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
+            rTE = np.empty((n_frequency, n_layer), dtype=complex)
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
@@ -195,17 +171,21 @@ class EM1D(Problem.BaseProblem):
             horizontal electric diopole (HED) source in (kx,ky) domain
 
         """
+        n_frequency = self.survey.n_frequency
+        n_layer = self.survey.n_layer
+        n_filter = self.n_filter
+
         u0 = lamda
-        rTE = np.zeros(lamda.size, dtype=complex)
         coefficient_wavenumber = 1/(4*np.pi)*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros((n_layer, lamda.size), dtype=complex)
+            drTE = np.empty((n_frequency, n_layer, n_filter), complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
+            rTE = np.empty((n_frequency, n_layer), dtype=complex)
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
@@ -215,7 +195,9 @@ class EM1D(Problem.BaseProblem):
 
         return kernel
 
-    def sigma_cole(self, f, n_filt):
+    # make it as a property?
+
+    def sigma_cole(self):
         """
         Computes Pelton's Cole-Cole conductivity model
         in frequency domain.
@@ -231,27 +213,49 @@ class EM1D(Problem.BaseProblem):
         Return
         ------
 
-        sigma_complex: ndarray (nlay x n_frequency*n_filter)
+        sigma_complex: ndarray (n_layer x n_frequency x n_filter)
             Cole-Cole conductivity values at given frequencies
 
         """
+        n_layer = self.survey.n_layer
+        n_frequency = self.survey.n_frequency
+        n_filter = self.n_filter
+        f = self.survey.frequency
 
-        n = n_frequency*n_filter
         sigma_complex = np.empty(
-            (nlay, n), dtype=complex, order=C
+            (n_layer, n_frequency), dtype=complex
         )
 
-        sigma = np.tile(self.sigma, (n, 1))
-        eta = np.tile(self.eta, (n, 1))
-        tau = np.tile(self.tau, (n, 1))
-        c = np.tile(self.c, (n, 1))
-        w = np.tile(2*np.pi*f.reshape([-1, 1]), (1, n))
+        sigma = np.tile(self.sigma.reshape([-1, 1]), (1, n_frequency))
+        if np.isscalar(self.eta):
+            eta = self.eta
+            tau = self.tau
+            c = self.c
+        else:
+            eta = np.tile(self.eta.reshape([-1, 1]), (1, n_frequency))
+            tau = np.tile(self.tau.reshape([-1, 1]), (1, n_frequency))
+            c = np.tile(self.c.reshape([-1, 1]), (1, n_frequency))
+
+        w = np.tile(
+            2*np.pi*f,
+            (n_layer, 1)
+        )
 
         sigma_complex = (
             sigma -
             sigma*eta/(1+(1-eta)*(1j*w*tau)**c)
         )
-        return sigma_complex
+
+        sigma_complex_tensor = np.tile(sigma_complex.reshape(
+            (n_layer, n_frequency, 1)), (1, 1, n_filter)
+        )
+
+        return sigma_complex_tensor
+
+    @property
+    def n_filter(self):
+        """ Length of filter """
+        return self.fhtfilt.base.size
 
     def forward(self, m, output_type='response'):
         """
@@ -262,137 +266,157 @@ class EM1D(Problem.BaseProblem):
 
         n_frequency = self.survey.n_frequency
         flag = self.survey.field_type
-
         n_layer = self.survey.n_layer
         depth = self.survey.depth
-        n_filter = self.YBASE.size
+        I = self.survey.I
 
-        f = np.repeat(self.survey.frequency, n_filter)
+        # Get lambd and offset, will depend on pts_per_dec
+        if self.survey.src_type == "VMD":
+            r = self.survey.offset
+        else:
+            # a is the radius of the loop
+            r = self.survey.a * np.ones(n_frequency)
 
+        # Use function from empymod
+        # size of lambd is (n_frequency x n_filter)
+        lambd, _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
+        n_filter = self.n_filter
+        # TODO: potentially store
+        f = np.tile(self.survey.frequency.reshape([-1, 1]), (1, n_filter))
         # h is an inversion parameter
         if self.hMap is not None:
             h = self.h
         else:
             h = self.survey.h
+
         z = h + self.survey.dz
 
         HzFHT = np.empty(n_frequency, dtype=complex)
+
         chi = self.chi
 
         if np.isscalar(self.chi):
             chi = np.ones_like(self.sigma) * self.chi
 
-        # TODO: potentially store?
-        sig = self.sigma_cole(f, n_filter)
+        # TODO: potentially store
+        sig = self.sigma_cole()
 
         if output_type == 'response':
             if self.verbose:
                 print ('>> Compute response')
 
             # for simulation
-            hz = np.empty(n_filter*n_frequency, complex)
+            hz = np.empty((n_frequency, n_filter), complex)
+            hz0 = np.zeros((n_frequency, n_filter), complex)
 
             if self.survey.src_type == 'VMD':
-                r = np.repeat(self.survey.offset, n_filter)
-                ybase = np.tile(self.YBASE, (n_frequency))
-                wt0 = np.tile(self.WT0, (n_frequency))
                 hz = self.hz_kernel_vertical_magnetic_dipole(
-                    ybase/r, f, n_layer,
+                    lambd, f, n_layer,
                     sig, chi, depth, h, z,
                     flag, output_type=output_type
                 )
 
-                # Call Dieter's code?
-                # HzFHT[ifreq] = np.dot(hz, self.WT0)/r[ifreq]
+                # kernels for each bessel function
+                # (j0, j1, j2)
+                PJ = (hz, hz0, hz0)  # PJ0
 
-            # elif self.survey.src_type == 'CircularLoop':
-            #     I = self.survey.I
-            #     a = self.survey.a
-            #     for ifreq in range(n_frequency):
-            #         sig = self.sigma_cole(f[ifreq])
-            #         hz = self.hz_kernel_circular_loop(
-            #             self.YBASE/a, f[ifreq], n_layer,
-            #             sig, chi, depth, h, z, I, a,
-            #             flag, output_type=output_type
-            #         )
-            #         HzFHT[ifreq] = np.dot(hz, self.WT1)/a
+            elif self.survey.src_type == 'CircularLoop':
+                hz = self.hz_kernel_circular_loop(
+                    lambd, f, n_layer,
+                    sig, chi, depth, h, z, I, r,
+                    flag, output_type=output_type
+                )
 
-            # elif self.survey.src_type == "piecewise_line":
-            #     for ifreq in range(n_frequency):
-            #         sig = self.sigma_cole(f[ifreq])
-            #         # Need to compute y
-            #         hz = self.hz_kernel_horizontal_electric_dipole(
-            #             self.YBASE/r[ifreq]*y, f[ifreq], n_layer,
-            #             sig, chi, depth, h, z, I, a,
-            #             flag, output_type=output_type
-            #         )
-            #         HzFHT[ifreq] = np.dot(hz, self.WT1)/a
+                # kernels for each bessel function
+                # (j0, j1, j2)
+                PJ = (hz0, hz, hz0)  # PJ1
+
+            # TODO: This has not implemented yet!
+            elif self.survey.src_type == "piecewise_line":
+                # Need to compute y
+                hz = self.hz_kernel_horizontal_electric_dipole(
+                    lambd, f, n_layer,
+                    sig, chi, depth, h, z, I, r,
+                    flag, output_type=output_type
+                )
+                # kernels for each bessel function
+                # (j0, j1, j2)
+                PJ = (hz0, hz, hz0)  # PJ1
+
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
 
-            return HzFHT
-
         elif output_type == 'sensitivity_sigma':
 
-            dHzFHT_dsig = np.empty((n_frequency, n_layer), dtype=complex)
-            dhz = np.empty((n_filter, n_layer), complex)
+            # for simulation
+            hz = np.empty((n_frequency, n_layer, n_filter), complex)
+            hz0 = np.zeros((n_frequency, n_layer, n_filter), complex)
+            r = np.tile(r, (n_layer, 1))
+
             if self.survey.src_type == 'VMD':
-                r = np.repeat(self.survey.offset, n_filter)
-                ybase = np.tile(self.YBASE, (n_frequency))
-                dhz = self.hz_kernel_vertical_magnetic_dipole(
-                    ybase/r, f, n_layer,
+                hz = self.hz_kernel_vertical_magnetic_dipole(
+                    lambd, f, n_layer,
                     sig, chi, depth, h, z,
                     flag, output_type=output_type
                 )
 
-                # Use Dieter's code?
-                # dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT0)/r[ifreq]
+                PJ = (hz, hz0, hz0)  # PJ0
 
-        #     elif self.survey.src_type == 'CircularLoop':
-        #         I = self.survey.I
-        #         a = self.survey.a
-        #         for ifreq in range(n_frequency):
-        #             sig = self.sigma_cole(f[ifreq])
-        #             dhz = self.hz_kernel_circular_loop(
-        #                 self.YBASE/a, f[ifreq], n_layer,
-        #                 sig, chi, depth, h, z, I, a,
-        #                 flag, output_type=output_type
-        #             )
-        #             dHzFHT_dsig[ifreq, :] = np.dot(dhz, self.WT1)/a
-        #     else:
-        #         raise Exception("Src options are only VMD or CircularLoop!!")
+            elif self.survey.src_type == 'CircularLoop':
 
-        #     return dHzFHT_dsig
+                hz = self.hz_kernel_circular_loop(
+                    lambd, f, n_layer,
+                    sig, chi, depth, h, z, I, r,
+                    flag, output_type=output_type
+                )
 
-        # elif output_type == 'sensitivity_height':
-        #     dHzFHT_dh = np.empty((n_frequency, 1), dtype=complex)
-        #     dhz = np.empty(n_filter, complex)
-        #     if self.survey.src_type == 'VMD':
-        #         r = self.survey.offset
-        #         for ifreq in range(n_frequency):
-        #             sig = self.sigma_cole(f[ifreq])
-        #             dhz = self.hz_kernel_vertical_magnetic_dipole(
-        #                 self.YBASE/r[ifreq], f[ifreq], n_layer,
-        #                 sig, chi, depth, h, z,
-        #                 flag, output_type=output_type
-        #             )
-        #             dHzFHT_dh[ifreq] = np.dot(dhz, self.WT0)/r[ifreq]
+                PJ = (hz0, hz, hz0)  # PJ1
 
-        #     elif self.survey.src_type == 'CircularLoop':
-        #         I = self.survey.I
-        #         a = self.survey.a
-        #         for ifreq in range(n_frequency):
-        #             sig = self.sigma_cole(f[ifreq])
-        #             dhz = self.hz_kernel_circular_loop(
-        #                 self.YBASE/a, f[ifreq], n_layer,
-        #                 sig, chi, depth, h, z, I, a,
-        #                 flag, output_type=output_type
-        #             )
-        #             dHzFHT_dh[ifreq] = np.dot(dhz, self.WT1)/a
-        #     else:
-        #         raise Exception("Src options are only VMD or CircularLoop!!")
+            else:
+                raise Exception("Src options are only VMD or CircularLoop!!")
 
-            return dHzFHT_dh
+        elif output_type == 'sensitivity_height':
+
+            # for simulation
+            hz = np.empty((n_frequency, n_filter), complex)
+            hz0 = np.zeros((n_frequency, n_filter), complex)
+
+            if self.survey.src_type == 'VMD':
+                hz = self.hz_kernel_vertical_magnetic_dipole(
+                    lamb, f, n_layer,
+                    sig, chi, depth, h, z,
+                    flag, output_type=output_type
+                )
+
+                PJ = (hz, hz0, hz0)  # PJ0
+
+            elif self.survey.src_type == 'CircularLoop':
+
+                hz = self.hz_kernel_circular_loop(
+                    lambd, f, n_layer,
+                    sig, chi, depth, h, z, I, a,
+                    flag, output_type=output_type
+                )
+
+                PJ = (hz0, hz, hz0)  # PJ1
+
+            else:
+                raise Exception("Src options are only VMD or CircularLoop!!")
+
+        # Carry out Hankel DLF
+        # ab=66 => 33 (vertical magnetic src and rec)
+        # For response
+        # HzFHT size = (n_frequency,)
+        # For sensitivity
+        # HzFHT size = (n_layer, n_frequency)
+
+        HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
+                    factAng=np.full_like(r, 1.), ab=33)
+
+        if output_type == "sensitivity_sigma":
+            return HzFHT.T
+
+        return HzFHT
 
     # @profile
     def fields(self, m):
