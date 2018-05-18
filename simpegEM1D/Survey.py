@@ -12,7 +12,7 @@ import properties
 from empymod import filters
 from empymod.utils import check_time
 from empymod.transform import ffht
-from .Waveforms import piecewise_pulse, butter_lowpass_filter
+from .Waveforms import piecewise_pulse, butterworth_type_filter, butter_lowpass_filter
 
 
 class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
@@ -347,13 +347,17 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             Low pass filter values
         """
         if getattr(self, '_lowpass_filter', None) is None:
-            filter_frequency, values = butter_lowpass_filter(
-                self.high_cut_frequency
+            self._lowpass_filter = butterworth_type_filter(
+                self.frequency, self.high_cut_frequency
             )
-            lowpass_func = interp1d(
-                filter_frequency, values, fill_value='extrapolate'
-            )
-            self._lowpass_filter = lowpass_func(self.frequency)
+            # For actual butterworth filter
+            # filter_frequency, values = butter_lowpass_filter(
+            #     self.high_cut_frequency
+            # )
+            # lowpass_func = interp1d(
+            #     filter_frequency, values, fill_value='extrapolate'
+            # )
+            # self._lowpass_filter = lowpass_func(self.frequency)
 
         return self._lowpass_filter
 

@@ -40,7 +40,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         FDsurvey.rx_type = 'Hz'
 
         prob = EM1D(
-            mesh1D, sigmaMap=expmap, jacSwitch=False
+            mesh1D, sigmaMap=expmap
         )
         prob.pair(FDsurvey)
         prob.chi = np.zeros(FDsurvey.n_layer)
@@ -89,8 +89,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
             chi=np.zeros(self.survey.n_layer),
             eta=self.eta,
             tau=self.tau,
-            c=self.c,
-            jacSwitch=False
+            c=self.c
         )
         self.prob.pair(self.survey)
         self.prob.survey.src_type = 'VMD'
@@ -157,8 +156,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
             chi=np.zeros(self.survey.n_layer),
             eta=self.eta,
             tau=self.tau,
-            c=self.c,
-            jacSwitch=False
+            c=self.c
         )
 
         self.prob.pair(self.survey)

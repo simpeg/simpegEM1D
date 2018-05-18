@@ -41,7 +41,7 @@ class EM1D_TD_Jac_layers_ProblemTests(unittest.TestCase):
         chi = np.zeros(TDsurvey.n_layer)
 
         prob = EM1D(
-            mesh1D, sigmaMap=expmap, jacSwitch=True, chi=chi
+            mesh1D, sigmaMap=expmap, chi=chi
         )
         prob.pair(TDsurvey)
 

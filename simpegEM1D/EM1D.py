@@ -19,7 +19,6 @@ class EM1D(Problem.BaseProblem):
     WT0 = None
     YBASE = None
     chi = None
-    jacSwitch = True
     filter_type = 'key_101'
     verbose = False
     fix_Jmatrix = False
@@ -78,6 +77,16 @@ class EM1D(Problem.BaseProblem):
             self.WT0 = fht.j0
             self.WT1 = fht.j1
             self.YBASE = fht.base
+        elif self.filter_type == 'key_51':
+            if self.verbose:
+                print (">> Use Key 51 filter for Hankel Tranform")
+            fht = filters.key_51_2012()
+            self.WT0 = np.empty(51, complex)
+            self.WT1 = np.empty(51, complex)
+            self.YBASE = np.empty(51, complex)
+            self.WT0 = fht.j0
+            self.WT1 = fht.j1
+            self.YBASE = fht.base
         elif self.filter_type == 'anderson_801':
             if self.verbose:
                 print (">> Use Anderson 801 filter for Hankel Tranform")
@@ -91,6 +100,7 @@ class EM1D(Problem.BaseProblem):
         else:
             raise NotImplementedError()
 
+    # TODO: make this to take a vector rather than a single frequency
     def hz_kernel_vertical_magnetic_dipole(
         self, lamda, f, n_layer, sig, chi, depth, h, z,
         flag, output_type='response'
@@ -130,6 +140,7 @@ class EM1D(Problem.BaseProblem):
         #         (np.exp(u0*(z-h))+rTE * np.exp(-u0*(z+h)))*lamda**3/u0
         #     )
 
+    # TODO: make this to take a vector rather than a single frequency
     def hz_kernel_circular_loop(
         self, lamda, f, n_layer, sig, chi, depth, h, z, I, a,
         flag,  output_type='response'

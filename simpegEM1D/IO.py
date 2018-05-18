@@ -1,6 +1,8 @@
 import properties
 import numpy as np
-from SimPEG import Utils
+from scipy.spatial import cKDTree as kdtree
+import scipy.sparse as sp
+from SimPEG import Utils, Mesh
 from .EM1DSimulation import set_mesh_1d
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -86,8 +88,16 @@ class ModelIO(properties.HasProperties):
         if getattr(self, '_mesh_1d', None) is None:
             if self.hz is None:
                 raise Exception("hz information is required!")
-            self._mesh_1d = set_mesh_1d(self.hz)
+            self._mesh_1d = set_mesh_1d(np.r_[self.hz])
         return self._mesh_1d
+
+    @property
+    def mesh_3d(self):
+        if getattr(self, '_mesh_3d', None) is None:
+            if self.hz is None:
+                raise Exception("hz information is required!")
+            self._mesh_3d = set_mesh_3d(np.r_[self.hz[:-1], 1e20])
+        return self._mesh_3d
 
     @property
     def physical_property_matrix(self):
@@ -217,7 +227,7 @@ class ModelIO(properties.HasProperties):
             ax.fill_between(self.topography[ind_line, 1], self.topography[ind_line, 2], y2=yz[:,1].max(), color='w')
 
             out = ax.scatter(
-                yz[:,0], yz[:,1],
+                yz[:, 0], yz[:, 1],
                 c=Utils.mkvc(physical_property_matrix[:, ind_line]), s=0.1, vmin=vmin, vmax=vmax,
                 cmap=cmap, alpha=1, norm=norm
             )
@@ -226,7 +236,6 @@ class ModelIO(properties.HasProperties):
                 norm = LogNorm()
             else:
                 norm=None
-
             ind_line = np.arange(ind_line.size)[ind_line]
             for i in ind_line:
                 inds_temp = [i, i]
@@ -259,3 +268,121 @@ class ModelIO(properties.HasProperties):
         else:
             return out, ax
         return ax,
+
+    def get_3d_mesh(
+        self, dx=None, dy=None, dz=None,
+        npad_x=0, npad_y=0, npad_z=0,
+        core_z_length=None,
+        nx=100,
+        ny=100,
+    ):
+
+        xmin, xmax = self.topography[:, 0].min(), self.topography[:, 0].max()
+        ymin, ymax = self.topography[:, 1].min(), self.topography[:, 1].max()
+        zmin, zmax = self.topography[:, 2].min(), self.topography[:, 2].max()
+        zmin -= self.mesh_1d.vectorCCx.max()
+
+        lx = xmax-xmin
+        ly = ymax-ymin
+        lz = zmax-zmin
+
+        if dx is None:
+            dx = lx/nx
+            print ((">> dx:%.1e")%(dx))
+        if dy is None:
+            dy = ly/ny
+            print ((">> dx:%.1e")%(dy))
+        if dz is None:
+            dz = np.median(self.mesh_1d.hx)
+
+        nx = int(np.floor(lx/dx))
+        ny = int(np.floor(ly/dy))
+        nz = int(np.floor(lz/dz))
+
+        if nx*ny*nz > 1e6:
+            warnings.warn(
+                ("Size of the mesh (%i) will greater than 1e6")%(nx*ny*nz)
+            )
+        hx = [(dx, npad_x, -1.2), (dx, nx), (dx, npad_x, -1.2)]
+        hy = [(dy, npad_y, -1.2), (dy, ny), (dy, npad_y, -1.2)]
+        hz = [(dz, npad_z, -1.2), (dz, nz)]
+
+        self._mesh_3d = Mesh.TensorMesh([hx, hy, hz], x0=[xmin, ymin, zmin])
+
+        return self.mesh_3d
+
+    @property
+    def P(self):
+        if getattr(self, '_P', None) is None:
+            raise Exception("Run get_interpolation_matrix first!")
+        return self._P
+
+    def get_interpolation_matrix(
+        self,
+        npts=20,
+        epsilon=None
+    ):
+
+        tree_2d = kdtree(self.topography[:, :2])
+        xy = Utils.ndgrid(self.mesh_3d.vectorCCx, self.mesh_3d.vectorCCy)
+
+        distance, inds = tree_2d.query(xy, k=npts)
+        if epsilon is None:
+            epsilon = np.min([self.mesh_3d.hx.min(), self.mesh_3d.hy.min()])
+
+        w = 1. / (distance + epsilon)**2
+        w = Utils.sdiag(1./np.sum(w, axis=1)) * (w)
+        I = Utils.mkvc(
+            np.arange(inds.shape[0]).reshape([-1, 1]).repeat(npts, axis=1)
+        )
+        J = Utils.mkvc(inds)
+
+        self._P = sp.coo_matrix(
+            (Utils.mkvc(w), (I, J)),
+            shape=(inds.shape[0], self.topography.shape[0])
+        )
+
+        mesh_1d = Mesh.TensorMesh([np.r_[self.hz[:-1], 1e20]])
+
+        z = self.P*self.topography[:, 2]
+
+        self._actinds = Utils.surface2ind_topo(self.mesh_3d, np.c_[xy, z])
+
+        Z = np.empty(self.mesh_3d.vnC, dtype=float, order='F')
+        Z = self.mesh_3d.gridCC[:, 2].reshape(
+            (self.mesh_3d.nCx*self.mesh_3d.nCy, self.mesh_3d.nCz), order='F'
+        )
+        ACTIND = self._actinds.reshape(
+            (self.mesh_3d.nCx*self.mesh_3d.nCy, self.mesh_3d.nCz), order='F'
+        )
+
+        self._Pz = []
+
+        # This part can be cythonized or parallelized
+        for i_xy in range(self.mesh_3d.nCx*self.mesh_3d.nCy):
+            actind_temp = ACTIND[i_xy, :]
+            z_temp = -(Z[i_xy, :] - z[i_xy])
+            self._Pz.append(mesh_1d.getInterpolationMat(z_temp[actind_temp]))
+
+    def interpolate_from_1d_to_3d(self, physical_property_1d):
+        physical_property_2d = self.P*(
+            physical_property_1d.reshape(
+                (self.hz.size, self.n_sounding), order='F'
+            ).T
+        )
+        physical_property_3d = np.ones(
+            (self.mesh_3d.nCx*self.mesh_3d.nCy, self.mesh_3d.nCz),
+            order='C', dtype=float
+        ) * np.nan
+
+        ACTIND = self._actinds.reshape(
+            (self.mesh_3d.nCx*self.mesh_3d.nCy, self.mesh_3d.nCz), order='F'
+        )
+
+        for i_xy in range(self.mesh_3d.nCx*self.mesh_3d.nCy):
+            actind_temp = ACTIND[i_xy, :]
+            physical_property_3d[i_xy, actind_temp] = (
+                self._Pz[i_xy]*physical_property_2d[i_xy, :]
+            )
+
+        return physical_property_3d

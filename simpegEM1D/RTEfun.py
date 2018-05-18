@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.constants import mu_0
 
-
+# TODO: make this to take a vector rather than a single frequency
 def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.
@@ -102,7 +102,7 @@ def matmul(a00, a10, a01, a11, b00, b10, b01, b11):
     return c00, c10, c01, c11
 
 
-# @profile
+# TODO: make this to take a vector rather than a single frequency
 def rTEfunjac(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.
