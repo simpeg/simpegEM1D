@@ -91,7 +91,7 @@ class GlobalEM1DFD(unittest.TestCase):
         )
 
         problem = GlobalEM1DProblemTD(
-            mesh, sigmaMap=mapping, hz=hz, parallel=parallel, n_cpu=5
+            mesh, sigmaMap=mapping, hz=hz, parallel=parallel, n_cpu=2
         )
         problem.pair(survey)
 

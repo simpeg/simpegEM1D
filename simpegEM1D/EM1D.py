@@ -82,7 +82,6 @@ class EM1D(Problem.BaseProblem):
 
         """
         u0 = lamda
-        rTE = np.empty((lamda.shape), dtype=complex)
         coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
 
         if output_type == 'sensitivity_sigma':
@@ -135,7 +134,9 @@ class EM1D(Problem.BaseProblem):
 
         w = 2*np.pi*f
         u0 = lamda
-        coefficient_wavenumber = I*a*0.5*lamda**2/u0
+        radius = np.tile(a.reshape([-1, 1]), (1, n_filter))
+
+        coefficient_wavenumber = I*radius*0.5*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
             drTE = np.empty((n_frequency, n_layer, n_filter), complex)
@@ -351,7 +352,7 @@ class EM1D(Problem.BaseProblem):
             # for simulation
             hz = np.empty((n_frequency, n_layer, n_filter), complex)
             hz0 = np.zeros((n_frequency, n_layer, n_filter), complex)
-            r = np.tile(r, (n_layer, 1))
+
 
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
@@ -374,6 +375,8 @@ class EM1D(Problem.BaseProblem):
 
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
+
+            r = np.tile(r, (n_layer, 1))
 
         elif output_type == 'sensitivity_height':
 

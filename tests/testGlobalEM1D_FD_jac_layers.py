@@ -54,7 +54,7 @@ class GlobalEM1DFD(unittest.TestCase):
 
         problem = GlobalEM1DProblemFD(
             [], sigmaMap=mapping, hz=hz,
-            parallel=parallel, n_cpu=5
+            parallel=parallel, n_cpu=2
         )
         problem.pair(survey)
         survey.makeSyntheticData(mSynth)
@@ -66,6 +66,7 @@ class GlobalEM1DFD(unittest.TestCase):
             maxIterLS=20, maxIter=10, tolF=1e-6,
             tolX=1e-6, tolG=1e-6, maxIterCG=6
         )
+
         invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=0.)
         inv = Inversion.BaseInversion(invProb)
         self.inv = inv
