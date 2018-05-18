@@ -47,7 +47,7 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         chi = np.zeros(TDsurvey.n_layer)
 
         prob = EM1D(
-            mesh1D, sigmaMap=expmap, jacSwitch=False, chi=chi
+            mesh1D, sigmaMap=expmap, chi=chi
         )
         prob.pair(TDsurvey)
 
@@ -94,7 +94,6 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
         dr = resp_ini-dobs
 
         def misfit(m, dobs):
-            self.prob.jacSwitch = True
             dpred = self.survey.dpred(m)
             misfit = 0.5*np.linalg.norm(dpred-dobs)**2
             dmisfit = self.prob.Jtvec(m, dr)

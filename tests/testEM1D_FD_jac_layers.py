@@ -65,13 +65,11 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         )
 
         def fwdfun(m):
-            self.prob.jacSwitch = False
             resp = self.prob.survey.dpred(m)
             return resp
             # return Hz
 
         def jacfun(m, dm):
-            self.prob.jacSwitch = True
             Jvec = self.prob.Jvec(m, dm)
             return Jvec
 
