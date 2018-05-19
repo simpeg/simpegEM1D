@@ -35,7 +35,6 @@ setup(
     packages = find_packages(),
     install_requires = [
         'SimPEG>=0.4.1',
-        'empymod',
         'multiprocess'
     ],
     author = 'Seogi Kang',

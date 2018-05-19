@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.constants import mu_0
 
+
 # TODO: make this to take a vector rather than a single frequency
 def rTEfunfwd(nlay, f, lamda, sig, chi, depth, HalfSwitch):
     """
