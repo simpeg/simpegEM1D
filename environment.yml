@@ -11,5 +11,4 @@ dependencies:
   - mkl
   - pip:
     - pymatsolver
-    - git+https://github.com/sgkang/empymod.git@simpegEM1D
     - git+https://github.com/simpeg/simpegEM1D.git@master
