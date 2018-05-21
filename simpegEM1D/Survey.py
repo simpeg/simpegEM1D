@@ -370,12 +370,12 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         if self.wave_type == "general":
             _, frequency, ft, ftarg = check_time(
                 self.time_int, 0, 'sin',
-                {'pts_per_dec': 5, 'fftfilt': self.fftfilt}, 0
+                {'pts_per_dec': 3, 'fftfilt': self.fftfilt}, 0
             )
         elif self.wave_type == "stepoff":
             _, frequency, ft, ftarg = check_time(
                 self.time, 0, 'sin',
-                {'pts_per_dec': 5, 'fftfilt': self.fftfilt}, 0
+                {'pts_per_dec': 3, 'fftfilt': self.fftfilt}, 0
             )
         else:
             raise Exception("wave_type must be either general or stepoff")

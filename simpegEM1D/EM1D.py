@@ -308,7 +308,6 @@ class EM1D(Problem.BaseProblem):
 
             # for simulation
             hz = np.empty((n_frequency, n_filter), complex)
-            hz0 = np.zeros((n_frequency, n_filter), complex)
 
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
@@ -319,7 +318,7 @@ class EM1D(Problem.BaseProblem):
 
                 # kernels for each bessel function
                 # (j0, j1, j2)
-                PJ = (hz, hz0, hz0)  # PJ0
+                PJ = (hz, None, None)  # PJ0
 
             elif self.survey.src_type == 'CircularLoop':
                 hz = self.hz_kernel_circular_loop(
@@ -330,7 +329,7 @@ class EM1D(Problem.BaseProblem):
 
                 # kernels for each bessel function
                 # (j0, j1, j2)
-                PJ = (hz0, hz, hz0)  # PJ1
+                PJ = (None, hz, None)  # PJ1
 
             # TODO: This has not implemented yet!
             elif self.survey.src_type == "piecewise_line":
@@ -342,7 +341,7 @@ class EM1D(Problem.BaseProblem):
                 )
                 # kernels for each bessel function
                 # (j0, j1, j2)
-                PJ = (hz0, hz, hz0)  # PJ1
+                PJ = (None, hz, None)  # PJ1
 
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
@@ -361,7 +360,7 @@ class EM1D(Problem.BaseProblem):
                     flag, output_type=output_type
                 )
 
-                PJ = (hz, hz0, hz0)  # PJ0
+                PJ = (hz, None, None)  # PJ0
 
             elif self.survey.src_type == 'CircularLoop':
 
@@ -371,7 +370,7 @@ class EM1D(Problem.BaseProblem):
                     flag, output_type=output_type
                 )
 
-                PJ = (hz0, hz, hz0)  # PJ1
+                PJ = (None, hz, None)  # PJ1
 
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
@@ -382,7 +381,6 @@ class EM1D(Problem.BaseProblem):
 
             # for simulation
             hz = np.empty((n_frequency, n_filter), complex)
-            hz0 = np.zeros((n_frequency, n_filter), complex)
 
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
@@ -391,7 +389,7 @@ class EM1D(Problem.BaseProblem):
                     flag, output_type=output_type
                 )
 
-                PJ = (hz, hz0, hz0)  # PJ0
+                PJ = (hz, None, None)  # PJ0
 
             elif self.survey.src_type == 'CircularLoop':
 
@@ -401,7 +399,7 @@ class EM1D(Problem.BaseProblem):
                     flag, output_type=output_type
                 )
 
-                PJ = (hz0, hz, hz0)  # PJ1
+                PJ = (None, hz, None)  # PJ1
 
             else:
                 raise Exception("Src options are only VMD or CircularLoop!!")
@@ -414,7 +412,7 @@ class EM1D(Problem.BaseProblem):
         # HzFHT size = (n_layer, n_frequency)
 
         HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
-                    factAng=np.full_like(r, 1.), ab=33)
+                    factAng=None, ab=33)
 
         if output_type == "sensitivity_sigma":
             return HzFHT.T
