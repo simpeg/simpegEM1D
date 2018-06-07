@@ -525,7 +525,7 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
 
         print (">> Set parameters")
         if self.n_pulse is None:
-            self.n_pulse = np.ones(self.n_sounding, dtype=int) * 2
+            self.n_pulse = np.ones(self.n_sounding, dtype=int) * 1
 
         if self.base_frequency is None:
             self.base_frequency = np.ones(

@@ -2,14 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 
-def plotLayer(sig, LocSigZ, xscale='log', ax=None, showlayers=False, xlim=None,**kwargs):
+def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kwargs):
     """
         Plot Conductivity model for the layered earth model
     """
-    sigma = np.repeat(sig, 2, axis=0)
-    z = np.repeat(LocSigZ[1:], 2, axis=0)
-    z = np.r_[LocSigZ[0], z, LocSigZ[-1]]
-
+    
+    # dz = LocSigZ[0]/2.
+    # z = np.repeat(LocSigZ[1:], 2, axis=0)
+    # z = np.r_[LocSigZ[0], z, LocSigZ[-1]] - dz
+    z_grid = -mesh.vectorNx
+    n_sig = sig.size
+    sigma = np.repeat(sig, 2)
+    z = []
+    for i in range(n_sig):
+        z.append(np.r_[z_grid[i], z_grid[i+1]])
+    z = np.hstack(z)
     if xlim == None:
         sig_min = sig.min()*0.5
         sig_max = sig.max()*2
@@ -29,7 +36,7 @@ def plotLayer(sig, LocSigZ, xscale='log', ax=None, showlayers=False, xlim=None,*
         plt.ylabel('Depth (m)', fontsize = 14)
         plt.ylabel('Depth (m)', fontsize = 14)
         if showlayers == True:
-            for locz in LocSigZ:
+            for locz in z_grid:
                 plt.plot(np.linspace(sig_min, sig_max, 100), np.ones(100)*locz, 'b--', lw = 0.5)
         return plt.plot(sigma, z, 'k-', **kwargs)
 
@@ -40,7 +47,7 @@ def plotLayer(sig, LocSigZ, xscale='log', ax=None, showlayers=False, xlim=None,*
         ax.set_xlabel('Conductivity (S/m)', fontsize = 14)
         ax.set_ylabel('Depth (m)', fontsize = 14)
         if showlayers == True:
-            for locz in LocSigZ:
+            for locz in z_grid:
                 ax.plot(np.linspace(sig_min, sig_max, 100), np.ones(100)*locz, 'b--', lw = 0.5)
         return ax.plot(sigma, z, 'k-', **kwargs)
 

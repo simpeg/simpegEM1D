@@ -10,7 +10,7 @@ XXX
 
 import numpy as np
 from scipy.integrate import fixed_quad
-from scipy.signal import butter, freqz
+# from scipy.signal import butter, freqz
 
 
 class CurrentWaveforms:
