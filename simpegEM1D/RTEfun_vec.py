@@ -243,11 +243,6 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
 
     if HalfSwitch:
 
-        M1sum00 = np.zeros(n, dtype=complex)
-        M1sum10 = np.zeros(n, dtype=complex)
-        M1sum01 = np.zeros(n, dtype=complex)
-        M1sum11 = np.zeros(n, dtype=complex)
-
         M1sum00 = M0sum00.copy()
         M1sum10 = M0sum10.copy()
         M1sum01 = M0sum01.copy()

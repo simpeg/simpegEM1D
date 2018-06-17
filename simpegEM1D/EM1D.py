@@ -384,7 +384,7 @@ class EM1D(Problem.BaseProblem):
 
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
-                    lamb, f, n_layer,
+                    lambd, f, n_layer,
                     sig, chi, depth, h, z,
                     flag, output_type=output_type
                 )
@@ -395,7 +395,7 @@ class EM1D(Problem.BaseProblem):
 
                 hz = self.hz_kernel_circular_loop(
                     lambd, f, n_layer,
-                    sig, chi, depth, h, z, I, a,
+                    sig, chi, depth, h, z, I, r,
                     flag, output_type=output_type
                 )
 
