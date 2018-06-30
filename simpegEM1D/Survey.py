@@ -42,7 +42,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
     rx_type = properties.StringChoice(
         "Source location",
         default="Hz",
-        choices=["Hz", "Bz", "dBzdt"]
+        choices=["Hz", "ppm", "Bz", "dBzdt"]
     )
     field_type = properties.StringChoice(
         "Field type",
@@ -161,6 +161,11 @@ class EM1DSurveyFD(BaseEM1DSurvey):
         ):
             return int(self.n_frequency)
 
+    @property
+    def hz_primary(self):
+        # Assumes HCP only at the moment
+        return -1./(4*np.pi*self.offset**3)
+
     def projectFields(self, u):
         """
             Decompose frequency domain EM responses as real and imaginary
@@ -171,23 +176,28 @@ class EM1DSurveyFD(BaseEM1DSurvey):
         uimag = (u.imag).copy()
 
         if self.rx_type == 'Hz':
-            if self.switch_real_imag == 'all':
-                ureal = (u.real).copy()
-                uimag = (u.imag).copy()
-                if ureal.ndim == 1 or 0:
-                    resp = np.r_[ureal, uimag]
-                elif ureal.ndim == 2:
-                    resp = np.vstack((ureal, uimag))
-                else:
-                    raise NotImplementedError()
-            elif self.switch_real_imag == 'real':
-                resp = (u.real).copy()
-            elif self.switch_real_imag == 'imag':
-                resp = (u.imag).copy()
+            factor = 1.
+        elif self.rx_type == 'ppm':
+            factor = 1./self.hz_primary * 1e6
+
+        if self.switch_real_imag == 'all':
+            ureal = (u.real).copy()
+            uimag = (u.imag).copy()
+            if ureal.ndim == 1 or 0:
+                resp = np.r_[ureal*factor, uimag*factor]
+            elif ureal.ndim == 2:
+                resp = np.vstack((
+                    Utils.sdiag(factor)*ureal, Utils.sdiag(factor)*uimag)
+            )
             else:
                 raise NotImplementedError()
+        elif self.switch_real_imag == 'real':
+            resp = (u.real).copy()
+        elif self.switch_real_imag == 'imag':
+            resp = (u.imag).copy()
         else:
             raise NotImplementedError()
+
         return resp
 
 
