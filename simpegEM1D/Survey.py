@@ -164,7 +164,12 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     @property
     def hz_primary(self):
         # Assumes HCP only at the moment
-        return -1./(4*np.pi*self.offset**3)
+        if self.src_type == 'VMD':
+            return -1./(4*np.pi*self.offset**3)
+        elif self.src_type == 'CircularLoop':
+            return self.I/(2*self.a) * np.ones_like(self.frequency)
+        else:
+            raise NotImplementedError()
 
     def projectFields(self, u):
         """
@@ -186,9 +191,14 @@ class EM1DSurveyFD(BaseEM1DSurvey):
             if ureal.ndim == 1 or 0:
                 resp = np.r_[ureal*factor, uimag*factor]
             elif ureal.ndim == 2:
-                resp = np.vstack((
-                    Utils.sdiag(factor)*ureal, Utils.sdiag(factor)*uimag)
-            )
+                if np.isscalar(factor):
+                    resp = np.vstack(
+                            (factor*ureal, factor*uimag)
+                    )
+                else:
+                    resp = np.vstack(
+                        (Utils.sdiag(factor)*ureal, Utils.sdiag(factor)*uimag)
+                    )
             else:
                 raise NotImplementedError()
         elif self.switch_real_imag == 'real':
