@@ -512,11 +512,13 @@ class EM1D(Problem.BaseProblem):
                 toDelete += ['_Jmatrix_height']
         return toDelete
 
-    def depth_of_investigation(self, uncert, thres_hold=0.8):
-        thres_hold = 0.8
+    def depth_of_investigation_christiansen_2012(self, std, thres_hold=0.8):
+        pred = self.survey._pred.copy()
+        delta_d = std * np.log(abs(self.survey.dobs))
         J = self.getJ(self.model)
-        S = np.cumsum(abs(np.dot(J.T, 1./uncert))[::-1])[::-1]
-        active = S-0.8 > 0.
+        J_sum = abs(Utils.sdiag(1/delta_d/pred) * J).sum(axis=0)
+        S = np.cumsum(J_sum[::-1])[::-1]
+        active = S-thres_hold > 0.
         doi = abs(self.survey.depth[active]).max()
         return doi, active
 
@@ -528,7 +530,7 @@ class EM1D(Problem.BaseProblem):
 
     def get_JtJdiag(self, uncert):
         J = self.getJ(self.model)
-        JtJdiag = ((Utils.sdiag(1./uncert)*J)**2).sum(axis=0)
+        JtJdiag = (np.power((Utils.sdiag(1./uncert)*J), 2)).sum(axis=0)
         return JtJdiag
 
 if __name__ == '__main__':
