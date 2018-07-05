@@ -1,10 +1,12 @@
 language: python
+
 python:
-- 3.6
-- "nightly"
+  - 3.6
+  - nightly
+
 matrix:
   allow_failures:
-    - python: "nightly"
+    - python: nightly
 
 sudo: false
 
@@ -12,13 +14,11 @@ env:
   - TEST_DIR=tests
 
 before_install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then
-      wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
+  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+    -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    -O miniconda.sh; fi
   - chmod +x miniconda.sh
-  - ./miniconda.sh -b -p $HOME/miniconda
+  - "./miniconda.sh -b -p $HOME/miniconda"
   - export PATH=$HOME/anaconda/bin:$HOME/miniconda/bin:$PATH
   - conda update --yes conda
 
@@ -34,3 +34,13 @@ script:
   - travis_wait 20 nosetests $TEST_DIR -v -s
 
 after_success: coveralls
+
+deploy:
+  provider: pypi
+  user: sgkang
+  password:
+    secure: WtCIxOm3pO7T86+MI0YeV5yy+D3pmWolVl3Bocp8ygfUCOVAWq55d6vUr8JJAhX1RgXDFEc/oGL7qCrya5+cK/HdVMqgyz4hfTyUe76ftsMWmz89VhT6TlLJknC6h4otTAarZWW7MecNdojVaOav8c3gz8iA/Ju75WRAGEvBJGQ=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: simpeg/simpegEM1D
