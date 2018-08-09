@@ -65,7 +65,7 @@ def run_simulation_FD(args):
         jac_switch :
     """
 
-    rx_location, src_location, topo, hz, offset, frequency, field_type, rx_type, src_type, sigma, jac_switch = args
+    rx_location, src_location, topo, hz, offset, frequency, field_type, rx_type, src_type, sigma, chi, jac_switch = args
     mesh_1d = set_mesh_1d(hz)
     depth = -mesh_1d.gridN[:-1]
     FDsurvey = EM1DSurveyFD(
@@ -83,7 +83,7 @@ def run_simulation_FD(args):
     # This is hard-wired at the moment
     expmap = Maps.ExpMap(mesh_1d)
     prob = EM1D(
-        mesh_1d, sigmaMap=expmap, hankel_filter='key_101_2009'
+        mesh_1d, sigmaMap=expmap, chi=chi, hankel_filter='key_101_2009'
     )
     if prob.ispaired:
         prob.unpair()
