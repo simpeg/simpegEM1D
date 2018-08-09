@@ -30,6 +30,11 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         "Electrical conductivity (S/m)"
     )
 
+    chi = Props.PhysicalProperty(
+        "Magnetic susceptibility (H/m)",
+        default=0.
+    )
+
     _Jmatrix = None
     run_simulation = None
     n_cpu = None
@@ -114,6 +119,13 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             self._Sigma = self.sigma.reshape((self.n_sounding, self.n_layer))
         return self._Sigma
 
+    @property
+    def Chi(self):
+        if getattr(self, '_Chi', None) is None:
+            # Ordering: first z then x
+            self._Chi = self.chi.reshape((self.n_sounding, self.n_layer))
+        return self._Chi
+
     def fields(self, m):
         if self.verbose:
             print ("Compute fields")
@@ -186,7 +198,9 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
             self.topo[i_sounding, :], self.hz,
             self.offset, self.frequency,
             self.field_type, self.rx_type, self.src_type,
-            self.Sigma[i_sounding, :], jacSwitch
+            self.Sigma[i_sounding, :],
+            self.Chi[i_sounding, :],
+            jacSwitch
         )
         return output
 
