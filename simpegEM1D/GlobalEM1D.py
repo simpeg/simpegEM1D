@@ -31,8 +31,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     )
 
     chi = Props.PhysicalProperty(
-        "Magnetic susceptibility (H/m)",
-        default=0.
+        "Magnetic susceptibility (H/m)"
     )
 
     _Jmatrix = None
@@ -123,7 +122,12 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     def Chi(self):
         if getattr(self, '_Chi', None) is None:
             # Ordering: first z then x
-            self._Chi = self.chi.reshape((self.n_sounding, self.n_layer))
+            if self.chi is None:
+                self._Chi = np.zeros(
+                    (self.n_sounding, self.n_layer), dtype=float, order='C'
+                )
+            else:
+                self._Chi = self.chi.reshape((self.n_sounding, self.n_layer))
         return self._Chi
 
     def fields(self, m):
