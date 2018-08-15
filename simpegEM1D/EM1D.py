@@ -480,11 +480,8 @@ class EM1D(Problem.BaseProblem):
 
         J_sigma = self.getJ_sigma(m, f=f)
         J_height = self.getJ_height(m, f=f)
-
-        if self.hMap is None:
-            Jv = np.dot(J_sigma, self.sigmaMap.deriv(m, v))
-        else:
-            Jv = np.dot(J_sigma, self.sigmaMap.deriv(m, v))
+        Jv = np.dot(J_sigma, self.sigmaMap.deriv(m, v))
+        if self.hMap is not None:
             Jv += np.dot(J_height, self.hMap.deriv(m, v))
         return Jv
 
@@ -495,10 +492,8 @@ class EM1D(Problem.BaseProblem):
 
         J_sigma = self.getJ_sigma(m, f=f)
         J_height = self.getJ_height(m, f=f)
-        if self.hMap is None:
-            Jtv = self.sigmaMap.deriv(m, np.dot(J_sigma.T, v))
-        else:
-            Jtv = (self.sigmaDeriv.T*np.dot(J_sigma.T, v))
+        Jtv = self.sigmaDeriv.T*np.dot(J_sigma.T, v)
+        if self.hMap is not None:
             Jtv += self.hDeriv.T*np.dot(J_height.T, v)
         return Jtv
 
