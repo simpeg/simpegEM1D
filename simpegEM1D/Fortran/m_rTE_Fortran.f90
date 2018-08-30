@@ -155,10 +155,10 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
 
   complex(kind=8) :: const, cTmp, cTmp2, cTmp3, cTmp4
   complex(kind=8) :: dJ_10mTemp00, dJ_10mTemp01, dJ_10mTemp10, dJ_10mTemp11
-  real(kind=8)    :: dJ0mTemp00_, dJ0mTemp01_, dJ0mTemp10_, dJ0mTemp11_
-  complex(kind=8) :: dJ0mTemp00, dJ0mTemp01, dJ0mTemp10, dJ0mTemp11
+  real(kind=8)    :: dJ0mTemp00_
+  complex(kind=8) :: dJ0mTemp00, dJ0mTemp11
   complex(kind=8) :: dJ01mTemp00, dJ01mTemp01, dJ01mTemp10, dJ01mTemp11
-  complex(kind=8) :: dJ1mTemp00, dJ1mTemp01, dJ1mTemp10, dJ1mTemp11
+  complex(kind=8) :: dJ1mTemp00, dJ1mTemp01, dJ1mTemp10
   complex(kind=8) :: dJ0sum00, dJ0sum10, dJ0sum01, dJ0sum11
   complex(kind=8) :: dJ1sum00, dJ1sum10, dJ1sum01, dJ1sum11
   complex(kind=8) :: dudsig
