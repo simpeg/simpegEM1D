@@ -512,7 +512,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                             n_pulse=self.n_pulse
                         )
                         resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
-        return resp * (-2/np.pi) * mu_0
+        return resp * (-2.0/np.pi) * mu_0
 
     @Utils.requires('prob')
     def dpred(self, m, f=None):
