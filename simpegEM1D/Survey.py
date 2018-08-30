@@ -421,7 +421,6 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         if self.wave_type == 'stepoff':
             # Compute EM responses
             if u.size == self.n_frequency:
-                resp = np.empty(self.n_time, dtype=float)
                 resp, _ = ffht(
                     u.flatten()*factor, self.time,
                     self.frequency, self.ftarg
@@ -445,8 +444,6 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         elif self.wave_type == 'general':
             # Compute EM responses
             if u.size == self.n_frequency:
-                resp = np.empty(self.n_time, dtype=float)
-                resp_int = np.empty(self.time_int.size, dtype=float)
                 resp_int, _ = ffht(
                     u.flatten()*factor, self.time_int,
                     self.frequency, self.ftarg
@@ -462,9 +459,6 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
                 # Compute response for the dual moment
                 if self.moment_type == "dual":
-                    resp_dual_moment = np.empty(
-                        self.n_time_dual_moment, dtype=float
-                    )
                     resp_dual_moment = piecewise_pulse(
                         step_func, self.time_dual_moment,
                         self.time_input_currents_dual_moment,
@@ -483,19 +477,12 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     resp = np.zeros(
                         (self.n_time, self.n_layer), dtype=float, order='F'
                     )
-                    resp_i = np.empty(self.time.size, dtype=float)
                 else:
                     # For dual moment
                     resp = np.zeros(
                         (self.n_time+self.n_time_dual_moment, self.n_layer),
                         dtype=float, order='F'
                     )
-                    resp_i = np.empty(self.n_time, dtype=float)
-                    resp_dual_moment_i = np.empty(
-                        self.time_dual_moment.size, dtype=float
-                    )
-
-                resp_int_i = np.empty(self.time_int.size, dtype=float)
 
                 # TODO: remove for loop
                 for i in range(self.n_layer):

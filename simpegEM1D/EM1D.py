@@ -85,7 +85,6 @@ class EM1D(Problem.BaseProblem):
         coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros((n_layer, ), dtype=complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
@@ -139,13 +138,11 @@ class EM1D(Problem.BaseProblem):
         coefficient_wavenumber = I*radius*0.5*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.empty((n_frequency, n_layer, n_filter), complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = np.empty((n_frequency, n_layer), dtype=complex)
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
@@ -180,13 +177,11 @@ class EM1D(Problem.BaseProblem):
         coefficient_wavenumber = 1/(4*np.pi)*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.empty((n_frequency, n_layer, n_filter), complex)
             drTE = rTEfunjac(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = np.empty((n_frequency, n_layer), dtype=complex)
             rTE = rTEfunfwd(
                 n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
             )
@@ -222,10 +217,6 @@ class EM1D(Problem.BaseProblem):
         n_frequency = self.survey.n_frequency
         n_filter = self.n_filter
         f = self.survey.frequency
-
-        sigma_complex = np.empty(
-            (n_layer, n_frequency), dtype=complex
-        )
 
         sigma = np.tile(self.sigma.reshape([-1, 1]), (1, n_frequency))
         if np.isscalar(self.eta):
@@ -292,8 +283,6 @@ class EM1D(Problem.BaseProblem):
 
         z = h + self.survey.dz
 
-        HzFHT = np.empty(n_frequency, dtype=complex)
-
         chi = self.chi
 
         if np.isscalar(self.chi):
@@ -303,12 +292,7 @@ class EM1D(Problem.BaseProblem):
         sig = self.sigma_cole()
 
         if output_type == 'response':
-            if self.verbose:
-                print ('>> Compute response')
-
             # for simulation
-            hz = np.empty((n_frequency, n_filter), complex)
-
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
@@ -349,10 +333,6 @@ class EM1D(Problem.BaseProblem):
         elif output_type == 'sensitivity_sigma':
 
             # for simulation
-            hz = np.empty((n_frequency, n_layer, n_filter), complex)
-            hz0 = np.zeros((n_frequency, n_layer, n_filter), complex)
-
-
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
@@ -380,8 +360,6 @@ class EM1D(Problem.BaseProblem):
         elif output_type == 'sensitivity_height':
 
             # for simulation
-            hz = np.empty((n_frequency, n_filter), complex)
-
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
