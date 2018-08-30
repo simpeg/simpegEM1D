@@ -428,9 +428,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             # Compute EM sensitivities
             else:
                 resp = np.zeros(
-                    (self.n_time, self.n_layer), dtype=float, order='F'
-                )
-                resp_i = np.empty(self.n_time, dtype=float)
+                    (self.n_time, self.n_layer), dtype=np.float64, order='F')
+                # )
                 # TODO: remove for loop
                 for i in range(self.n_layer):
                     resp_i, _ = ffht(
@@ -476,14 +475,12 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             else:
                 if self.moment_type == "single":
                     resp = np.zeros(
-                        (self.n_time, self.n_layer), dtype=float, order='F'
-                    )
+                        (self.n_time, self.n_layer), dtype=np.float64, order='F')
                 else:
                     # For dual moment
                     resp = np.zeros(
                         (self.n_time+self.n_time_dual_moment, self.n_layer),
-                        dtype=float, order='F'
-                    )
+                        dtype=np.float64, order='F')
 
                 # TODO: remove for loop
                 for i in range(self.n_layer):
