@@ -9,6 +9,7 @@ from empymod import filters
 from empymod.transform import dlf, get_spline_values
 from empymod.utils import check_hankel
 
+from simpegEM1D.m_rTE_Fortran import rte_fortran
 
 class EM1D(Problem.BaseProblem):
     """
@@ -84,16 +85,19 @@ class EM1D(Problem.BaseProblem):
         u0 = lamda
         coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
 
+        n_frequency = self.survey.n_frequency
+        n_layer = self.survey.n_layer
+        n_filter = self.n_filter
+
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros((n_layer, ), dtype=complex)
-            drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-            )
+            drTE = np.zeros([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
+            rte_fortran.rte_sensitivity(f, lamda, sig, chi, depth, self.survey.half_switch, drTE, n_layer, n_frequency, n_filter)
+
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-            )
+            rTE = np.empty([n_frequency, n_filter], dtype=np.complex128, order='F')
+            rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter) 
+
             kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             if output_type == 'sensitivity_height':
                 kernel *= -2*u0
@@ -134,21 +138,19 @@ class EM1D(Problem.BaseProblem):
 
         w = 2*np.pi*f
         u0 = lamda
-        radius = np.tile(a.reshape([-1, 1]), (1, n_filter))
+        radius = np.empty([n_frequency, n_filter], order='F')
+        radius[:, :] = np.tile(a.reshape([-1, 1]), (1, n_filter))
 
         coefficient_wavenumber = I*radius*0.5*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.empty((n_frequency, n_layer, n_filter), complex)
-            drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-            )
+            drTE = np.zeros([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
+            rte_fortran.rte_sensitivity(f, lamda, sig, chi, depth, self.survey.half_switch, drTE, n_layer, n_frequency, n_filter)
+
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = np.empty((n_frequency, n_layer), dtype=complex)
-            rTE = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-            )
+            rTE = np.empty([n_frequency, n_filter], dtype=np.complex128, order='F')
+            rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter) 
 
             if flag == 'secondary':
                 kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
@@ -180,16 +182,14 @@ class EM1D(Problem.BaseProblem):
         coefficient_wavenumber = 1/(4*np.pi)*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.empty((n_frequency, n_layer, n_filter), complex)
-            drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-            )
+            drTE = np.zeros([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
+            rte_fortran.rte_sensitivity(f, lamda, sig, chi, depth, self.survey.half_switch, drTE, n_layer, n_frequency, n_filter)
+
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = np.empty((n_frequency, n_layer), dtype=complex)
-            rTE = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-            )
+            rTE = np.empty([n_frequency, n_filter], dtype=np.complex128, order='F')
+            rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter) 
+
             kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             if output_type == 'sensitivity_height':
                 kernel *= -2*u0
@@ -223,10 +223,6 @@ class EM1D(Problem.BaseProblem):
         n_filter = self.n_filter
         f = self.survey.frequency
 
-        sigma_complex = np.empty(
-            (n_layer, n_frequency), dtype=complex
-        )
-
         sigma = np.tile(self.sigma.reshape([-1, 1]), (1, n_frequency))
         if np.isscalar(self.eta):
             eta = self.eta
@@ -241,13 +237,15 @@ class EM1D(Problem.BaseProblem):
             2*np.pi*f,
             (n_layer, 1)
         )
-
-        sigma_complex = (
+        
+        sigma_complex = np.empty([n_layer, n_frequency], dtype=np.complex128, order='F')
+        sigma_complex[:, :] = (
             sigma -
             sigma*eta/(1+(1-eta)*(1j*w*tau)**c)
         )
 
-        sigma_complex_tensor = np.tile(sigma_complex.reshape(
+        sigma_complex_tensor = np.empty([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
+        sigma_complex_tensor[:, :, :] = np.tile(sigma_complex.reshape(
             (n_layer, n_frequency, 1)), (1, 1, n_filter)
         )
 
@@ -270,6 +268,7 @@ class EM1D(Problem.BaseProblem):
         n_layer = self.survey.n_layer
         depth = self.survey.depth
         I = self.survey.I
+        n_filter = self.n_filter
 
         # Get lambd and offset, will depend on pts_per_dec
         if self.survey.src_type == "VMD":
@@ -280,10 +279,14 @@ class EM1D(Problem.BaseProblem):
 
         # Use function from empymod
         # size of lambd is (n_frequency x n_filter)
-        lambd, _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
-        n_filter = self.n_filter
+        lambd = np.empty([self.survey.frequency.size, n_filter], order='F')
+        lambd[:, :], _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
+
+        # lambd, _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
+        
         # TODO: potentially store
-        f = np.tile(self.survey.frequency.reshape([-1, 1]), (1, n_filter))
+        f = np.empty([self.survey.frequency.size, n_filter], order='F')
+        f[:,:] = np.tile(self.survey.frequency.reshape([-1, 1]), (1, n_filter))
         # h is an inversion parameter
         if self.hMap is not None:
             h = self.h
@@ -291,8 +294,6 @@ class EM1D(Problem.BaseProblem):
             h = self.survey.h
 
         z = h + self.survey.dz
-
-        HzFHT = np.empty(n_frequency, dtype=complex)
 
         chi = self.chi
 
@@ -303,12 +304,7 @@ class EM1D(Problem.BaseProblem):
         sig = self.sigma_cole()
 
         if output_type == 'response':
-            if self.verbose:
-                print ('>> Compute response')
-
             # for simulation
-            hz = np.empty((n_frequency, n_filter), complex)
-
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
@@ -349,10 +345,6 @@ class EM1D(Problem.BaseProblem):
         elif output_type == 'sensitivity_sigma':
 
             # for simulation
-            hz = np.empty((n_frequency, n_layer, n_filter), complex)
-            hz0 = np.zeros((n_frequency, n_layer, n_filter), complex)
-
-
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
@@ -380,8 +372,6 @@ class EM1D(Problem.BaseProblem):
         elif output_type == 'sensitivity_height':
 
             # for simulation
-            hz = np.empty((n_frequency, n_filter), complex)
-
             if self.survey.src_type == 'VMD':
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
