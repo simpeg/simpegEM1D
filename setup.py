@@ -47,23 +47,23 @@ fExt = [Extension(name='simpegEM1D.m_rTE_Fortran', # Name of the package to impo
         ]
 
 setup(
-    name = 'simpegEM1D',
-    version = '0.0.12',
-    packages = find_packages(),
-    install_requires = [
+    name='simpegEM1D',
+    version='0.0.15',
+    packages=find_packages(),
+    install_requires=[
         'SimPEG>=0.4.1',
         'empymod>=1.6.2',
         'multiprocess'
     ],
-    author = 'Seogi Kang',
-    author_email = 'skang@eoas.ubc.ca',
-    description = 'simpegEM1D',
-    long_description = LONG_DESCRIPTION,
-    keywords = 'geophysics, electromagnetics',
+    author='Seogi Kang',
+    author_email='skang@eoas.ubc.ca',
+    description='simpegEM1D',
+    long_description=LONG_DESCRIPTION,
+    keywords='geophysics, electromagnetics',
     url='https://github.com/simpeg/simpegEM1D',
     download_url='https://github.com/simpeg/simpegEM1D',
     classifiers=CLASSIFIERS,
-    platforms = ['Windows', 'Linux', 'Solaris', 'Mac OS-X', 'Unix'],
+    platforms=['Windows', 'Linux', 'Solaris', 'Mac OS-X', 'Unix'],
     license='MIT License',
     use_2to3 = False,
     ext_modules=fExt

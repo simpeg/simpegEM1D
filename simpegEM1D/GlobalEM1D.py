@@ -30,14 +30,36 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         "Electrical conductivity (S/m)"
     )
 
-    _Jmatrix = None
+    h, hMap, hDeriv = Props.Invertible(
+        "Receiver Height (m), h > 0",
+    )
+
+    chi = Props.PhysicalProperty(
+        "Magnetic susceptibility (H/m)",
+    )
+
+    eta = Props.PhysicalProperty(
+        "Electrical chargeability (V/V), 0 <= eta < 1"
+    )
+
+    tau = Props.PhysicalProperty(
+        "Time constant (s)"
+    )
+
+    c = Props.PhysicalProperty(
+        "Frequency Dependency, 0 < c < 1"
+    )
+
+    _Jmatrix_sigma = None
+    _Jmatrix_height = None
     run_simulation = None
     n_cpu = None
     hz = None
     parallel = False
     parallel_jvec_jtvec = False
     verbose = False
-    fix_Jmatrix = False
+    fix_Jmatrix = False    
+    invert_height = None
 
     def __init__(self, mesh, **kwargs):
         Utils.setKwargs(self, **kwargs)
@@ -54,6 +76,10 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             print (">> Serial version is used")
         if self.hz is None:
             raise Exception("Input vertical thickness hz !")
+        if self.hMap is None:
+            self.invert_height = False
+        else:
+            self.invert_height = True
 
     @property
     def n_layer(self):
@@ -114,81 +140,66 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             self._Sigma = self.sigma.reshape((self.n_sounding, self.n_layer))
         return self._Sigma
 
+    @property
+    def Chi(self):
+        if getattr(self, '_Chi', None) is None:
+            # Ordering: first z then x
+            if self.chi is None:
+                self._Chi = np.zeros(
+                    (self.n_sounding, self.n_layer), dtype=float, order='C'
+                )
+            else:
+                self._Chi = self.chi.reshape((self.n_sounding, self.n_layer))
+        return self._Chi
+
+    @property
+    def Eta(self):
+        if getattr(self, '_Eta', None) is None:
+            # Ordering: first z then x
+            if self.eta is None:
+                self._Eta = np.zeros(
+                    (self.n_sounding, self.n_layer), dtype=float, order='C'
+                )
+            else:
+                self._Eta = self.eta.reshape((self.n_sounding, self.n_layer))
+        return self._Eta
+
+    @property
+    def Tau(self):
+        if getattr(self, '_Tau', None) is None:
+            # Ordering: first z then x
+            if self.tau is None:
+                self._Tau = 1e-3*np.ones(
+                    (self.n_sounding, self.n_layer), dtype=float, order='C'
+                )
+            else:
+                self._Tau = self.tau.reshape((self.n_sounding, self.n_layer))
+        return self._Tau
+
+    @property
+    def C(self):
+        if getattr(self, '_C', None) is None:
+            # Ordering: first z then x
+            if self.c is None:
+                self._C = np.ones(
+                    (self.n_sounding, self.n_layer), dtype=float, order='C'
+                )
+            else:
+                self._C = self.c.reshape((self.n_sounding, self.n_layer))
+        return self._C                        
+
+    @property
+    def H(self):
+        if self.hMap is None:
+            return np.ones(self.n_sounding)
+        else:
+            return self.h
+
     def fields(self, m):
         if self.verbose:
             print ("Compute fields")
         self.survey._pred = self.forward(m)
         return []
-
-    def Jvec(self, m, v, f=None):
-        J = self.getJ(m)
-        if self.parallel and self.parallel_jvec_jtvec:
-            V = v.reshape((self.n_sounding, self.n_layer))
-
-            pool = Pool(self.n_cpu)
-            Jv = np.hstack(
-                pool.map(
-                    dot,
-                    [(J[i], V[i, :]) for i in range(self.n_sounding)]
-                )
-            )
-            pool.close()
-            pool.join()
-        else:
-            return J * v
-        return Jv
-
-    def Jtvec(self, m, v, f=None):
-        J = self.getJ(m)
-        if self.parallel and self.parallel_jvec_jtvec:
-            pool = Pool(self.n_cpu)
-
-            Jtv = np.hstack(
-                pool.map(
-                    dot,
-                    [(J[i].T, v[self.data_index[i]]) for i in range(self.n_sounding)]
-                )
-            )
-            pool.close()
-            pool.join()
-            return Jtv
-        else:
-
-            return J.T*v
-
-    @property
-    def deleteTheseOnModelUpdate(self):
-        toDelete = []
-        if self.sigmaMap is not None:
-            toDelete += ['_Sigma']
-        if self.fix_Jmatrix is False:
-            if self._Jmatrix is not None:
-                toDelete += ['_Jmatrix']
-        return toDelete
-
-
-class GlobalEM1DProblemFD(GlobalEM1DProblem):
-
-    run_simulation = run_simulation_FD
-
-    @property
-    def frequency(self):
-        return self.survey.frequency
-
-    @property
-    def switch_real_imag(self):
-        return self.survey.switch_real_imag
-
-    def input_args(self, i_sounding, jacSwitch=False):
-        output = (
-            self.rx_locations[i_sounding, :],
-            self.src_locations[i_sounding, :],
-            self.topo[i_sounding, :], self.hz,
-            self.offset, self.frequency,
-            self.field_type, self.rx_type, self.src_type,
-            self.Sigma[i_sounding, :], jacSwitch
-        )
-        return output
 
     def forward(self, m):
         self.model = m
@@ -200,53 +211,198 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
             pool = Pool(self.n_cpu)
             # This assumes the same # of layer for each of soundings
             result = pool.map(
-                run_simulation_FD,
+                self.run_simulation,
                 [
-                    self.input_args(i, jacSwitch=False) for i in range(self.n_sounding)
+                    self.input_args(i, jac_switch='forward') for i in range(self.n_sounding)
                 ]
             )
             pool.close()
             pool.join()
         else:
             result = [
-                run_simulation_FD(self.input_args(i, jacSwitch=False)) for i in range(self.n_sounding)
+                self.run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
             ]
         return np.hstack(result)
 
-    def getJ(self, m):
+    def getJ_sigma(self, m):
         """
              Compute d F / d sigma
         """
-        if self._Jmatrix is not None:
-            return self._Jmatrix
+        if self._Jmatrix_sigma is not None:
+            return self._Jmatrix_sigma
         if self.verbose:
-            print (">> Compute J")
+            print (">> Compute J sigma")
         self.model = m
         if self.parallel:
             pool = Pool(self.n_cpu)
-            self._Jmatrix = pool.map(
-                run_simulation_FD,
+            self._Jmatrix_sigma = pool.map(
+                self.run_simulation,
                 [
-                    self.input_args(i, jacSwitch=True) for i in range(self.n_sounding)
+                    self.input_args(i, jac_switch='sensitivity_sigma') for i in range(self.n_sounding)
                 ]
             )
             pool.close()
             pool.join()
             if self.parallel_jvec_jtvec is False:
-                self._Jmatrix = sp.block_diag(self._Jmatrix).tocsr()
+                self._Jmatrix_sigma = sp.block_diag(self._Jmatrix_sigma).tocsr()
         else:
-            # _Jmatrix is block diagnoal matrix (sparse)
-            self._Jmatrix = sp.block_diag(
+            # _Jmatrix_sigma is block diagnoal matrix (sparse)
+            self._Jmatrix_sigma = sp.block_diag(
                 [
-                    run_simulation_FD(self.input_args(i, jacSwitch=True)) for i in range(self.n_sounding)
+                    self.run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
                 ]
             ).tocsr()
-        return self._Jmatrix
+        return self._Jmatrix_sigma
+
+    def getJ_height(self, m):
+        """
+             Compute d F / d height
+        """
+        if self.hMap is None:
+            return Utils.Zero()
+
+        if self._Jmatrix_height is not None:
+            return self._Jmatrix_height
+        if self.verbose:
+            print (">> Compute J height")
+        
+        self.model = m
+
+        if self.parallel:
+            pool = Pool(self.n_cpu)
+            self._Jmatrix_height = pool.map(
+                self.run_simulation,
+                [
+                    self.input_args(i, jac_switch="sensitivity_height") for i in range(self.n_sounding)
+                ]
+            )
+            pool.close()
+            pool.join()
+            if self.parallel_jvec_jtvec is False:
+                self._Jmatrix_height = sp.block_diag(self._Jmatrix_height).tocsr()
+        else:            
+            self._Jmatrix_height = sp.block_diag(
+                [
+                    self.run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
+                ]
+            ).tocsr()
+        return self._Jmatrix_height       
+
+    def Jvec(self, m, v, f=None):
+        J_sigma = self.getJ_sigma(m)
+        J_height = self.getJ_height(m)
+        # This is deprecated at the moment
+        # if self.parallel and self.parallel_jvec_jtvec:
+        #     # Extra division of sigma is because:
+        #     # J_sigma = dF/dlog(sigma)
+        #     # And here sigmaMap also includes ExpMap
+        #     v_sigma = Utils.sdiag(1./self.sigma) * self.sigmaMap.deriv(m, v)
+        #     V_sigma = v_sigma.reshape((self.n_sounding, self.n_layer))
+
+        #     pool = Pool(self.n_cpu)
+        #     Jv = np.hstack(
+        #         pool.map(
+        #             dot,
+        #             [(J_sigma[i], V_sigma[i, :]) for i in range(self.n_sounding)]
+        #         )
+        #     )
+        #     if self.hMap is not None:
+        #         v_height = self.hMap.deriv(m, v)
+        #         V_height = v_height.reshape((self.n_sounding, self.n_layer))
+        #         Jv += np.hstack(
+        #             pool.map(
+        #                 dot,
+        #                 [(J_height[i], V_height[i, :]) for i in range(self.n_sounding)]
+        #             )
+        #         )            
+        #     pool.close()
+        #     pool.join()
+        # else:
+        Jv = J_sigma*(Utils.sdiag(1./self.sigma)*(self.sigmaDeriv * v))
+        if self.hMap is not None:
+            Jv += J_height*(self.hDeriv * v)
+        return Jv
+
+    def Jtvec(self, m, v, f=None):
+        J_sigma = self.getJ_sigma(m)
+        J_height = self.getJ_height(m)
+        # This is deprecated at the moment
+        # if self.parallel and self.parallel_jvec_jtvec:
+        #     pool = Pool(self.n_cpu)
+        #     Jtv = np.hstack(
+        #         pool.map(
+        #             dot,
+        #             [(J_sigma[i].T, v[self.data_index[i]]) for i in range(self.n_sounding)]
+        #         )
+        #     )
+        #     if self.hMap is not None:
+        #         Jtv_height = np.hstack(
+        #             pool.map(
+        #                 dot,
+        #                 [(J_sigma[i].T, v[self.data_index[i]]) for i in range(self.n_sounding)]
+        #             )
+        #         )
+        #         # This assumes certain order for model, m = (sigma, height)
+        #         Jtv = np.hstack((Jtv, Jtv_height))
+        #     pool.close()
+        #     pool.join()
+        #     return Jtv
+        # else:
+        # Extra division of sigma is because:
+        # J_sigma = dF/dlog(sigma)
+        # And here sigmaMap also includes ExpMap            
+        Jtv = self.sigmaDeriv.T * (Utils.sdiag(1./self.sigma) * (J_sigma.T*v))
+        if self.hMap is not None:
+            Jtv += self.hDeriv.T*(J_height.T*v)
+        return Jtv
+
+    @property
+    def deleteTheseOnModelUpdate(self):
+        toDelete = []
+        if self.sigmaMap is not None:
+            toDelete += ['_Sigma']
+        if self.fix_Jmatrix is False:
+            if self._Jmatrix_sigma is not None:
+                toDelete += ['_Jmatrix_sigma']
+            if self._Jmatrix_height is not None:
+                toDelete += ['_Jmatrix_height']                
+        return toDelete
+
+
+class GlobalEM1DProblemFD(GlobalEM1DProblem):
+    
+    def run_simulation(self, args):
+        return run_simulation_FD(args)
+
+    @property
+    def frequency(self):
+        return self.survey.frequency
+
+    @property
+    def switch_real_imag(self):
+        return self.survey.switch_real_imag
+
+    def input_args(self, i_sounding, jac_switch='forward'):
+        output = (
+            self.rx_locations[i_sounding, :],
+            self.src_locations[i_sounding, :],
+            self.topo[i_sounding, :], self.hz,
+            self.offset, self.frequency,
+            self.field_type, self.rx_type, self.src_type,
+            self.Sigma[i_sounding, :],
+            self.Eta[i_sounding, :],
+            self.Tau[i_sounding, :],
+            self.C[i_sounding, :],                                    
+            self.Chi[i_sounding, :],
+            self.H[i_sounding],
+            jac_switch,
+            self.invert_height,
+            self.half_switch
+        )
+        return output 
 
 
 class GlobalEM1DProblemTD(GlobalEM1DProblem):
-
-    run_simulation = run_simulation_TD
 
     @property
     def wave_type(self):
@@ -300,7 +456,7 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
     def base_frequency_dual_moment(self):
         return self.survey.base_frequency_dual_moment
 
-    def input_args(self, i_sounding, jacSwitch=False):
+    def input_args(self, i_sounding, jac_switch='forward'):
         output = (
             self.rx_locations[i_sounding, :],
             self.src_locations[i_sounding, :],
@@ -325,59 +481,68 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
             self.input_currents_dual_moment[i_sounding],
             self.base_frequency_dual_moment[i_sounding],
             self.Sigma[i_sounding, :],
-            jacSwitch
+            self.Eta[i_sounding, :],
+            self.Tau[i_sounding, :],
+            self.C[i_sounding, :],
+            self.H[i_sounding],                                                
+            jac_switch,
+            self.invert_height,
+            self.half_switch            
         )
         return output
 
-    def forward(self, m, f=None):
-        self.model = m
+    def run_simulation(self, args):
+        return run_simulation_TD(args)
 
-        if self.parallel:
-            pool = Pool(self.n_cpu)
-            # This assumes the same # of layer for each of soundings
-            result = pool.map(
-                run_simulation_TD,
-                [
-                    self.input_args(i, jacSwitch=False) for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
-        else:
-            result = [
-                run_simulation_TD(self.input_args(i, jacSwitch=False)) for i in range(self.n_sounding)
-            ]
-        return np.hstack(result)
+    # def forward(self, m, f=None):
+    #     self.model = m
 
-    def getJ(self, m):
-        """
-             Compute d F / d sigma
-        """
-        if self._Jmatrix is not None:
-            return self._Jmatrix
-        if self.verbose:
-            print (">> Compute J")
-        self.model = m
-        if self.parallel:
-            pool = Pool(self.n_cpu)
-            self._Jmatrix = pool.map(
-                run_simulation_TD,
-                [
-                    self.input_args(i, jacSwitch=True) for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
-            if self.parallel_jvec_jtvec is False:
-                self._Jmatrix = sp.block_diag(self._Jmatrix).tocsr()
-        else:
-            # _Jmatrix is block diagnoal matrix (sparse)
-            self._Jmatrix = sp.block_diag(
-                [
-                    run_simulation_TD(self.input_args(i, jacSwitch=True)) for i in range(self.n_sounding)
-                ]
-            ).tocsr()
-        return self._Jmatrix
+    #     if self.parallel:
+    #         pool = Pool(self.n_cpu)
+    #         # This assumes the same # of layer for each of soundings
+    #         result = pool.map(
+    #             run_simulation_TD,
+    #             [
+    #                 self.input_args(i, jac_switch=False) for i in range(self.n_sounding)
+    #             ]
+    #         )
+    #         pool.close()
+    #         pool.join()
+    #     else:
+    #         result = [
+    #             run_simulation_TD(self.input_args(i, jac_switch=False)) for i in range(self.n_sounding)
+    #         ]
+    #     return np.hstack(result)
+
+    # def getJ(self, m):
+    #     """
+    #          Compute d F / d sigma
+    #     """
+    #     if self._Jmatrix is not None:
+    #         return self._Jmatrix
+    #     if self.verbose:
+    #         print (">> Compute J")
+    #     self.model = m
+    #     if self.parallel:
+    #         pool = Pool(self.n_cpu)
+    #         self._Jmatrix = pool.map(
+    #             run_simulation_TD,
+    #             [
+    #                 self.input_args(i, jac_switch=True) for i in range(self.n_sounding)
+    #             ]
+    #         )
+    #         pool.close()
+    #         pool.join()
+    #         if self.parallel_jvec_jtvec is False:
+    #             self._Jmatrix = sp.block_diag(self._Jmatrix).tocsr()
+    #     else:
+    #         # _Jmatrix is block diagnoal matrix (sparse)
+    #         self._Jmatrix = sp.block_diag(
+    #             [
+    #                 run_simulation_TD(self.input_args(i, jac_switch=True)) for i in range(self.n_sounding)
+    #             ]
+    #         ).tocsr()
+    #     return self._Jmatrix
 
 
 class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
@@ -392,6 +557,8 @@ class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
     topo = properties.Array(
         "Topography", dtype=float, shape=('*', 3)
     )
+
+    half_switch = properties.Bool("Switch for half-space", default=False)
 
     _pred = None
 

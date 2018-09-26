@@ -1,5 +1,5 @@
 import numpy as np
-from SimPEG import Mesh, Maps
+from SimPEG import Mesh, Maps, Utils
 from .EM1DAnalytics import skin_depth, diffusion_distance
 from .EM1D import EM1D
 from .Survey import EM1DSurveyFD, EM1DSurveyTD
@@ -65,7 +65,7 @@ def run_simulation_FD(args):
         jac_switch :
     """
 
-    rx_location, src_location, topo, hz, offset, frequency, field_type, rx_type, src_type, sigma, jac_switch = args
+    rx_location, src_location, topo, hz, offset, frequency, field_type, rx_type, src_type, sigma, eta, tau, c, chi, h, jac_switch, invert_height, half_switch = args
     mesh_1d = set_mesh_1d(hz)
     depth = -mesh_1d.gridN[:-1]
     FDsurvey = EM1DSurveyFD(
@@ -77,26 +77,52 @@ def run_simulation_FD(args):
         field_type=field_type,
         rx_type=rx_type,
         src_type=src_type,
-        depth=depth
+        depth=depth,
+        half_switch=half_switch
     )
-    # Use Exponential Map
-    # This is hard-wired at the moment
-    expmap = Maps.ExpMap(mesh_1d)
-    prob = EM1D(
-        mesh_1d, sigmaMap=expmap, hankel_filter='key_101_2009'
-    )
-    if prob.ispaired:
-        prob.unpair()
-    if FDsurvey.ispaired:
-        FDsurvey.unpair()
-    prob.pair(FDsurvey)
-    if jac_switch:
-        drespdsig = prob.getJ_sigma(np.log(sigma))
-        return drespdsig * prob.sigmaDeriv
+    if not invert_height:
+        # Use Exponential Map
+        # This is hard-wired at the moment    
+        expmap = Maps.ExpMap(mesh_1d)
+        prob = EM1D(
+            mesh_1d, sigmaMap=expmap, chi=chi, hankel_filter='key_101_2009',
+            eta=eta, tau=tau, c=c
+        )
+        if prob.ispaired:
+            prob.unpair()
+        if FDsurvey.ispaired:
+            FDsurvey.unpair()
+        prob.pair(FDsurvey)
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = prob.getJ_sigma(np.log(sigma))
+            return drespdsig * prob.sigmaDeriv
+        else:
+            resp = FDsurvey.dpred(np.log(sigma))
+            return resp
     else:
-        resp = FDsurvey.dpred(np.log(sigma))
-        return resp
-
+        wires = Maps.Wires(('sigma', mesh_1d.nC),('h', 1))
+        expmap = Maps.ExpMap(mesh_1d)
+        sigmaMap = expmap * wires.sigma
+        prob = EM1D(
+            mesh_1d, sigmaMap=sigmaMap, hMap=wires.h, chi=chi, hankel_filter='key_101_2009',
+            eta=eta, tau=tau, c=c
+        )
+        if prob.ispaired:
+            prob.unpair()
+        if FDsurvey.ispaired:
+            FDsurvey.unpair()
+        prob.pair(FDsurvey)
+        m = np.r_[np.log(sigma), h]
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = prob.getJ_sigma(m)
+            return drespdsig * Utils.sdiag(sigma)
+        elif jac_switch == 'sensitivity_height':
+            drespdh = prob.getJ_height(m)
+            return drespdh
+        else:
+            resp = FDsurvey.dpred(m)
+            return resp
+        
 
 def run_simulation_TD(args):
     """
@@ -121,7 +147,7 @@ def run_simulation_TD(args):
         jac_switch:
     """
 
-    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, use_lowpass_filter, high_cut_frequency, moment_type, time_dual_moment, time_input_currents_dual_moment, input_currents_dual_moment, base_frequency_dual_moment, sigma, jac_switch = args
+    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, use_lowpass_filter, high_cut_frequency, moment_type, time_dual_moment, time_input_currents_dual_moment, input_currents_dual_moment, base_frequency_dual_moment, sigma, eta, tau, c, h, jac_switch, invert_height, half_switch = args
 
     mesh_1d = set_mesh_1d(hz)
     depth = -mesh_1d.gridN[:-1]
@@ -147,23 +173,49 @@ def run_simulation_TD(args):
         time_dual_moment=time_dual_moment,
         time_input_currents_dual_moment=time_input_currents_dual_moment,
         input_currents_dual_moment=input_currents_dual_moment,
-        base_frequency_dual_moment=base_frequency_dual_moment
+        base_frequency_dual_moment=base_frequency_dual_moment,
+        half_switch=half_switch,
     )
-
-    # Use Exponential Map
-    # This is hard-wired at the moment
-    expmap = Maps.ExpMap(mesh_1d)
-    prob = EM1D(
-        mesh_1d, sigmaMap=expmap, hankel_filter='key_101_2009'
-    )
-    if prob.ispaired:
-        prob.unpair()
-    if TDsurvey.ispaired:
-        TDsurvey.unpair()
-    prob.pair(TDsurvey)
-    if jac_switch:
-        drespdsig = prob.getJ_sigma(np.log(sigma))
-        return drespdsig * prob.sigmaDeriv
+    if not invert_height:
+        # Use Exponential Map
+        # This is hard-wired at the moment
+        expmap = Maps.ExpMap(mesh_1d)
+        prob = EM1D(
+            mesh_1d, sigmaMap=expmap, hankel_filter='key_101_2009',
+            eta=eta, tau=tau, c=c
+        )
+        if prob.ispaired:
+            prob.unpair()
+        if TDsurvey.ispaired:
+            TDsurvey.unpair()
+        prob.pair(TDsurvey)
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = prob.getJ_sigma(np.log(sigma))
+            return drespdsig * prob.sigmaDeriv
+        else:
+            resp = TDsurvey.dpred(np.log(sigma))
+            return resp
     else:
-        resp = TDsurvey.dpred(np.log(sigma))
-        return resp
+        wires = Maps.Wires(('sigma', mesh_1d.nC),('h', 1))
+        expmap = Maps.ExpMap(mesh_1d)
+        sigmaMap = expmap * wires.sigma
+        prob = EM1D(
+            mesh_1d, sigmaMap=sigmaMap, hMap=wires.h, hankel_filter='key_101_2009',
+            eta=eta, tau=tau, c=c
+        )
+        if prob.ispaired:
+            prob.unpair()
+        if TDsurvey.ispaired:
+            TDsurvey.unpair()
+        prob.pair(TDsurvey)
+        m = np.r_[np.log(sigma), h]
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = prob.getJ_sigma(m)
+            return drespdsig * Utils.sdiag(sigma)
+        elif jac_switch == 'sensitivity_height':
+            drespdh = prob.getJ_height(m)
+            return drespdh
+        else:
+            resp = TDsurvey.dpred(m)
+            return resp        
+

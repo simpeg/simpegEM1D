@@ -10,6 +10,13 @@ from .Waveforms import (
     piecewise_pulse, get_geotem_wave, get_nanotem_wave,
     get_flight_direction_from_fiducial, get_rx_locations_from_flight_direction
 )
+from .KnownSystems import(
+    vtem_plus,
+    skytem_hm,
+    skytem_lm,
+    geotem,
+    tempest
+)
 from .Utils1D import *
 from .GlobalEM1D import (
     GlobalEM1DProblemFD, GlobalEM1DSurveyFD,
