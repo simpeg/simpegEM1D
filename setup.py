@@ -5,11 +5,9 @@ from __future__ import print_function
 simpegEM1D is the package for simulation and inversion of
 electromagnetic data using 1D layered-earth solution.
 """
-
-from numpy.distutils.core import setup
-from numpy.distutils.core import Extension
+import setuptools
+from numpy.distutils.core import setup, Extension
 from setuptools import find_packages
-
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
@@ -33,18 +31,19 @@ with open('README.md') as f:
 fExt = [Extension(name='simpegEM1D.m_rTE_Fortran', # Name of the package to import
                   sources=['simpegEM1D/Fortran/m_rTE_Fortran.f90'],
                 #   extra_f90_compile_args=['-ffree-line-length-none',
-                #                       '-O3', 
-                #                       '-finline-functions', 
+                #                       '-O3',
+                #                       '-finline-functions',
                 #                       '-funroll-all-loops',
                 #                       '-DNDEBUG',
                 #                       '-g0'],
                   extra_link_args=['-ffree-line-length-none',
-                                      '-O3', 
-                                      '-finline-functions', 
+                                      '-O3',
+                                      '-finline-functions',
                                       '-funroll-all-loops',
                                       '-g0'],
                   )
         ]
+
 
 setup(
     name='simpegEM1D',
@@ -65,6 +64,5 @@ setup(
     classifiers=CLASSIFIERS,
     platforms=['Windows', 'Linux', 'Solaris', 'Mac OS-X', 'Unix'],
     license='MIT License',
-    use_2to3 = False,
     ext_modules=fExt
 )
