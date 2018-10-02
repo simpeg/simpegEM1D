@@ -7,7 +7,6 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - ipywidgets
   - mkl
   - pip:
     - pymatsolver
