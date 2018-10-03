@@ -1,5 +1,9 @@
 name: simpegEM1D-environment
 
+addons:
+  apt_packages:
+    - gfortran
+
 channels:
   - conda-forge
   - defaults
