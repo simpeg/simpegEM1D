@@ -10,4 +10,3 @@ dependencies:
   - mkl
   - pip:
     - pymatsolver
-    - git+https://github.com/simpeg/simpegEM1D.git@master
