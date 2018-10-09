@@ -27,12 +27,12 @@ before_install:
   - conda update --yes conda
 
 install:
-  # - conda env create -f environment.yml
-  # - source activate simpegEM1D-environment
+  - conda env create -f environment.yml
+  - source activate simpegEM1D-environment
   - export MPLBACKEND="agg"
   - pip install -r requirements_dev.txt
   - pip install coveralls
-  - python setup.py install
+  # - python setup.py install
 
 script:
   - travis_wait 20 nosetests $TEST_DIR -v -s
