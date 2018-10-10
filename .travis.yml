@@ -24,6 +24,7 @@ before_install:
   - chmod +x miniconda.sh
   - "./miniconda.sh -b -p $HOME/miniconda"
   - export PATH=$HOME/anaconda/bin:$HOME/miniconda/bin:$PATH
+  - export PYTHONPATH=$HOME/simpegEM1D:$PYTHONPATH
   - conda update --yes conda
 
 install:
@@ -32,7 +33,7 @@ install:
   - export MPLBACKEND="agg"
   - pip install -r requirements_dev.txt
   - pip install coveralls
-  # - python setup.py install
+  - python setup.py build_ext --inplace
 
 script:
   - travis_wait 20 nosetests $TEST_DIR -v -s
