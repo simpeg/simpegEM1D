@@ -7,4 +7,4 @@ clean:
     find . -name "*.pyc" | xargs -I {} rm -v "{}"
 
 build:
-	python setup.py build_ext -i -b
+	python setup.py build_ext -i -b .
