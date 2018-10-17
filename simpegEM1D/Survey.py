@@ -12,7 +12,7 @@ import properties
 from empymod import filters
 from empymod.utils import check_time
 from empymod.transform import ffht
-from .Waveforms import piecewise_pulse, piecewise_pulse_fast, butterworth_type_filter, butter_lowpass_filter
+from .Waveforms import piecewise_pulse, piecewise_pulse, butterworth_type_filter, butter_lowpass_filter
 
 
 class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
@@ -300,16 +300,20 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
             if self.moment_type == "single":
                 time = self.time
-
+                pulse_period = self.pulse_period
+                period = self.period
             # Dual moment
             else:
                 time = np.unique(np.r_[self.time, self.time_dual_moment])
-
+                pulse_period = np.maximum(
+                    self.pulse_period, self.pulse_period_dual_moment
+                )
+                period = np.maximum(self.period, self.period_dual_moment)
             tmin = time.min()
             if self.n_pulse == 1:
-                tmax = time.max() + self.pulse_period
+                tmax = time.max() + pulse_period
             elif self.n_pulse == 2:
-                tmax = time.max() + self.pulse_period + self.period/2.
+                tmax = time.max() + pulse_period + period/2.
             else:
                 raise NotImplementedError("n_pulse must be either 1 or 2")
             n_time = int((np.log10(tmax)-np.log10(tmin))*10+1)
@@ -330,7 +334,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     @property
     def pulse_period(self):
         Tp = (
-            self.time_input_currents.max()-self.time_input_currents.min()
+            self.time_input_currents.max()-
+            self.time_input_currents.min()
         )
         return Tp
 
@@ -451,7 +456,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     self.time_int, resp_int
                 )
 
-                resp = piecewise_pulse_fast(
+                resp = piecewise_pulse(
                     step_func, self.time,
                     self.time_input_currents, self.input_currents,
                     self.period, n_pulse=self.n_pulse
@@ -459,7 +464,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
                 # Compute response for the dual moment
                 if self.moment_type == "dual":
-                    resp_dual_moment = piecewise_pulse_fast(
+                    resp_dual_moment = piecewise_pulse(
                         step_func, self.time_dual_moment,
                         self.time_input_currents_dual_moment,
                         self.input_currents_dual_moment,
@@ -491,7 +496,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     step_func = interp1d(
                         self.time_int, resp_int_i
                     )
-                    resp_i = piecewise_pulse_fast(
+                    resp_i = piecewise_pulse(
                         step_func, self.time,
                         self.time_input_currents, self.input_currents,
                         self.period, n_pulse=self.n_pulse
@@ -500,7 +505,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     if self.moment_type == "single":
                         resp[:, i] = resp_i
                     else:
-                        resp_dual_moment_i = piecewise_pulse_fast(
+                        resp_dual_moment_i = piecewise_pulse(
                             step_func,
                             self.time_dual_moment,
                             self.time_input_currents_dual_moment,
