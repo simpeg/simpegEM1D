@@ -12,7 +12,10 @@ import properties
 from empymod import filters
 from empymod.utils import check_time
 from empymod.transform import ffht
-from .Waveforms import piecewise_pulse, piecewise_pulse, butterworth_type_filter, butter_lowpass_filter
+from .Waveforms import (
+    piecewise_pulse, piecewise_pulse,
+    butterworth_type_filter, butter_lowpass_filter
+)
 
 
 class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
@@ -334,7 +337,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     @property
     def pulse_period(self):
         Tp = (
-            self.time_input_currents.max()-
+            self.time_input_currents.max() -
             self.time_input_currents.min()
         )
         return Tp
@@ -480,7 +483,9 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             else:
                 if self.moment_type == "single":
                     resp = np.zeros(
-                        (self.n_time, self.n_layer), dtype=np.float64, order='F')
+                        (self.n_time, self.n_layer),
+                        dtype=np.float64, order='F'
+                    )
                 else:
                     # For dual moment
                     resp = np.zeros(

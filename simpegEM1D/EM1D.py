@@ -95,7 +95,10 @@ class EM1D(Problem.BaseProblem):
         n_filter = self.n_filter
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
+            drTE = np.zeros(
+                [n_layer, n_frequency, n_filter],
+                dtype=np.complex128, order='F'
+            )
             if rte_fortran is None:
                 drTE = rTEfunjac(
                     n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
@@ -108,13 +111,19 @@ class EM1D(Problem.BaseProblem):
 
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = np.empty([n_frequency, n_filter], dtype=np.complex128, order='F')
+            rTE = np.empty(
+                [n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
             if rte_fortran is None:
                     rTE = rTEfunfwd(
-                        n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
+                        n_layer, f, lamda, sig, chi, depth,
+                        self.survey.half_switch
                     )
             else:
-                rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter)
+                rte_fortran.rte_forward(
+                    f, lamda, sig, chi, depth, self.survey.half_switch,
+                    rTE, n_layer, n_frequency, n_filter
+                )
 
             kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             if output_type == 'sensitivity_height':
@@ -163,7 +172,8 @@ class EM1D(Problem.BaseProblem):
 
         if output_type == 'sensitivity_sigma':
             drTE = np.zeros(
-                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
+                [n_layer, n_frequency, n_filter],
+                dtype=np.complex128, order='F'
             )
             if rte_fortran is None:
                     drTE = rTEfunjac(
@@ -299,13 +309,17 @@ class EM1D(Problem.BaseProblem):
             (n_layer, 1)
         )
 
-        sigma_complex = np.empty([n_layer, n_frequency], dtype=np.complex128, order='F')
+        sigma_complex = np.empty(
+            [n_layer, n_frequency], dtype=np.complex128, order='F'
+        )
         sigma_complex[:, :] = (
             sigma -
             sigma*eta/(1+(1-eta)*(1j*w*tau)**c)
         )
 
-        sigma_complex_tensor = np.empty([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
+        sigma_complex_tensor = np.empty(
+            [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
+        )
         sigma_complex_tensor[:, :, :] = np.tile(sigma_complex.reshape(
             (n_layer, n_frequency, 1)), (1, 1, n_filter)
         )
@@ -341,13 +355,15 @@ class EM1D(Problem.BaseProblem):
         # Use function from empymod
         # size of lambd is (n_frequency x n_filter)
         lambd = np.empty([self.survey.frequency.size, n_filter], order='F')
-        lambd[:, :], _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
-
-        # lambd, _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
+        lambd[:, :], _ = get_spline_values(
+            self.fhtfilt, r, self.hankel_pts_per_dec
+        )
 
         # TODO: potentially store
         f = np.empty([self.survey.frequency.size, n_filter], order='F')
-        f[:,:] = np.tile(self.survey.frequency.reshape([-1, 1]), (1, n_filter))
+        f[:, :] = np.tile(
+            self.survey.frequency.reshape([-1, 1]), (1, n_filter)
+        )
         # h is an inversion parameter
         if self.hMap is not None:
             h = self.h
@@ -488,7 +504,7 @@ class EM1D(Problem.BaseProblem):
         else:
 
             if self.verbose:
-                print (">> Compute J height ")
+                print(">> Compute J height ")
 
             dudz = self.forward(m, output_type="sensitivity_height")
 
@@ -509,7 +525,7 @@ class EM1D(Problem.BaseProblem):
         else:
 
             if self.verbose:
-                print (">> Compute J sigma")
+                print(">> Compute J sigma")
 
             dudsig = self.forward(m, output_type="sensitivity_sigma")
 
