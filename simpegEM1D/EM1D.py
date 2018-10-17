@@ -9,7 +9,12 @@ from empymod import filters
 from empymod.transform import dlf, get_spline_values
 from empymod.utils import check_hankel
 
-from simpegEM1D.m_rTE_Fortran import rte_fortran
+try:
+    from simpegEM1D.m_rTE_Fortran import rte_fortran
+except ImportError as e:
+    rte_fortran = None
+rte_fortran = None
+
 
 class EM1D(Problem.BaseProblem):
     """
@@ -91,12 +96,25 @@ class EM1D(Problem.BaseProblem):
 
         if output_type == 'sensitivity_sigma':
             drTE = np.zeros([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
-            rte_fortran.rte_sensitivity(f, lamda, sig, chi, depth, self.survey.half_switch, drTE, n_layer, n_frequency, n_filter)
+            if rte_fortran is None:
+                drTE = rTEfunjac(
+                    n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
+                )
+            else:
+                rte_fortran.rte_sensitivity(
+                    f, lamda, sig, chi, depth, self.survey.half_switch, drTE,
+                    n_layer, n_frequency, n_filter
+                    )
 
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
             rTE = np.empty([n_frequency, n_filter], dtype=np.complex128, order='F')
-            rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter) 
+            if rte_fortran is None:
+                    rTE = rTEfunfwd(
+                        n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
+                    )
+            else:
+                rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter)
 
             kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             if output_type == 'sensitivity_height':
@@ -144,13 +162,34 @@ class EM1D(Problem.BaseProblem):
         coefficient_wavenumber = I*radius*0.5*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
-            rte_fortran.rte_sensitivity(f, lamda, sig, chi, depth, self.survey.half_switch, drTE, n_layer, n_frequency, n_filter)
+            drTE = np.zeros(
+                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
+            if rte_fortran is None:
+                    drTE = rTEfunjac(
+                        n_layer, f, lamda, sig, chi, depth,
+                        self.survey.half_switch
+                    )
+            else:
+                rte_fortran.rte_sensitivity(
+                    f, lamda, sig, chi, depth, self.survey.half_switch,
+                    drTE, n_layer, n_frequency, n_filter
+                )
 
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = np.empty([n_frequency, n_filter], dtype=np.complex128, order='F')
-            rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter) 
+            rTE = np.empty(
+                [n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
+            if rte_fortran is None:
+                rTE = rTEfunfwd(
+                    n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
+                )
+            else:
+                rte_fortran.rte_forward(
+                    f, lamda, sig, chi, depth, self.survey.half_switch,
+                    rTE, n_layer, n_frequency, n_filter
+                )
 
             if flag == 'secondary':
                 kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
@@ -182,13 +221,35 @@ class EM1D(Problem.BaseProblem):
         coefficient_wavenumber = 1/(4*np.pi)*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros([n_layer, n_frequency, n_filter], dtype=np.complex128, order='F')
-            rte_fortran.rte_sensitivity(f, lamda, sig, chi, depth, self.survey.half_switch, drTE, n_layer, n_frequency, n_filter)
+            drTE = np.zeros(
+                [n_layer, n_frequency, n_filter], dtype=np.complex128,
+                order='F'
+            )
+            if rte_fortran is None:
+                drTE = rTEfunjac(
+                    n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
+                )
+            else:
+                rte_fortran.rte_sensitivity(
+                    f, lamda, sig, chi, depth, self.survey.half_switch,
+                    drTE, n_layer, n_frequency, n_filter
+                )
 
             kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
         else:
-            rTE = np.empty([n_frequency, n_filter], dtype=np.complex128, order='F')
-            rte_fortran.rte_forward(f, lamda, sig, chi, depth, self.survey.half_switch, rTE, n_layer, n_frequency, n_filter) 
+            rTE = np.empty(
+                [n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
+            if rte_fortran is None:
+                rTE = rTEfunfwd(
+                        n_layer, f, lamda, sig, chi, depth,
+                        self.survey.half_switch
+                )
+            else:
+                rte_fortran.rte_forward(
+                    f, lamda, sig, chi, depth, self.survey.half_switch,
+                    rTE, n_layer, n_frequency, n_filter
+                )
 
             kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
             if output_type == 'sensitivity_height':
@@ -237,7 +298,7 @@ class EM1D(Problem.BaseProblem):
             2*np.pi*f,
             (n_layer, 1)
         )
-        
+
         sigma_complex = np.empty([n_layer, n_frequency], dtype=np.complex128, order='F')
         sigma_complex[:, :] = (
             sigma -
@@ -283,7 +344,7 @@ class EM1D(Problem.BaseProblem):
         lambd[:, :], _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
 
         # lambd, _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
-        
+
         # TODO: potentially store
         f = np.empty([self.survey.frequency.size, n_filter], order='F')
         f[:,:] = np.tile(self.survey.frequency.reshape([-1, 1]), (1, n_filter))
