@@ -13,7 +13,6 @@ try:
     from simpegEM1D.m_rTE_Fortran import rte_fortran
 except ImportError as e:
     rte_fortran = None
-rte_fortran = None
 
 
 class EM1D(Problem.BaseProblem):

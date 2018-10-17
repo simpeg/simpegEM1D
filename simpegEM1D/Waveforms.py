@@ -257,7 +257,7 @@ def piecewise_ramp_fast(step_func, t_off, t_currents, currents, x, w, eps=1e-10)
     # Create a bunch of memory in C and use broadcasting
     t_lag = pulse_time - t_currents
     t_lag_expand = (np.repeat(t_lag[1:, np.newaxis], t_off.size, 1)).T
-    t_lag_3D = np.repeat(t_lag_expand[:, :, np.newaxis], n, 2) 
+    t_lag_3D = np.repeat(t_lag_expand[:, :, np.newaxis], n, 2)
     t3D = t_lag_3D + t_off[:,np.newaxis, np.newaxis]
 
     # Gauss-Legendre part.
@@ -295,7 +295,7 @@ def piecewise_ramp_fast_diff(step_func, t_off, t_shift, t_currents, currents, x,
     # Create a bunch of memory in C and use broadcasting
     t_lag = pulse_time - t_currents
     t_lag_expand = (np.repeat(t_lag[1:, np.newaxis], t_off.size, 1)).T
-    t_lag_3D = np.repeat(t_lag_expand[:, :, np.newaxis], n, 2) 
+    t_lag_3D = np.repeat(t_lag_expand[:, :, np.newaxis], n, 2)
     t3D = t_lag_3D + t_off[:,np.newaxis, np.newaxis]
 
     # Gauss-Legendre part.
