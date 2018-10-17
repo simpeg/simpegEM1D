@@ -8,6 +8,7 @@ dependencies:
   - scipy
   - matplotlib
   - mkl
+  - gcc
   - pip:
     - pymatsolver
     - git+https://github.com/simpeg/simpegEM1D.git@speed_up_leon
