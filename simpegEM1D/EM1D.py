@@ -280,7 +280,8 @@ class EM1D(Problem.BaseProblem):
 
         # Use function from empymod
         # size of lambd is (n_frequency x n_filter)
-        lambd, _ = get_spline_values(self.fhtfilt, r, self.hankel_pts_per_dec)
+        lambd, int_pts = get_spline_values(self.fhtfilt, r,
+                                           self.hankel_pts_per_dec)
         n_filter = self.n_filter
         # TODO: potentially store
         f = np.tile(self.survey.frequency.reshape([-1, 1]), (1, n_filter))
@@ -412,7 +413,7 @@ class EM1D(Problem.BaseProblem):
         # HzFHT size = (n_layer, n_frequency)
 
         HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
-                    factAng=None, ab=33)
+                    factAng=None, ab=33, int_pts=int_pts)
 
         if output_type == "sensitivity_sigma":
             return HzFHT.T
