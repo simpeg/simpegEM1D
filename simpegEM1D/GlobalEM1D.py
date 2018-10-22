@@ -6,7 +6,8 @@ except ImportError:
 else:
     PARALLEL = True
     import multiprocessing
-
+    from dask.distributed import Client
+    import dask
 import numpy as np
 import scipy.sparse as sp
 from SimPEG import Problem, Props, Utils, Maps, Survey
@@ -56,9 +57,10 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     n_cpu = None
     hz = None
     parallel = False
+    use_dask = False
     parallel_jvec_jtvec = False
     verbose = False
-    fix_Jmatrix = False    
+    fix_Jmatrix = False
     invert_height = None
 
     def __init__(self, mesh, **kwargs):
@@ -186,7 +188,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
                 )
             else:
                 self._C = self.c.reshape((self.n_sounding, self.n_layer))
-        return self._C                        
+        return self._C
 
     @property
     def H(self):
@@ -208,16 +210,28 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             print (">> Compute response")
 
         if self.parallel:
-            pool = Pool(self.n_cpu)
-            # This assumes the same # of layer for each of soundings
-            result = pool.map(
-                self.run_simulation,
-                [
-                    self.input_args(i, jac_switch='forward') for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
+            if self.use_dask:
+                client = Client(n_workers=self.n_cpu, threads_per_worker=1)
+                futures = client.map(
+                    self.run_simulation,
+                    [
+                        self.input_args(i, jac_switch='forward') for i in range(self.n_sounding)
+                    ]
+                )
+                futures = dask.persist(futures)
+                result = client.gather(futures)
+                client.close()
+            else:
+                pool = Pool(self.n_cpu)
+                # This assumes the same # of layer for each of soundings
+                result = pool.map(
+                    self.run_simulation,
+                    [
+                        self.input_args(i, jac_switch='forward') for i in range(self.n_sounding)
+                    ]
+                )
+                pool.close()
+                pool.join()
         else:
             result = [
                 self.run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
@@ -265,7 +279,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             return self._Jmatrix_height
         if self.verbose:
             print (">> Compute J height")
-        
+
         self.model = m
 
         if self.parallel:
@@ -280,13 +294,13 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             pool.join()
             if self.parallel_jvec_jtvec is False:
                 self._Jmatrix_height = sp.block_diag(self._Jmatrix_height).tocsr()
-        else:            
+        else:
             self._Jmatrix_height = sp.block_diag(
                 [
                     self.run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
                 ]
             ).tocsr()
-        return self._Jmatrix_height       
+        return self._Jmatrix_height
 
     def Jvec(self, m, v, f=None):
         J_sigma = self.getJ_sigma(m)
@@ -314,7 +328,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         #                 dot,
         #                 [(J_height[i], V_height[i, :]) for i in range(self.n_sounding)]
         #             )
-        #         )            
+        #         )
         #     pool.close()
         #     pool.join()
         # else:
@@ -350,7 +364,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         # else:
         # Extra division of sigma is because:
         # J_sigma = dF/dlog(sigma)
-        # And here sigmaMap also includes ExpMap            
+        # And here sigmaMap also includes ExpMap
         Jtv = self.sigmaDeriv.T * (Utils.sdiag(1./self.sigma) * (J_sigma.T*v))
         if self.hMap is not None:
             Jtv += self.hDeriv.T*(J_height.T*v)
@@ -365,12 +379,12 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             if self._Jmatrix_sigma is not None:
                 toDelete += ['_Jmatrix_sigma']
             if self._Jmatrix_height is not None:
-                toDelete += ['_Jmatrix_height']                
+                toDelete += ['_Jmatrix_height']
         return toDelete
 
 
 class GlobalEM1DProblemFD(GlobalEM1DProblem):
-    
+
     def run_simulation(self, args):
         return run_simulation_FD(args)
 
@@ -392,14 +406,14 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
             self.Sigma[i_sounding, :],
             self.Eta[i_sounding, :],
             self.Tau[i_sounding, :],
-            self.C[i_sounding, :],                                    
+            self.C[i_sounding, :],
             self.Chi[i_sounding, :],
             self.H[i_sounding],
             jac_switch,
             self.invert_height,
             self.half_switch
         )
-        return output 
+        return output
 
 
 class GlobalEM1DProblemTD(GlobalEM1DProblem):
@@ -484,10 +498,10 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
             self.Eta[i_sounding, :],
             self.Tau[i_sounding, :],
             self.C[i_sounding, :],
-            self.H[i_sounding],                                                
+            self.H[i_sounding],
             jac_switch,
             self.invert_height,
-            self.half_switch            
+            self.half_switch
         )
         return output
 
