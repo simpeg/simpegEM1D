@@ -170,12 +170,12 @@ class EM1D(Problem.BaseProblem):
         coefficient_wavenumber = I*radius*0.5*lamda**2/u0
 
         if output_type == 'sensitivity_sigma':
-            drTE = np.zeros(
+            drTE = np.empty(
                 [n_layer, n_frequency, n_filter],
                 dtype=np.complex128, order='F'
             )
             if rte_fortran is None:
-                    drTE = rTEfunjac(
+                    drTE[:, :] = rTEfunjac(
                         n_layer, f, lamda, sig, chi, depth,
                         self.survey.half_switch
                     )
@@ -191,7 +191,7 @@ class EM1D(Problem.BaseProblem):
                 [n_frequency, n_filter], dtype=np.complex128, order='F'
             )
             if rte_fortran is None:
-                rTE = rTEfunfwd(
+                rTE[:, :] = rTEfunfwd(
                     n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
                 )
             else:
