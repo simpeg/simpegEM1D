@@ -53,7 +53,7 @@ class GlobalEM1DFD(unittest.TestCase):
 
         problem = GlobalEM1DProblemFD(
             [], sigmaMap=mapping, hz=hz,
-            parallel=parallel, n_cpu=2
+            parallel=parallel, n_cpu=2, use_dask=True
         )
         problem.pair(survey)
         survey.makeSyntheticData(mSynth)
@@ -108,6 +108,7 @@ class GlobalEM1DFD(unittest.TestCase):
         )
         self.assertTrue(passed)
 
+
 class GlobalEM1DFD_Height(unittest.TestCase):
 
     def setUp(self, parallel=True):
@@ -144,7 +145,7 @@ class GlobalEM1DFD_Height(unittest.TestCase):
 
         problem = GlobalEM1DProblemFD(
             [], sigmaMap=sigmaMap, hMap=wires.h, hz=hz,
-            parallel=parallel, n_cpu=2
+            parallel=parallel, n_cpu=2, use_dask=True
         )
         problem.pair(survey)
         survey.makeSyntheticData(mSynth)

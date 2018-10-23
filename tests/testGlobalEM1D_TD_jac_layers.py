@@ -20,7 +20,7 @@ np.random.seed(41)
 
 class GlobalEM1DTD(unittest.TestCase):
 
-    def setUp(self, parallel=False):
+    def setUp(self, parallel=True):
         time = np.logspace(-6, -3, 21)
         hz = get_vertical_discretization_time(
             time, facter_tmax=0.5, factor_tmin=10.
@@ -147,7 +147,7 @@ class GlobalEM1DTD(unittest.TestCase):
 
 class GlobalEM1DTD_Height(unittest.TestCase):
 
-    def setUp(self, parallel=False):
+    def setUp(self, parallel=True):
         time = np.logspace(-6, -3, 21)
         time_input_currents = wave.current_times[-7:]
         input_currents = wave.currents[-7:]

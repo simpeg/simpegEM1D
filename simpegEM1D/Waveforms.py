@@ -10,6 +10,8 @@ XXX
 
 import numpy as np
 from scipy.integrate import fixed_quad
+from scipy.integrate.quadrature import _cached_roots_legendre
+
 # from scipy.signal import butter, freqz
 
 
@@ -233,6 +235,92 @@ def piecewise_ramp(step_func, t_off, t_currents, currents, n=20, eps=1e-10):
             ) * const
     return response
 
+def piecewise_ramp_fast(step_func, t_off, t_currents, currents, x, w, eps=1e-10):
+    """
+    Computes response from piecewise linear current waveform
+    with a single pulse. This basically evaluates the convolution
+    between dI/dt and step-off response.
+
+    step_func: function handle to evaluate step-off response
+    t_off: time channels when the current is off
+    t_shift: t_off + T/2
+    currents: input source currents
+    n: Gaussian quadrature order
+    """
+    n = x.size
+    dt = np.diff(t_currents)
+    dI = np.diff(currents)
+    dIdt = dI/dt
+    nt = t_currents.size
+    pulse_time = t_currents.max()
+
+    # Create a bunch of memory in C and use broadcasting
+    t_lag = pulse_time - t_currents
+    t_lag_expand = (np.repeat(t_lag[1:, np.newaxis], t_off.size, 1)).T
+    t_lag_3D = np.repeat(t_lag_expand[:, :, np.newaxis], n, 2)
+    t3D = t_lag_3D + t_off[:,np.newaxis, np.newaxis]
+
+    # Gauss-Legendre part.
+    # Expand time shifts and origin to 3D with G-L points
+    dt2 = np.repeat(dt[:, np.newaxis], n, 1)
+    y = dt2 * (0.5 * (x + 1.0)) + t3D
+      # Evaluate and weight G-L values with current waveform
+    f = w * step_func(y)
+    s = f.sum(axis = 2) * 0.5*dt
+
+    response = np.sum(s * -dIdt, axis=1)
+
+    return response
+
+
+def piecewise_ramp_fast_diff(step_func, t_off, t_shift, t_currents, currents, x, w, eps=1e-10):
+    """
+    Computes response from piecewise linear current waveform
+    with a single pulse. This basically evaluates the convolution
+    between dI/dt and step-off response.
+
+    step_func: function handle to evaluate step-off response
+    t_off: time channels when the current is off
+    t_shift: t_off + T/2
+    currents: input source currents
+    n: Gaussian quadrature order
+    """
+    n = x.size
+    dt = np.diff(t_currents)
+    dI = np.diff(currents)
+    dIdt = dI/dt
+    nt = t_currents.size
+    pulse_time = t_currents.max()
+
+    # Create a bunch of memory in C and use broadcasting
+    t_lag = pulse_time - t_currents
+    t_lag_expand = (np.repeat(t_lag[1:, np.newaxis], t_off.size, 1)).T
+    t_lag_3D = np.repeat(t_lag_expand[:, :, np.newaxis], n, 2)
+    t3D = t_lag_3D + t_off[:,np.newaxis, np.newaxis]
+
+    # Gauss-Legendre part.
+    # Expand time shifts and origin to 3D with G-L points
+    dt2 = np.repeat(dt[:, np.newaxis], n, 1)
+    y = dt2 * (0.5 * (x + 1.0)) + t3D
+      # Evaluate and weight G-L values with current waveform
+    f = w * step_func(y)
+    s = f.sum(axis = 2) * 0.5*dt
+
+    response = np.sum(s * -dIdt, axis=1)
+
+    t3D = t_lag_3D + t_shift[:,np.newaxis, np.newaxis]
+
+    # Gauss-Legendre part.
+    # Expand time shifts and origin to 3D with G-L points
+    y = dt2 * (0.5 * (x + 1.0)) + t3D
+      # Evaluate and weight G-L values with current waveform
+    f = w * step_func(y)
+    s = f.sum(axis = 2) * 0.5*dt
+
+    response -= 0.5* np.sum(s * -dIdt, axis=1)
+
+    return response
+
 
 def piecewise_pulse(
     step_func, t_off, t_currents, currents, T, n=20, n_pulse=2
@@ -256,6 +344,31 @@ def piecewise_pulse(
         )
     else:
         raise NotImplementedError("n_pulse must be either 1 or 2")
+    return response
+
+
+def piecewise_pulse_fast(
+    step_func, t_off, t_currents, currents, T, n=20, n_pulse=2
+):
+    """
+    Computes response from double pulses (negative then positive)
+    T: Period (e.g. 25 Hz base frequency, 0.04 s period)
+    """
+
+    # Use early out scheme for speed. Can turn assertions off with "python -O"
+    assert (n_pulse == 1 or n_pulse == 2), NotImplementedError("n_pulse must be either 1 or 2")
+
+    # Get gauss-legendre points and weights early since n never changes inside here
+    x, w = _cached_roots_legendre(n)
+
+    if n_pulse == 1:
+        response = piecewise_ramp_fast(
+                step_func, t_off, t_currents, currents, x, w
+        )
+    elif n_pulse == 2:
+        response = piecewise_ramp_fast_diff(
+                step_func, t_off, t_off+0.5*T, t_currents, currents, x, w
+            )
     return response
 
 
