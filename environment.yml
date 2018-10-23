@@ -9,6 +9,7 @@ dependencies:
   - matplotlib
   - mkl
   - gcc
+  - dask
   - pip:
     - pymatsolver
     - git+https://github.com/simpeg/simpegEM1D.git@speed_up_leon
