@@ -248,15 +248,27 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             print (">> Compute J sigma")
         self.model = m
         if self.parallel:
-            pool = Pool(self.n_cpu)
-            self._Jmatrix_sigma = pool.map(
-                self.run_simulation,
-                [
-                    self.input_args(i, jac_switch='sensitivity_sigma') for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
+            if self.use_dask:
+                client = Client(n_workers=self.n_cpu, threads_per_worker=1)
+                futures = client.map(
+                    self.run_simulation,
+                    [
+                        self.input_args(i, jac_switch='sensitivity_sigma') for i in range(self.n_sounding)
+                    ]
+                )
+                futures = dask.persist(futures)
+                self._Jmatrix_sigma = client.gather(futures)
+                client.close()
+            else:
+                pool = Pool(self.n_cpu)
+                self._Jmatrix_sigma = pool.map(
+                    self.run_simulation,
+                    [
+                        self.input_args(i, jac_switch='sensitivity_sigma') for i in range(self.n_sounding)
+                    ]
+                )
+                pool.close()
+                pool.join()
             if self.parallel_jvec_jtvec is False:
                 self._Jmatrix_sigma = sp.block_diag(self._Jmatrix_sigma).tocsr()
         else:
@@ -283,17 +295,32 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         self.model = m
 
         if self.parallel:
-            pool = Pool(self.n_cpu)
-            self._Jmatrix_height = pool.map(
-                self.run_simulation,
-                [
-                    self.input_args(i, jac_switch="sensitivity_height") for i in range(self.n_sounding)
-                ]
-            )
-            pool.close()
-            pool.join()
+            if self.use_dask:
+                client = Client(n_workers=self.n_cpu, threads_per_worker=1)
+                futures = client.map(
+                    self.run_simulation,
+                    [
+                        self.input_args(i, jac_switch="sensitivity_height") for i in range(self.n_sounding)
+                    ]
+                )
+                futures = dask.persist(futures)
+                self._Jmatrix_height = client.gather(futures)
+                client.close()
+            else:
+                pool = Pool(self.n_cpu)
+                self._Jmatrix_height = pool.map(
+                    self.run_simulation,
+                    [
+                        self.input_args(i, jac_switch="sensitivity_height") for i in range(self.n_sounding)
+                    ]
+                )
+                pool.close()
+                pool.join()
+
             if self.parallel_jvec_jtvec is False:
-                self._Jmatrix_height = sp.block_diag(self._Jmatrix_height).tocsr()
+                self._Jmatrix_height = sp.block_diag(
+                    self._Jmatrix_height
+                ).tocsr()
         else:
             self._Jmatrix_height = sp.block_diag(
                 [
