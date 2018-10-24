@@ -16,7 +16,7 @@ np.random.seed(41)
 
 class GlobalEM1DFD(unittest.TestCase):
 
-    def setUp(self, parallel=False):
+    def setUp(self, parallel=True):
         frequency = np.array([900, 7200, 56000], dtype=float)
         hz = get_vertical_discretization_frequency(
             frequency, sigma_background=1./10.
@@ -110,7 +110,7 @@ class GlobalEM1DFD(unittest.TestCase):
 
 class GlobalEM1DFD_Height(unittest.TestCase):
 
-    def setUp(self, parallel=False):
+    def setUp(self, parallel=True):
         frequency = np.array([900, 7200, 56000], dtype=float)
         hz = np.r_[1.]
         n_sounding = 10

@@ -241,7 +241,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
     M0sum01 = Mtemp01.copy()
     M0sum11 = Mtemp11.copy()
 
-    if HalfSwitch:
+    if HalfSwitch or n_layer == 1:
 
         M1sum00 = M0sum00.copy()
         M1sum10 = M0sum10.copy()
@@ -357,7 +357,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
 
     # rTE = M1sum01/M1sum11
 
-    if HalfSwitch:
+    if HalfSwitch or n_layer == 1:
 
         utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0])
         dudsig = 0.5*1j*w*mu_0*(1+chi[0])/utemp0
@@ -380,7 +380,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
         utemp0 = (
             np.sqrt(lamda**2+1j*w*mu_0*(1+chi[n_layer-1])*sig[n_layer-1, :, :])
         )
-        dudsig = 0.5*1j*w*mu_0*(1+chi[j])/utemp0
+        dudsig = 0.5*1j*w*mu_0*(1+chi[n_layer-1])/utemp0
 
         h_1 = thick[n_layer-2]
 

@@ -13,6 +13,10 @@ sudo: false
 env:
   - TEST_DIR=tests
 
+addons:
+  apt_packages:
+    - gfortran
+
 before_install:
   - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
     -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
@@ -20,15 +24,17 @@ before_install:
   - chmod +x miniconda.sh
   - "./miniconda.sh -b -p $HOME/miniconda"
   - export PATH=$HOME/anaconda/bin:$HOME/miniconda/bin:$PATH
+  - export PYTHONPATH=$HOME/simpegEM1D:$PYTHONPATH
   - conda update --yes conda
 
 install:
   - conda env create -f environment.yml
   - source activate simpegEM1D-environment
-  - export MPLBACKEND="agg"
   - pip install -r requirements_dev.txt
   - pip install coveralls
   - python setup.py install
+  - make build
+  - export MPLBACKEND="agg"
 
 script:
   - travis_wait 20 nosetests $TEST_DIR -v -s
