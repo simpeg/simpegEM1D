@@ -194,13 +194,16 @@ class ModelIO(properties.HasProperties):
         if line_direction.lower() == 'y':
             x_ind = 1
             xlabel = 'Northing (m)'
+            yz = self.xyz[:, ind_line, :][:, :, [x_ind, 2]].reshape(
+                (int(self.hz.size*ind_line.sum()), 2), order='F'
+            )
         elif line_direction.lower() == 'x':
             x_ind = 0
             xlabel = 'Easting (m)'
+            yz = self.xyz[:, ind_line, :][:, :, [x_ind, 2]].reshape(
+                (int(self.hz.size*ind_line.sum()), 2), order='F'
+            )
 
-        yz = self.xyz[:, ind_line, :][:,:,[x_ind,2]].reshape(
-            (int(self.hz.size*ind_line.sum()), 2), order='F'
-        )
 
         if ax is None:
             fig = plt.figure(figsize=(15, 10))
@@ -237,9 +240,10 @@ class ModelIO(properties.HasProperties):
             else:
                 norm=None
             ind_line = np.arange(ind_line.size)[ind_line]
+
             for i in ind_line:
                 inds_temp = [i, i]
-                topo_temp = np.c_[self.topography[i,1]-dx, self.topography[i,1]+dx]
+                topo_temp = np.c_[self.topography[i, x_ind]-dx, self.topography[i, x_ind]+dx]
                 out = ax.pcolormesh(
                     topo_temp, -self.mesh_1d.vectorCCx+self.topography[i,2], physical_property_matrix[:, inds_temp],
                     cmap=cmap, alpha=0.7,
