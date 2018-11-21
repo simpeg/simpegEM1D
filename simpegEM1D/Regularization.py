@@ -18,12 +18,14 @@ def get_2d_mesh(n_sounding, hz):
 
 class LateralConstraint(Sparse):
 
-    def get_grad_horizontal(self, xy, hz, dim=3):
+    def get_grad_horizontal(self, xy, hz, dim=3, use_cell_weights=True):
         """
             Compute Gradient in horizontal direction using Delaunay
 
         """
-        if dim==3:
+        self.cell_weights = np.tile(hz, (xy.shape[0], 1)).flatten()
+
+        if dim == 3:
             tri = sp.spatial.Delaunay(xy)
             # Split the triangulation into connections
             edges = np.r_[
@@ -74,8 +76,8 @@ class LateralConstraint(Sparse):
             self.regmesh._aveFy2CC = self.regmesh.aveFx2CC.copy()
             self.regmesh._aveFx2CC = Avg.T
             return tri
-        
-        elif dim==2:
+
+        elif dim == 2:
             # Override the gradient operator in y-drection
             # This is because of ordering ... See def get_2d_mesh
             # y first then x
@@ -90,7 +92,7 @@ class LateralConstraint(Sparse):
             self.regmesh._aveCC2Fy = temp_x
             self.regmesh._aveCC2Fx = temp_y
             temp_x = self.regmesh.aveCC2Fx.copy()
-            temp_y = self.regmesh.aveCC2Fy.copy()            
+            temp_y = self.regmesh.aveCC2Fy.copy()
             self.regmesh._aveFy2CC = temp_x
-            self.regmesh._aveFx2CC = temp_y       
+            self.regmesh._aveFx2CC = temp_y
             return True
