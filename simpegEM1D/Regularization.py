@@ -18,7 +18,11 @@ def get_2d_mesh(n_sounding, hz):
 
 class LateralConstraint(Sparse):
 
-    def get_grad_horizontal(self, xy, hz, dim=3, use_cell_weights=True):
+    def get_grad_horizontal(
+        self, xy, hz, dim=3,
+        use_cell_weights=True,
+        minimum_distance=None
+    ):
         """
             Compute Gradient in horizontal direction using Delaunay
 
@@ -39,6 +43,13 @@ class LateralConstraint(Sparse):
             edges = np.unique(
                 edges[np.argsort(edges[:, 0]), :], axis=0
             )
+            # Compute distance
+            if minimum_distance is not None:
+                dx = xy[edges[:, 0], 0]-xy[edges[:, 1], 0]
+                dy = xy[edges[:, 0], 1]-xy[edges[:, 1], 1]
+                distance = np.sqrt(dx**2+dy**2)
+                inds = distance < minimum_distance
+                edges = edges[inds, :]
 
             # Create 2D operator, dimensionless for now
             nN = edges.shape[0]
@@ -52,7 +63,6 @@ class LateralConstraint(Sparse):
             for ii in range(nN):
                 row += [ii]*2
                 col += [edges[ii, 0], edges[ii, 1]]
-
                 scale = count[stn == edges[ii, 0]][0]
                 dm += [-1., 1.]
                 avg += [0.5, 0.5]
