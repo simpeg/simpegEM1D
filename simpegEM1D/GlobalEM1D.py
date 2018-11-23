@@ -1,7 +1,7 @@
 try:
     from multiprocessing import Pool
 except ImportError:
-    print ("multiprocessing is not available")
+    print("multiprocessing is not available")
     PARALLEL = False
 else:
     PARALLEL = True
@@ -753,11 +753,19 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
 
     @property
     def nD_vec(self):
-        # Need to generalize this for the dual moment data
         if getattr(self, '_nD_vec', None) is None:
-            self._nD_vec = np.array(
-                [time.size for time in self.time], dtype=int
-            )
+            self._nD_vec = []
+
+            for ii, moment_type in enumerate(self.moment_type):
+                if moment_type == 'single':
+                    self._nD_vec.append(self.time[ii].size)
+                elif moment_type == 'dual':
+                    self._nD_vec.append(
+                        self.time[ii].size+self.time_dual_moment[ii].size
+                    )
+                else:
+                    raise Exception("moment_type must be either signle or dual")
+            self._nD_vec = np.array(self._nD_vec)
         return self._nD_vec
 
     @property
