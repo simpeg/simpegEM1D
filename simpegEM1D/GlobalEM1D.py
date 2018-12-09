@@ -232,11 +232,16 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         if self.verbose:
             print(">> Compute response")
 
+        if self.survey.__class__ == GlobalEM1DSurveyFD:
+            run_simulation = run_simulation_FD
+        else:
+            run_simulation = run_simulation_TD
+
         if self.parallel:
             pool = Pool(self.n_cpu)
             # This assumes the same # of layer for each of soundings
             result = pool.map(
-                self.run_simulation,
+                run_simulation,
                 [
                     self.input_args(i, jac_switch='forward') for i in range(self.n_sounding)
                 ]
@@ -245,7 +250,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             pool.join()
         else:
             result = [
-                self.run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
+                run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
             ]
         return np.hstack(result)
 
@@ -258,10 +263,16 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         if self.verbose:
             print(">> Compute J sigma")
         self.model = m
+
+        if self.survey.__class__ == GlobalEM1DSurveyFD:
+            run_simulation = run_simulation_FD
+        else:
+            run_simulation = run_simulation_TD
+
         if self.parallel:
             pool = Pool(self.n_cpu)
             self._Jmatrix_sigma = pool.map(
-                self.run_simulation,
+                run_simulation,
                 [
                     self.input_args(i, jac_switch='sensitivity_sigma') for i in range(self.n_sounding)
                 ]
@@ -278,11 +289,11 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             # _Jmatrix_sigma is block diagnoal matrix (sparse)
             # self._Jmatrix_sigma = sp.block_diag(
             #     [
-            #         self.run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
+            #         run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
             #     ]
             # ).tocsr()
             self._Jmatrix_sigma = [
-                    self.run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
+                    run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
             ]
             self._Jmatrix_sigma = np.hstack(self._Jmatrix_sigma)
             self._Jmatrix_sigma = sp.coo_matrix(
@@ -305,10 +316,15 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 
         self.model = m
 
+        if self.survey.__class__ == GlobalEM1DSurveyFD:
+            run_simulation = run_simulation_FD
+        else:
+            run_simulation = run_simulation_TD
+
         if self.parallel:
             pool = Pool(self.n_cpu)
             self._Jmatrix_height = pool.map(
-                self.run_simulation,
+                run_simulation,
                 [
                     self.input_args(i, jac_switch="sensitivity_height") for i in range(self.n_sounding)
                 ]
@@ -324,11 +340,11 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         else:
             # self._Jmatrix_height = sp.block_diag(
             #     [
-            #         self.run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
+            #         run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
             #     ]
             # ).tocsr()
             self._Jmatrix_height = [
-                    self.run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
+                    run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
             ]
             self._Jmatrix_height = np.hstack(self._Jmatrix_height)
             self._Jmatrix_height = sp.coo_matrix(
@@ -420,6 +436,8 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 class GlobalEM1DProblemFD(GlobalEM1DProblem):
 
     def run_simulation(self, args):
+        if self.verbose:
+            print(">> Frequency-domain")
         return run_simulation_FD(args)
 
     @property
@@ -434,9 +452,13 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
         output = (
             self.rx_locations[i_sounding, :],
             self.src_locations[i_sounding, :],
-            self.topo[i_sounding, :], self.hz,
-            self.offset, self.frequency,
-            self.field_type, self.rx_type, self.src_type,
+            self.topo[i_sounding, :],
+            self.hz,
+            self.offset,
+            self.frequency,
+            self.field_type,
+            self.rx_type,
+            self.src_type,
             self.Sigma[i_sounding, :],
             self.Eta[i_sounding, :],
             self.Tau[i_sounding, :],
@@ -540,6 +562,8 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
         return output
 
     def run_simulation(self, args):
+        if self.verbose:
+            print(">> Time-domain")
         return run_simulation_TD(args)
 
     # def forward(self, m, f=None):
@@ -662,6 +686,9 @@ class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
         shift_for_I = 0
         if n_layer is None:
             m = self.n_layer
+        else:
+            m = n_layer
+
         for i in range(self.n_sounding):
             n = self.nD_vec[i]
             J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
