@@ -95,12 +95,12 @@ def run_simulation_FD(args):
         prob.pair(FDsurvey)
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(np.log(sigma))
-            return drespdsig * prob.sigmaDeriv
+            return Utils.mkvc(drespdsig * prob.sigmaDeriv)
         else:
             resp = FDsurvey.dpred(np.log(sigma))
             return resp
     else:
-        wires = Maps.Wires(('sigma', mesh_1d.nC),('h', 1))
+        wires = Maps.Wires(('sigma', mesh_1d.nC), ('h', 1))
         expmap = Maps.ExpMap(mesh_1d)
         sigmaMap = expmap * wires.sigma
         prob = EM1D(
@@ -115,10 +115,10 @@ def run_simulation_FD(args):
         m = np.r_[np.log(sigma), h]
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(m)
-            return drespdsig * Utils.sdiag(sigma)
+            return Utils.mkvc(drespdsig * Utils.sdiag(sigma))
         elif jac_switch == 'sensitivity_height':
             drespdh = prob.getJ_height(m)
-            return drespdh
+            return Utils.mkvc(drespdh)
         else:
             resp = FDsurvey.dpred(m)
             return resp
@@ -190,7 +190,7 @@ def run_simulation_TD(args):
         prob.pair(TDsurvey)
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(np.log(sigma))
-            return drespdsig * prob.sigmaDeriv
+            return Utils.mkvc(drespdsig * prob.sigmaDeriv)
         else:
             resp = TDsurvey.dpred(np.log(sigma))
             return resp
@@ -211,10 +211,10 @@ def run_simulation_TD(args):
         m = np.r_[np.log(sigma), h]
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(m)
-            return drespdsig * Utils.sdiag(sigma)
+            return Utils.mkvc(drespdsig * Utils.sdiag(sigma))
         elif jac_switch == 'sensitivity_height':
             drespdh = prob.getJ_height(m)
-            return drespdh
+            return Utils.mkvc(drespdh)
         else:
             resp = TDsurvey.dpred(m)
             return resp

@@ -239,9 +239,12 @@ class ModelIO(properties.HasProperties):
             ind_line = np.arange(ind_line.size)[ind_line]
             for i in ind_line:
                 inds_temp = [i, i]
-                topo_temp = np.c_[self.topography[i,1]-dx, self.topography[i,1]+dx]
+                topo_temp = np.c_[
+                    self.topography[i, x_ind]-dx,
+                    self.topography[i, x_ind]+dx
+                ]
                 out = ax.pcolormesh(
-                    topo_temp, -self.mesh_1d.vectorCCx+self.topography[i,2], physical_property_matrix[:, inds_temp],
+                    topo_temp, -self.mesh_1d.vectorCCx+self.topography[i, 2], physical_property_matrix[:, inds_temp],
                     cmap=cmap, alpha=0.7,
                     vmin=vmin, vmax=vmax, norm=norm
                 )
