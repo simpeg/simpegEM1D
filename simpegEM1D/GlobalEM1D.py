@@ -1,7 +1,7 @@
 try:
     from multiprocessing import Pool
 except ImportError:
-    print ("multiprocessing is not available")
+    print("multiprocessing is not available")
     PARALLEL = False
 else:
     PARALLEL = True
@@ -66,14 +66,14 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         self.mesh = mesh
         if PARALLEL:
             if self.parallel:
-                print (">> Use multiprocessing for parallelization")
+                print(">> Use multiprocessing for parallelization")
                 if self.n_cpu is None:
                     self.n_cpu = multiprocessing.cpu_count()
-                print ((">> n_cpu: %i")%(self.n_cpu))
+                print((">> n_cpu: %i") % (self.n_cpu))
             else:
-                print (">> Serial version is used")
+                print(">> Serial version is used")
         else:
-            print (">> Serial version is used")
+            print(">> Serial version is used")
         if self.hz is None:
             raise Exception("Input vertical thickness hz !")
         if self.hMap is None:
@@ -81,6 +81,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         else:
             self.invert_height = True
 
+    # ------------- For survey ------------- #
     @property
     def n_layer(self):
         return self.hz.size
@@ -133,6 +134,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     def half_switch(self):
         return self.survey.half_switch
 
+    # ------------- For physical properties ------------- #
     @property
     def Sigma(self):
         if getattr(self, '_Sigma', None) is None:
@@ -195,9 +197,32 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         else:
             return self.h
 
+    @property
+    def Sigma(self):
+        if getattr(self, '_Sigma', None) is None:
+            # Ordering: first z then x
+            self._Sigma = self.sigma.reshape((self.n_sounding, self.n_layer))
+        return self._Sigma
+
+    # ------------- Etcetra .... ------------- #
+    @property
+    def IJLayers(self):
+        if getattr(self, '_IJLayers', None) is None:
+            # Ordering: first z then x
+            self._IJLayers = self.survey.set_ij_n_layer()
+        return self._IJLayers
+
+    @property
+    def IJHeight(self):
+        if getattr(self, '_IJHeight', None) is None:
+            # Ordering: first z then x
+            self._IJHeight = self.survey.set_ij_n_layer(n_layer=1)
+        return self._IJHeight
+
+    # ------------- For physics ------------- #
     def fields(self, m):
         if self.verbose:
-            print ("Compute fields")
+            print("Compute fields")
         self.survey._pred = self.forward(m)
         return []
 
@@ -205,13 +230,18 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         self.model = m
 
         if self.verbose:
-            print (">> Compute response")
+            print(">> Compute response")
+
+        if self.survey.__class__ == GlobalEM1DSurveyFD:
+            run_simulation = run_simulation_FD
+        else:
+            run_simulation = run_simulation_TD
 
         if self.parallel:
             pool = Pool(self.n_cpu)
             # This assumes the same # of layer for each of soundings
             result = pool.map(
-                self.run_simulation,
+                run_simulation,
                 [
                     self.input_args(i, jac_switch='forward') for i in range(self.n_sounding)
                 ]
@@ -220,7 +250,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             pool.join()
         else:
             result = [
-                self.run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
+                run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
             ]
         return np.hstack(result)
 
@@ -231,12 +261,18 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         if self._Jmatrix_sigma is not None:
             return self._Jmatrix_sigma
         if self.verbose:
-            print (">> Compute J sigma")
+            print(">> Compute J sigma")
         self.model = m
+
+        if self.survey.__class__ == GlobalEM1DSurveyFD:
+            run_simulation = run_simulation_FD
+        else:
+            run_simulation = run_simulation_TD
+
         if self.parallel:
             pool = Pool(self.n_cpu)
             self._Jmatrix_sigma = pool.map(
-                self.run_simulation,
+                run_simulation,
                 [
                     self.input_args(i, jac_switch='sensitivity_sigma') for i in range(self.n_sounding)
                 ]
@@ -244,14 +280,26 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             pool.close()
             pool.join()
             if self.parallel_jvec_jtvec is False:
-                self._Jmatrix_sigma = sp.block_diag(self._Jmatrix_sigma).tocsr()
+                # self._Jmatrix_sigma = sp.block_diag(self._Jmatrix_sigma).tocsr()
+                self._Jmatrix_sigma = np.hstack(self._Jmatrix_sigma)
+                self._Jmatrix_sigma = sp.coo_matrix(
+                    (self._Jmatrix_sigma, self.IJLayers), dtype=float
+                ).tocsr()
         else:
             # _Jmatrix_sigma is block diagnoal matrix (sparse)
-            self._Jmatrix_sigma = sp.block_diag(
-                [
-                    self.run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
-                ]
+            # self._Jmatrix_sigma = sp.block_diag(
+            #     [
+            #         run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
+            #     ]
+            # ).tocsr()
+            self._Jmatrix_sigma = [
+                    run_simulation(self.input_args(i, jac_switch='sensitivity_sigma')) for i in range(self.n_sounding)
+            ]
+            self._Jmatrix_sigma = np.hstack(self._Jmatrix_sigma)
+            self._Jmatrix_sigma = sp.coo_matrix(
+                (self._Jmatrix_sigma, self.IJLayers), dtype=float
             ).tocsr()
+
         return self._Jmatrix_sigma
 
     def getJ_height(self, m):
@@ -264,14 +312,19 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         if self._Jmatrix_height is not None:
             return self._Jmatrix_height
         if self.verbose:
-            print (">> Compute J height")
+            print(">> Compute J height")
 
         self.model = m
+
+        if self.survey.__class__ == GlobalEM1DSurveyFD:
+            run_simulation = run_simulation_FD
+        else:
+            run_simulation = run_simulation_TD
 
         if self.parallel:
             pool = Pool(self.n_cpu)
             self._Jmatrix_height = pool.map(
-                self.run_simulation,
+                run_simulation,
                 [
                     self.input_args(i, jac_switch="sensitivity_height") for i in range(self.n_sounding)
                 ]
@@ -279,12 +332,23 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             pool.close()
             pool.join()
             if self.parallel_jvec_jtvec is False:
-                self._Jmatrix_height = sp.block_diag(self._Jmatrix_height).tocsr()
+                # self._Jmatrix_height = sp.block_diag(self._Jmatrix_height).tocsr()
+                self._Jmatrix_height = np.hstack(self._Jmatrix_height)
+                self._Jmatrix_height = sp.coo_matrix(
+                    (self._Jmatrix_height, self.IJHeight), dtype=float
+                ).tocsr()
         else:
-            self._Jmatrix_height = sp.block_diag(
-                [
-                    self.run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
-                ]
+            # self._Jmatrix_height = sp.block_diag(
+            #     [
+            #         run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
+            #     ]
+            # ).tocsr()
+            self._Jmatrix_height = [
+                    run_simulation(self.input_args(i, jac_switch='sensitivity_height')) for i in range(self.n_sounding)
+            ]
+            self._Jmatrix_height = np.hstack(self._Jmatrix_height)
+            self._Jmatrix_height = sp.coo_matrix(
+                (self._Jmatrix_height, self.IJHeight), dtype=float
             ).tocsr()
         return self._Jmatrix_height
 
@@ -372,6 +436,8 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 class GlobalEM1DProblemFD(GlobalEM1DProblem):
 
     def run_simulation(self, args):
+        if self.verbose:
+            print(">> Frequency-domain")
         return run_simulation_FD(args)
 
     @property
@@ -386,9 +452,13 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
         output = (
             self.rx_locations[i_sounding, :],
             self.src_locations[i_sounding, :],
-            self.topo[i_sounding, :], self.hz,
-            self.offset, self.frequency,
-            self.field_type, self.rx_type, self.src_type,
+            self.topo[i_sounding, :],
+            self.hz,
+            self.offset,
+            self.frequency,
+            self.field_type,
+            self.rx_type,
+            self.src_type,
             self.Sigma[i_sounding, :],
             self.Eta[i_sounding, :],
             self.Tau[i_sounding, :],
@@ -492,6 +562,8 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
         return output
 
     def run_simulation(self, args):
+        if self.verbose:
+            print(">> Time-domain")
         return run_simulation_TD(args)
 
     # def forward(self, m, f=None):
@@ -521,7 +593,7 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
     #     if self._Jmatrix is not None:
     #         return self._Jmatrix
     #     if self.verbose:
-    #         print (">> Compute J")
+    #         print(">> Compute J")
     #     self.model = m
     #     if self.parallel:
     #         pool = Pool(self.n_cpu)
@@ -595,17 +667,96 @@ class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
         """
         pass
 
+    @property
+    def nD(self):
+        # Need to generalize this for the dual moment data
+        if getattr(self, '_nD', None) is None:
+            self._nD = self.nD_vec.sum()
+        return self._nD
+
+    def set_ij_n_layer(self, n_layer=None):
+        """
+        Compute (I, J) indicies to form sparse sensitivity matrix
+        This will be used in GlobalEM1DProblem when after sensitivity matrix
+        for each sounding is computed
+        """
+        I = []
+        J = []
+        shift_for_J = 0
+        shift_for_I = 0
+        if n_layer is None:
+            m = self.n_layer
+        else:
+            m = n_layer
+
+        for i in range(self.n_sounding):
+            n = self.nD_vec[i]
+            J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
+            I_temp = (
+                np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
+                shift_for_I
+            )
+            J.append(Utils.mkvc(J_temp))
+            I.append(Utils.mkvc(I_temp))
+            shift_for_J += m
+            shift_for_I = I_temp[-1, -1] + 1
+        J = np.hstack(J).astype(int)
+        I = np.hstack(I).astype(int)
+        return (I, J)
+
+    def set_ij_height(self):
+        """
+        Compute (I, J) indicies to form sparse sensitivity matrix
+        This will be used in GlobalEM1DProblem when after sensitivity matrix
+        for each sounding is computed
+        """
+        I = []
+        J = []
+        shift_for_J = 0
+        shift_for_I = 0
+        m = self.n_layer
+        for i in range(n_sounding):
+            n = self.nD_vec[i]
+            J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
+            I_temp = (
+                np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
+                shift_for_I
+            )
+            J.append(Utils.mkvc(J_temp))
+            I.append(Utils.mkvc(I_temp))
+            shift_for_J += m
+            shift_for_I = I_temp[-1, -1] + 1
+        J = np.hstack(J).astype(int)
+        I = np.hstack(I).astype(int)
+        return (I, J)
+
 
 class GlobalEM1DSurveyFD(GlobalEM1DSurvey, EM1DSurveyFD):
 
     @property
-    def nD(self):
-        if self.switch_real_imag == "all":
-            return int(self.n_frequency * 2) * self.n_sounding
-        elif (
-            self.switch_real_imag == "imag" or self.switch_real_imag == "real"
-        ):
-            return int(self.n_frequency) * self.n_sounding
+    def nD_vec(self):
+        if getattr(self, '_nD_vec', None) is None:
+            self._nD_vec = []
+            if self.switch_real_imag == "all":
+                nD_for_sounding = int(self.n_frequency * 2)
+            elif (
+                self.switch_real_imag == "imag" or self.switch_real_imag == "real"
+            ):
+                nD_for_sounding = int(self.n_frequency)
+
+            for ii in range(self.n_sounding):
+                self._nD_vec.append(nD_for_sounding)
+            self._nD_vec = np.array(self._nD_vec)
+        return self._nD_vec
+
+    # @property
+    # def nD(self):
+    #     if self.switch_real_imag == "all":
+    #         return int(self.n_frequency * 2) * self.n_sounding
+    #     elif (
+    #         self.switch_real_imag == "imag" or self.switch_real_imag == "real"
+    #     ):
+    #         return int(self.n_frequency) * self.n_sounding
 
     def read_xyz_data(self, fname):
         """
@@ -690,7 +841,7 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
         # e.g. for VMD `offset` must be required
         # e.g. for CircularLoop `a` must be required
 
-        print (">> Set parameters")
+        print(">> Set parameters")
         if self.n_pulse is None:
             self.n_pulse = np.ones(self.n_sounding, dtype=int) * 1
 
@@ -753,11 +904,19 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
 
     @property
     def nD_vec(self):
-        # Need to generalize this for the dual moment data
         if getattr(self, '_nD_vec', None) is None:
-            self._nD_vec = np.array(
-                [time.size for time in self.time], dtype=int
-            )
+            self._nD_vec = []
+
+            for ii, moment_type in enumerate(self.moment_type):
+                if moment_type == 'single':
+                    self._nD_vec.append(self.time[ii].size)
+                elif moment_type == 'dual':
+                    self._nD_vec.append(
+                        self.time[ii].size+self.time_dual_moment[ii].size
+                    )
+                else:
+                    raise Exception("moment_type must be either signle or dual")
+            self._nD_vec = np.array(self._nD_vec)
         return self._nD_vec
 
     @property

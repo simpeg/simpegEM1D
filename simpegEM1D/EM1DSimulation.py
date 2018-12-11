@@ -82,7 +82,7 @@ def run_simulation_FD(args):
     )
     if not invert_height:
         # Use Exponential Map
-        # This is hard-wired at the moment    
+        # This is hard-wired at the moment
         expmap = Maps.ExpMap(mesh_1d)
         prob = EM1D(
             mesh_1d, sigmaMap=expmap, chi=chi, hankel_filter='key_101_2009',
@@ -95,12 +95,12 @@ def run_simulation_FD(args):
         prob.pair(FDsurvey)
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(np.log(sigma))
-            return drespdsig * prob.sigmaDeriv
+            return Utils.mkvc(drespdsig * prob.sigmaDeriv)
         else:
             resp = FDsurvey.dpred(np.log(sigma))
             return resp
     else:
-        wires = Maps.Wires(('sigma', mesh_1d.nC),('h', 1))
+        wires = Maps.Wires(('sigma', mesh_1d.nC), ('h', 1))
         expmap = Maps.ExpMap(mesh_1d)
         sigmaMap = expmap * wires.sigma
         prob = EM1D(
@@ -115,14 +115,14 @@ def run_simulation_FD(args):
         m = np.r_[np.log(sigma), h]
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(m)
-            return drespdsig * Utils.sdiag(sigma)
+            return Utils.mkvc(drespdsig * Utils.sdiag(sigma))
         elif jac_switch == 'sensitivity_height':
             drespdh = prob.getJ_height(m)
-            return drespdh
+            return Utils.mkvc(drespdh)
         else:
             resp = FDsurvey.dpred(m)
             return resp
-        
+
 
 def run_simulation_TD(args):
     """
@@ -151,7 +151,6 @@ def run_simulation_TD(args):
 
     mesh_1d = set_mesh_1d(hz)
     depth = -mesh_1d.gridN[:-1]
-
     TDsurvey = EM1DSurveyTD(
         rx_location=rx_location,
         src_location=src_location,
@@ -191,16 +190,17 @@ def run_simulation_TD(args):
         prob.pair(TDsurvey)
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(np.log(sigma))
-            return drespdsig * prob.sigmaDeriv
+            return Utils.mkvc(drespdsig * prob.sigmaDeriv)
         else:
             resp = TDsurvey.dpred(np.log(sigma))
             return resp
     else:
-        wires = Maps.Wires(('sigma', mesh_1d.nC),('h', 1))
+        wires = Maps.Wires(('sigma', mesh_1d.nC), ('h', 1))
         expmap = Maps.ExpMap(mesh_1d)
         sigmaMap = expmap * wires.sigma
         prob = EM1D(
-            mesh_1d, sigmaMap=sigmaMap, hMap=wires.h, hankel_filter='key_101_2009',
+            mesh_1d, sigmaMap=sigmaMap, hMap=wires.h,
+            hankel_filter='key_101_2009',
             eta=eta, tau=tau, c=c
         )
         if prob.ispaired:
@@ -211,11 +211,11 @@ def run_simulation_TD(args):
         m = np.r_[np.log(sigma), h]
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(m)
-            return drespdsig * Utils.sdiag(sigma)
+            return Utils.mkvc(drespdsig * Utils.sdiag(sigma))
         elif jac_switch == 'sensitivity_height':
             drespdh = prob.getJ_height(m)
-            return drespdh
+            return Utils.mkvc(drespdh)
         else:
             resp = TDsurvey.dpred(m)
-            return resp        
+            return resp
 
