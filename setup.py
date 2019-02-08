@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-from __future__ import print_function
-"""simpegEM1D
+"""Exploring non-linear inversions: a 1D magnetotelluric example
 
-simpegEM1D is the package for simulation and inversion of
-electromagnetic data using 1D layered-earth solution.
+tle-magnetotelluric_inversion is a collection of functions for
+exploring a 1D magnetotelluric example of non-linear inversions.
+
 """
-import setuptools
-from numpy.distutils.core import setup, Extension
+
+from distutils.core import setup
 from setuptools import find_packages
 
 CLASSIFIERS = [
@@ -25,44 +25,25 @@ CLASSIFIERS = [
     'Natural Language :: English',
 ]
 
-with open('README.md') as f:
+with open("README.rst") as f:
     LONG_DESCRIPTION = ''.join(f.readlines())
 
-fExt = [Extension(name='simpegEM1D.m_rTE_Fortran', # Name of the package to import
-                  sources=['simpegEM1D/Fortran/m_rTE_Fortran.f90'],
-                #   extra_f90_compile_args=['-ffree-line-length-none',
-                #                       '-O3',
-                #                       '-finline-functions',
-                #                       '-funroll-all-loops',
-                #                       '-DNDEBUG',
-                #                       '-g0'],
-                  extra_link_args=['-ffree-line-length-none',
-                                      '-O3',
-                                      '-finline-functions',
-                                      '-funroll-all-loops',
-                                      '-g0'],
-                  )
-        ]
-
-
 setup(
-    name='simpegEM1D',
-    version='0.0.15',
+    name="tle-magnetotelluric_inversion",
+    version="0.0.1",
     packages=find_packages(),
     install_requires=[
-        'SimPEG>=0.4.1',
-        'empymod>=1.6.2',
-        'multiprocess'
+        SimPEG
     ],
-    author='Seogi Kang',
-    author_email='skang@eoas.ubc.ca',
-    description='simpegEM1D',
+    author="Seogi Kang",
+    author_email="skang@eoas.ubc.ca",
+    description="Exploring non-linear inversions: a 1D magnetotelluric example",
     long_description=LONG_DESCRIPTION,
-    keywords='geophysics, electromagnetics',
-    url='https://github.com/simpeg/simpegEM1D',
-    download_url='https://github.com/simpeg/simpegEM1D',
+    license="MIT",
+    keywords="electromagnetics geophysics",
+    url="http://simpeg.xyz/",
+    download_url="https://github.com/simpeg/tle-magnetotelluric_inversion",
     classifiers=CLASSIFIERS,
-    platforms=['Windows', 'Linux', 'Solaris', 'Mac OS-X', 'Unix'],
-    license='MIT License',
-    ext_modules=fExt
+    platforms=["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"],
+    use_2to3=False
 )
