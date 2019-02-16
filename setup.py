@@ -30,7 +30,7 @@ with open('README.md') as f:
 
 fExt = [Extension(name='simpegEM1D.m_rTE_Fortran', # Name of the package to import
                   sources=['simpegEM1D/Fortran/m_rTE_Fortran.f90'],
-                #   extra_f90_compile_args=['-ffree-line-length-none',
+                #   extra_f90_compile_args=['-ffree-line-length-none', #This if for intel-fortran
                 #                       '-O3',
                 #                       '-finline-functions',
                 #                       '-funroll-all-loops',
