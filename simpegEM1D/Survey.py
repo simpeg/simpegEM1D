@@ -254,7 +254,8 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     )
 
     high_cut_frequency = properties.Float(
-        "High cut frequency for low pass filter (Hz)", default=1e5
+        "High cut frequency for low pass filter (Hz)", 
+        default=210*1e3
     )
 
     # Predicted data
@@ -312,7 +313,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     self.pulse_period, self.pulse_period_dual_moment
                 )
                 period = np.maximum(self.period, self.period_dual_moment)
-            tmin = time.min()
+            tmin = time[time>0.].min()
             if self.n_pulse == 1:
                 tmax = time.max() + pulse_period
             elif self.n_pulse == 2:
@@ -375,10 +376,12 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             Low pass filter values
         """
         if getattr(self, '_lowpass_filter', None) is None:
-            self._lowpass_filter = butterworth_type_filter(
-                self.frequency, self.high_cut_frequency
-            )
+            # self._lowpass_filter = butterworth_type_filter(
+            #     self.frequency, self.high_cut_frequency
+            # )  
 
+            self._lowpass_filter = (1+1j*(self.frequency/self.high_cut_frequency))**-1
+            self._lowpass_filter *= (1+1j*(self.frequency/3e5))**-0.99
             # For actual butterworth filter
 
             # filter_frequency, values = butter_lowpass_filter(

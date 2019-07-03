@@ -78,7 +78,7 @@ class EM1D(Problem.BaseProblem):
 
     def hz_kernel_vertical_magnetic_dipole(
         self, lamda, f, n_layer, sig, chi, depth, h, z,
-        flag, output_type='response'
+        flag, I, output_type='response'
     ):
 
         """
@@ -128,7 +128,7 @@ class EM1D(Problem.BaseProblem):
             if output_type == 'sensitivity_height':
                 kernel *= -2*u0
 
-        return kernel
+        return kernel * I
 
         # Note
         # Here only computes secondary field.
@@ -385,7 +385,7 @@ class EM1D(Problem.BaseProblem):
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
                     sig, chi, depth, h, z,
-                    flag, output_type=output_type
+                    flag, I, output_type=output_type
                 )
 
                 # kernels for each bessel function
@@ -425,7 +425,7 @@ class EM1D(Problem.BaseProblem):
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
                     sig, chi, depth, h, z,
-                    flag, output_type=output_type
+                    flag, I, output_type=output_type
                 )
 
                 PJ = (hz, None, None)  # PJ0
@@ -452,7 +452,7 @@ class EM1D(Problem.BaseProblem):
                 hz = self.hz_kernel_vertical_magnetic_dipole(
                     lambd, f, n_layer,
                     sig, chi, depth, h, z,
-                    flag, output_type=output_type
+                    flag, I, output_type=output_type
                 )
 
                 PJ = (hz, None, None)  # PJ0
