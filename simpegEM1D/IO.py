@@ -264,6 +264,10 @@ class ModelIO(properties.HasProperties):
         ax.set_ylabel('Elevation (m)')
         if zlim is not None:
             ax.set_ylim(zlim)
+
+        xlim = self.topography[ind_line, x_ind].min(), self.topography[ind_line, x_ind].max()
+        ax.set_xlim(xlim)
+
         plt.tight_layout()
 
         if show_colorbar:

@@ -96,6 +96,7 @@ def run_simulation_FD(args):
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(np.log(sigma))
             return Utils.mkvc(drespdsig * prob.sigmaDeriv)
+            # return Utils.mkvc(drespdsig)
         else:
             resp = FDsurvey.dpred(np.log(sigma))
             return resp
@@ -116,6 +117,7 @@ def run_simulation_FD(args):
         if jac_switch == 'sensitivity_sigma':
             drespdsig = prob.getJ_sigma(m)
             return Utils.mkvc(drespdsig * Utils.sdiag(sigma))
+            # return Utils.mkvc(drespdsig)
         elif jac_switch == 'sensitivity_height':
             drespdh = prob.getJ_height(m)
             return Utils.mkvc(drespdh)

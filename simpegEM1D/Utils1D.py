@@ -6,7 +6,7 @@ def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kw
     """
         Plot Conductivity model for the layered earth model
     """
-    
+
     # dz = LocSigZ[0]/2.
     # z = np.repeat(LocSigZ[1:], 2, axis=0)
     # z = np.r_[LocSigZ[0], z, LocSigZ[-1]] - dz
@@ -18,15 +18,15 @@ def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kw
         z.append(np.r_[z_grid[i], z_grid[i+1]])
     z = np.hstack(z)
     if xlim == None:
-        sig_min = sig.min()*0.5
-        sig_max = sig.max()*2
+        sig_min = sig[~np.isnan(sig)].min()*0.5
+        sig_max = sig[~np.isnan(sig)].max()*2
     else:
         sig_min, sig_max = xlim
 
     if xscale == 'linear' and sig.min() == 0.:
         if xlim == None:
-            sig_min = -sig.max()*0.5
-            sig_max = sig.max()*2
+            sig_min = -sig[~np.isnan(sig)].max()*0.5
+            sig_max = sig[~np.isnan(sig)].max()*2
 
     if ax==None:
         plt.xscale(xscale)

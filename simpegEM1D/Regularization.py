@@ -1,6 +1,6 @@
 import scipy as sp
 import numpy as np
-from SimPEG.Regularization import Sparse, SparseSmall, SparseDeriv
+from SimPEG.Regularization import Sparse, SparseSmall, SparseDeriv, Simple
 from SimPEG import Mesh, Utils
 
 
@@ -27,7 +27,8 @@ class LateralConstraint(Sparse):
             Compute Gradient in horizontal direction using Delaunay
 
         """
-        self.cell_weights = np.tile(hz, (xy.shape[0], 1)).flatten()
+        if use_cell_weights:
+            self.cell_weights = np.tile(hz, (xy.shape[0], 1)).flatten()
 
         if dim == 3:
             tri = sp.spatial.Delaunay(xy)
