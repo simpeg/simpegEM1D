@@ -429,7 +429,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             Jtv += self.hDeriv.T*(J_height.T*v)
         return Jtv
 
-    def getJtJdiag(self, m, W=None):
+    def getJtJdiag(self, m, W=None, threshold=1e-8):
         """
         Compute diagonal component of JtJ or
         trace of sensitivity matrix (J)
@@ -445,7 +445,10 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             W = Utils.speye(J_matrix.shape[0])
 
         J_matrix = W*J_matrix
-        return (J_matrix.T*J_matrix).diagonal()
+        JtJ_diag = (J_matrix.T*J_matrix).diagonal()
+        JtJ_diag /= JtJ_diag.max()
+        JtJ_diag[JtJ_diag<threshold] = threshold
+        return JtJ_diag
 
     @property
     def deleteTheseOnModelUpdate(self):
