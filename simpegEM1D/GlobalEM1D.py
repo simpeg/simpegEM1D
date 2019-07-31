@@ -191,6 +191,13 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         return self._C
 
     @property
+    def JtJ_sigma(self):
+        return self._JtJ_sigma
+
+    def JtJ_height(self):
+        return self._JtJ_height
+
+    @property
     def H(self):
         if self.hMap is None:
             return np.ones(self.n_sounding)
@@ -350,7 +357,14 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             self._Jmatrix_height = sp.coo_matrix(
                 (self._Jmatrix_height, self.IJHeight), dtype=float
             ).tocsr()
+
         return self._Jmatrix_height
+
+    def getJ(self, m, f=None):
+        return (
+            self.getJ_sigma(m, f=f) * (Utils.sdiag(1./self.sigma)* self.sigmaDeriv) +
+            self.getJ_height(m, f=f) * self.hDeriv
+        )
 
     def Jvec(self, m, v, f=None):
         J_sigma = self.getJ_sigma(m)
@@ -419,6 +433,10 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         if self.hMap is not None:
             Jtv += self.hDeriv.T*(J_height.T*v)
         return Jtv
+
+    def getJtJdiag(m, W=None):
+
+        return
 
     @property
     def deleteTheseOnModelUpdate(self):
