@@ -362,8 +362,8 @@ class GlobalEM1DProblem(Problem.BaseProblem):
 
     def getJ(self, m, f=None):
         return (
-            self.getJ_sigma(m, f=f) * (Utils.sdiag(1./self.sigma)* self.sigmaDeriv) +
-            self.getJ_height(m, f=f) * self.hDeriv
+            self.getJ_sigma(m) * (Utils.sdiag(1./self.sigma)* self.sigmaDeriv) +
+            self.getJ_height(m) * self.hDeriv
         )
 
     def Jvec(self, m, v, f=None):
