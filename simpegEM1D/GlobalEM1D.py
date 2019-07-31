@@ -434,10 +434,6 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             Jtv += self.hDeriv.T*(J_height.T*v)
         return Jtv
 
-    def getJtJdiag(m, W=None):
-
-        return
-
     @property
     def deleteTheseOnModelUpdate(self):
         toDelete = []
