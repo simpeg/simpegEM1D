@@ -1,6 +1,6 @@
 import scipy as sp
 import numpy as np
-from SimPEG.Regularization import Sparse, SparseSmall, SparseDeriv, Simple
+from SimPEG.regularization import Sparse, SparseSmall, SparseDeriv, Simple
 from SimPEG import Mesh, Utils
 
 

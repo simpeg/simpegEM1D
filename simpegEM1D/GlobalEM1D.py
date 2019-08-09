@@ -447,7 +447,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         J_matrix = W*J_matrix
         JtJ_diag = (J_matrix.T*J_matrix).diagonal()
         JtJ_diag /= JtJ_diag.max()
-        JtJ_diag[JtJ_diag<threshold] = threshold
+        JtJ_diag += threshold
         return JtJ_diag
 
     @property
