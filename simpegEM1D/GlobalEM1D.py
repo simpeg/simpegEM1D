@@ -191,6 +191,13 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         return self._C
 
     @property
+    def JtJ_sigma(self):
+        return self._JtJ_sigma
+
+    def JtJ_height(self):
+        return self._JtJ_height
+
+    @property
     def H(self):
         if self.hMap is None:
             return np.ones(self.n_sounding)
@@ -282,6 +289,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             if self.parallel_jvec_jtvec is False:
                 # self._Jmatrix_sigma = sp.block_diag(self._Jmatrix_sigma).tocsr()
                 self._Jmatrix_sigma = np.hstack(self._Jmatrix_sigma)
+                # self._JtJ_sigma_diag =
                 self._Jmatrix_sigma = sp.coo_matrix(
                     (self._Jmatrix_sigma, self.IJLayers), dtype=float
                 ).tocsr()
@@ -350,6 +358,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
             self._Jmatrix_height = sp.coo_matrix(
                 (self._Jmatrix_height, self.IJHeight), dtype=float
             ).tocsr()
+
         return self._Jmatrix_height
 
     def Jvec(self, m, v, f=None):
@@ -419,6 +428,27 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         if self.hMap is not None:
             Jtv += self.hDeriv.T*(J_height.T*v)
         return Jtv
+
+    def getJtJdiag(self, m, W=None, threshold=1e-8):
+        """
+        Compute diagonal component of JtJ or
+        trace of sensitivity matrix (J)
+        """
+        J_sigma = self.getJ_sigma(m)
+        J_matrix = J_sigma*(Utils.sdiag(1./self.sigma)*(self.sigmaDeriv))
+
+        if self.hMap is not None:
+            J_height = self.getJ_height(m)
+            J_matrix += J_height*self.hDeriv
+
+        if W is None:
+            W = Utils.speye(J_matrix.shape[0])
+
+        J_matrix = W*J_matrix
+        JtJ_diag = (J_matrix.T*J_matrix).diagonal()
+        JtJ_diag /= JtJ_diag.max()
+        JtJ_diag += threshold
+        return JtJ_diag
 
     @property
     def deleteTheseOnModelUpdate(self):

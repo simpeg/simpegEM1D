@@ -88,7 +88,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
         err = np.linalg.norm(BzTD-BzTD_analytic)/np.linalg.norm(BzTD_analytic)
         print ('Bz error = ', err)
-        self.assertTrue(err < 5e-2)
+        self.assertTrue(err < 6e-2)
 
         self.survey.rx_type = 'dBzdt'
         dBzdtTD = self.prob.survey.projectFields(f)
@@ -123,7 +123,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         )
 
         print ('dBzdt error = ', err)
-        self.assertTrue(err < 5e-2)
+        self.assertTrue(err < 6e-2)
 
         print ("EM1DTD-CirculurLoop-general for real conductivity works")
 

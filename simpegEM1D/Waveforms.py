@@ -206,14 +206,17 @@ def skytem_LM_2015():
     return waveform
 
 
-def piecewise_ramp(step_func, t_off, t_currents, currents, n=20, eps=1e-10):
+def piecewise_ramp(
+    step_func, t_channels, t_currents, currents,
+    n=20, eps=1e-10
+):
     """
     Computes response from piecewise linear current waveform
     with a single pulse. This basically evaluates the convolution
     between dI/dt and step-off response.
 
     step_func: function handle to evaluate step-off response
-    t_off: time channels when the current is off
+    t_channels: time channels when the current is on or off
     currents: input source currents
     n: Gaussian quadrature order
     """
@@ -221,21 +224,33 @@ def piecewise_ramp(step_func, t_off, t_currents, currents, n=20, eps=1e-10):
     dI = np.diff(currents)
     dIdt = dI/dt
     nt = t_currents.size
-    response = np.zeros(t_off.size, dtype=float)
+    response = np.zeros(t_channels.size, dtype=float)
     pulse_time = t_currents.max()
 
     for i in range(1, nt):
         t_lag = pulse_time - t_currents[i]
-        time = t_lag + t_off
+        time = t_lag + t_channels
         t0 = dt[i-1]
         const = -dIdt[i-1]
         if abs(const) > eps:
-            response += np.array(
-                [fixed_quad(step_func, t, t+t0, n=n)[0] for t in time]
-            ) * const
+            for j, t in enumerate(time):
+                # on-time
+                if t < 0.:
+                    response[j] += (
+                        fixed_quad(step_func, 0, t+t0, n=20)[0] * const
+                    )
+                # off-time
+                else:
+                    response[j] += (
+                        fixed_quad(step_func, t, t+t0, n=20)[0] * const
+                    )
     return response
 
-def piecewise_ramp_fast(step_func, t_off, t_currents, currents, x, w, eps=1e-10):
+
+def piecewise_ramp_fast(
+    step_func, t_off, t_currents, currents, x, w,
+    eps=1e-10
+):
     """
     Computes response from piecewise linear current waveform
     with a single pulse. This basically evaluates the convolution
@@ -258,22 +273,32 @@ def piecewise_ramp_fast(step_func, t_off, t_currents, currents, x, w, eps=1e-10)
     t_lag = pulse_time - t_currents
     t_lag_expand = (np.repeat(t_lag[1:, np.newaxis], t_off.size, 1)).T
     t_lag_3D = np.repeat(t_lag_expand[:, :, np.newaxis], n, 2)
-    t3D = t_lag_3D + t_off[:,np.newaxis, np.newaxis]
-
+    t3D = t_lag_3D + t_off[:, np.newaxis, np.newaxis]
     # Gauss-Legendre part.
     # Expand time shifts and origin to 3D with G-L points
-    dt2 = np.repeat(dt[:, np.newaxis], n, 1)
-    y = dt2 * (0.5 * (x + 1.0)) + t3D
-      # Evaluate and weight G-L values with current waveform
+    inds = t3D[:,:,0] < 0.
+    # Compute dt for both on-time and off-time
+    # off-time f(t, t+t0)
+    # on-time f(0, t+t0)
+    dt_on_off = np.tile(dt, (t_off.size, 1))
+    dt_on_off[inds] = (dt + t3D[:,:,0])[inds]
+    t3D[inds,:] = 0.
+
+    y = dt_on_off[:,:,np.newaxis] * (0.5 * (x + 1.0)) + t3D
+
+    # Evaluate and weight G-L values with current waveform
     f = w * step_func(y)
-    s = f.sum(axis = 2) * 0.5*dt
+    s = f.sum(axis = 2) * 0.5 * dt_on_off
 
     response = np.sum(s * -dIdt, axis=1)
 
     return response
 
 
-def piecewise_ramp_fast_diff(step_func, t_off, t_shift, t_currents, currents, x, w, eps=1e-10):
+def piecewise_ramp_fast_diff(
+    step_func, t_off, t_shift, t_currents, currents, x, w,
+    eps=1e-10
+):
     """
     Computes response from piecewise linear current waveform
     with a single pulse. This basically evaluates the convolution
@@ -300,26 +325,41 @@ def piecewise_ramp_fast_diff(step_func, t_off, t_shift, t_currents, currents, x,
 
     # Gauss-Legendre part.
     # Expand time shifts and origin to 3D with G-L points
-    dt2 = np.repeat(dt[:, np.newaxis], n, 1)
-    y = dt2 * (0.5 * (x + 1.0)) + t3D
-      # Evaluate and weight G-L values with current waveform
+    inds = t3D[:,:,0] < 0.
+    # Compute dt for both on-time and off-time
+    # off-time f(t, t+t0)
+    # on-time f(0, t+t0)
+    dt_on_off = np.tile(dt, (t_off.size, 1))
+    dt_on_off[inds] = (dt + t3D[:,:,0])[inds]
+    t3D[inds,:] = 0.
+
+    y = dt_on_off[:,:,np.newaxis] * (0.5 * (x + 1.0)) + t3D
+    # Evaluate and weight G-L values with current waveform
     f = w * step_func(y)
-    s = f.sum(axis = 2) * 0.5*dt
+    s = f.sum(axis = 2) * 0.5*dt_on_off
 
     response = np.sum(s * -dIdt, axis=1)
 
     t3D = t_lag_3D + t_shift[:,np.newaxis, np.newaxis]
+    inds = t3D[:,:,0] < 0.
+    # Compute dt for both on-time and off-time
+    # off-time f(t, t+t0)
+    # on-time f(0, t+t0)
+    dt_on_off = np.tile(dt, (t_off.size, 1))
+    dt_on_off[inds] = (dt + t3D[:,:,0])[inds]
+    t3D[inds,:] = 0.
 
     # Gauss-Legendre part.
     # Expand time shifts and origin to 3D with G-L points
-    y = dt2 * (0.5 * (x + 1.0)) + t3D
+    y = dt_on_off[:,:,np.newaxis] * (0.5 * (x + 1.0)) + t3D
       # Evaluate and weight G-L values with current waveform
     f = w * step_func(y)
-    s = f.sum(axis = 2) * 0.5*dt
+    s = f.sum(axis = 2) * 0.5*dt_on_off
 
     response -= 0.5* np.sum(s * -dIdt, axis=1)
 
     return response
+
 
 
 def piecewise_pulse(

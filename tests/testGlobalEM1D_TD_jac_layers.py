@@ -6,7 +6,7 @@ from simpegEM1D import (
     get_vertical_discretization_time
 )
 from SimPEG import (
-    Regularization, Inversion, InvProblem,
+    regularization, Inversion, InvProblem,
     DataMisfit, Utils, Mesh, Maps, Optimization,
     Tests
 )
@@ -99,7 +99,7 @@ class GlobalEM1DTD(unittest.TestCase):
 
         # Now set up the problem to do some minimization
         dmis = DataMisfit.l2_DataMisfit(survey)
-        reg = Regularization.Tikhonov(mesh)
+        reg = regularization.Tikhonov(mesh)
         opt = Optimization.InexactGaussNewton(
             maxIterLS=20, maxIter=10, tolF=1e-6,
             tolX=1e-6, tolG=1e-6, maxIterCG=6
@@ -223,7 +223,7 @@ class GlobalEM1DTD_Height(unittest.TestCase):
         # Now set up the problem to do some minimization
         mesh = Mesh.TensorMesh([int(n_sounding * 2)])
         dmis = DataMisfit.l2_DataMisfit(survey)
-        reg = Regularization.Tikhonov(mesh)
+        reg = regularization.Tikhonov(mesh)
         opt = Optimization.InexactGaussNewton(
             maxIterLS=20, maxIter=10, tolF=1e-6,
             tolX=1e-6, tolG=1e-6, maxIterCG=6
