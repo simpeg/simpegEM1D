@@ -89,7 +89,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
         err = np.linalg.norm(dBzdtTD-dBzdtanal)/np.linalg.norm(dBzdtanal)
         print ('dBzdt error = ', err)
-        self.assertTrue(err < 1e-2)
+        self.assertTrue(err < 5e-2)
 
         print ("EM1DTD-CirculurLoop for real conductivity works")
 
@@ -142,7 +142,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
 
         err = np.linalg.norm(dBzdtTD-dBzdtanal)/np.linalg.norm(dBzdtanal)
         print ('dBzdt error = ', err)
-        self.assertTrue(err < 1e-2)
+        self.assertTrue(err < 5e-2)
         print ("EM1DTD-CirculurLoop for Complex conductivity works")
 
 if __name__ == '__main__':
