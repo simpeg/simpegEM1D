@@ -61,7 +61,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
 
         cm1 = 0.5d0 * (1.d0 - c)
         cp1 = 0.5d0 * (1.d0 + c)
-        
+
         rTE(i, jj) = cm1 / cp1
       enddo
     enddo
@@ -69,7 +69,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
     return ! Early escape
   endif
 
-  
+
   do k = 1, nLayers - 1
     thickness(k) = -(depth(k+1) - depth(k))
     c1(k) = 1.d0 + chi(k)
@@ -147,7 +147,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
   !f2py intent(in) :: halfSpace
   complex(kind=8), intent(inout) :: drTE(nLayers, nFrequencies, nFilter)
   !f2py intent(in, out) :: drTE
- 
+
   real(kind=8) :: h0, h_1
   real(kind=8) :: lam, lam2
   real(kind=8) :: thickness(nLayers - 1)
@@ -164,10 +164,10 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
   complex(kind=8) :: dudsig
   complex(kind=8) :: mTemp00, mTemp01, mTemp10, mTemp11
   complex(kind=8) :: m0Sum00, m0Sum01, m0Sum10, m0Sum11
-  complex(kind=8) :: m1Sum00, m1Sum01, m1Sum10, m1Sum11   
+  complex(kind=8) :: m1Sum00, m1Sum01, m1Sum10, m1Sum11
   complex(kind=8) :: w
   complex(kind=8) :: utemp0, utemp1
-  complex(kind=8), dimension(nLayers) :: M00, M01, M10, M11 
+  complex(kind=8), dimension(nLayers) :: M00, M01, M10, M11
   complex(kind=8), dimension(nLayers) :: dJ00, dJ01, dJ10, dJ11
 
   integer :: i
@@ -197,7 +197,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
         dJ1sum11 = 0.25d0 * (cTmp2 / utemp1) * cTmp3
 
         drTE(1, i, jj) = ((-dJ1sum11 * M0sum11) - dJ1sum11 * M0sum01) / M0sum11**2.d0
-          
+
       enddo
     enddo
     return ! Early Exit
@@ -358,7 +358,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
         cTmp4 = Mtemp01 - Mtemp11
         dJ_10Mtemp01 = dj0Mtemp00 * cTmp4
         dJ_10Mtemp11 = -dj0Mtemp11 * cTmp4
-        
+
         dJ01Mtemp00 = (c2t * utemp1) / (c3t * utemp0**2.d0)
         dJ01Mtemp11 = dJ01Mtemp00 * utemp0
         dJ01Mtemp10 = exp(-2.d0 * utemp0 * h0)
@@ -375,7 +375,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
         dJ01Mtemp00 = (M00(k) * dj1Mtemp00) + cTmp4
         dJ01Mtemp01 = (M00(k) * dj1Mtemp01) - cTmp4
         cTmp4 = M11(k) * dj1Mtemp10
-        dJ01Mtemp10 = (M10(k) * dj1Mtemp00) + cTmp4        
+        dJ01Mtemp10 = (M10(k) * dj1Mtemp00) + cTmp4
         dJ01Mtemp11 = (M10(k) * dj1Mtemp01) - cTmp4
 
         dJ00(k) = dudsig * (dJ_10Mtemp00 + dJ01Mtemp00)
@@ -403,7 +403,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
       dJ00(nLayers) = cTmp4
       dJ01(nLayers) = -cTmp4
       cTmp4 = dudsig * dj0Mtemp11
-      dJ10(nLayers) = -cTmp4      
+      dJ10(nLayers) = -cTmp4
       dJ11(nLayers) = cTmp4
 
       ! Second pass, Double loop
@@ -414,13 +414,13 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
       dJ0sum00 = dJ1sum00 ; dJ0sum10 = dJ1sum10
       dJ0sum01 = dJ1sum01 ; dJ0sum11 = dJ1sum11
 
-      ! k = 1  
+      ! k = 1
       if (nLayers > 2) then
         dJ1sum00 = (dJ00(1) * M00(3)) + (dJ01(1) * M10(3))
         dJ1sum10 = (dJ10(1) * M00(3)) + (dJ11(1) * M10(3))
         dJ1sum01 = (dJ00(1) * M01(3)) + (dJ01(1) * M11(3))
         dJ1sum11 = (dJ10(1) * M01(3)) + (dJ11(1) * M11(3))
-        
+
         dJ0sum00 = dJ1sum00 ; dJ0sum10 = dJ1sum10
         dJ0sum01 = dJ1sum01 ; dJ0sum11 = dJ1sum11
 
@@ -438,7 +438,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
       cTmp3 = 1.d0 / M1sum11**2.d0
 
       drTE(1, i, jj) = (dJ1sum01 * M1sum11 - dJ1sum11 * M1sum01) * cTmp3
-  
+
       do k1 = 2, nLayers - 1
         dJ0sum00 = M00(1) ; dJ0sum10 = M10(1)
         dJ0sum01 = M01(1) ; dJ0sum11 = M11(1)
