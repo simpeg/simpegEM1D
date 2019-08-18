@@ -33,7 +33,6 @@ install:
   - pip install -r requirements_dev.txt
   - pip install coveralls
   - python setup.py install
-  - make build
   - export MPLBACKEND="agg"
 
 script:
