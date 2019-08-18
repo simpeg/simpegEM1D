@@ -1,7 +1,7 @@
 .PHONY: build tests clean deploy
 
 build:
-	python setup.py build_ext -i -b .
+	python setup.py build_ext --inplace
 
 tests:
     nosetests --logging-level=INFO
