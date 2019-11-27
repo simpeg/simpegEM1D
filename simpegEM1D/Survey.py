@@ -8,6 +8,7 @@ from .DigFilter import (
 )
 from .Waveform import CausalConv
 from scipy.interpolate import interp1d
+from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 import properties
 from empymod import filters
 from empymod.utils import check_time
@@ -254,7 +255,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     )
 
     high_cut_frequency = properties.Float(
-        "High cut frequency for low pass filter (Hz)", 
+        "High cut frequency for low pass filter (Hz)",
         default=210*1e3
     )
 
@@ -324,6 +325,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             self._time_int = np.logspace(
                 np.log10(tmin), np.log10(tmax), n_time
             )
+            print (tmin, tmax)
 
         return self._time_int
 
@@ -378,7 +380,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         if getattr(self, '_lowpass_filter', None) is None:
             # self._lowpass_filter = butterworth_type_filter(
             #     self.frequency, self.high_cut_frequency
-            # )  
+            # )
 
             self._lowpass_filter = (1+1j*(self.frequency/self.high_cut_frequency))**-1
             self._lowpass_filter *= (1+1j*(self.frequency/3e5))**-0.99
@@ -458,8 +460,11 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                     u.flatten()*factor, self.time_int,
                     self.frequency, self.ftarg
                 )
-                step_func = interp1d(
-                    self.time_int, resp_int
+                # step_func = interp1d(
+                #     self.time_int, resp_int
+                # )
+                step_func = iuSpline(
+                    np.log10(self.time_int), resp_int
                 )
 
                 resp = piecewise_pulse_fast(
@@ -501,9 +506,14 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         u[:, i]*factor, self.time_int,
                         self.frequency, self.ftarg
                     )
-                    step_func = interp1d(
-                        self.time_int, resp_int_i
+                    # step_func = interp1d(
+                    #     self.time_int, resp_int_i
+                    # )
+
+                    step_func = iuSpline(
+                        np.log10(self.time_int), resp_int_i
                     )
+
                     resp_i = piecewise_pulse_fast(
                         step_func, self.time,
                         self.time_input_currents, self.input_currents,

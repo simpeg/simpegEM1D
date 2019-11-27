@@ -56,7 +56,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.survey = TDsurvey
         self.prob = prob
         self.mesh1D = mesh1D
-        self.showIt = False
+        self.showIt = True
         self.chi = chi
         self.m_1D = m_1D
         self.sig_half = sig_half
@@ -102,7 +102,6 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             step_func_dBzdt, self.survey.time,
             self.survey.time_input_currents, self.survey.input_currents
         )
-
         if self.showIt:
             plt.subplot(121)
             plt.loglog(self.survey.time, abs(dBzdtTD), 'b*')
