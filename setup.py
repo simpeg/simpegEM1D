@@ -47,7 +47,7 @@ fExt = [Extension(name='simpegEM1D.m_rTE_Fortran', # Name of the package to impo
 
 setup(
     name='simpegEM1D',
-    version='0.0.18a',
+    version='0.0.18',
     packages=find_packages(),
     install_requires=[
         'SimPEG>=0.4.1',
