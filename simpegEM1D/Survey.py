@@ -325,7 +325,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             self._time_int = np.logspace(
                 np.log10(tmin), np.log10(tmax), n_time
             )
-            print (tmin, tmax)
+            # print (tmin, tmax)
 
         return self._time_int
 
@@ -396,19 +396,19 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         return self._lowpass_filter
 
-    def set_frequency(self):
+    def set_frequency(self, pts_per_dec=-1):
         """
         Compute Frequency reqired for frequency to time transform
         """
         if self.wave_type == "general":
             _, frequency, ft, ftarg = check_time(
                 self.time_int, 0, 'sin',
-                {'pts_per_dec': 3, 'fftfilt': self.fftfilt}, 0
+                {'pts_per_dec': pts_per_dec, 'fftfilt': self.fftfilt}, 0
             )
         elif self.wave_type == "stepoff":
             _, frequency, ft, ftarg = check_time(
                 self.time, 0, 'sin',
-                {'pts_per_dec': 3, 'fftfilt': self.fftfilt}, 0
+                {'pts_per_dec': pts_per_dec, 'fftfilt': self.fftfilt}, 0
             )
         else:
             raise Exception("wave_type must be either general or stepoff")
