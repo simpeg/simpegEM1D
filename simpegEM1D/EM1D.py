@@ -484,7 +484,7 @@ class EM1D(Problem.BaseProblem):
         # HzFHT size = (n_layer, n_frequency)
 
         HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
-                    factAng=None, ab=33)
+                    ang_fact=None, ab=33)
 
         if output_type == "sensitivity_sigma":
             return HzFHT.T
