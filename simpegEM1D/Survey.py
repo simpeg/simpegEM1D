@@ -12,7 +12,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 import properties
 from empymod import filters
 from empymod.utils import check_time
-from empymod.transform import ffht
+from empymod.transform import fourier_dlf
 from .Waveforms import (
     piecewise_pulse_fast,
     butterworth_type_filter, butter_lowpass_filter
@@ -402,13 +402,13 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         """
         if self.wave_type == "general":
             _, frequency, ft, ftarg = check_time(
-                self.time_int, 0, 'sin',
+                self.time_int, -1, 'dlf',
                 {'pts_per_dec': pts_per_dec, 'fftfilt': self.fftfilt}, 0
             )
         elif self.wave_type == "stepoff":
             _, frequency, ft, ftarg = check_time(
-                self.time, 0, 'sin',
-                {'pts_per_dec': pts_per_dec, 'fftfilt': self.fftfilt}, 0
+                self.time, -1, 'dlf',
+                {'pts_per_dec': pts_per_dec, 'fftfilt': self.fftfilt}, 0,
             )
         else:
             raise Exception("wave_type must be either general or stepoff")
@@ -434,7 +434,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         if self.wave_type == 'stepoff':
             # Compute EM responses
             if u.size == self.n_frequency:
-                resp, _ = ffht(
+                resp, _ = fourier_dlf(
                     u.flatten()*factor, self.time,
                     self.frequency, self.ftarg
                 )
@@ -445,7 +445,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                 # )
                 # TODO: remove for loop
                 for i in range(self.n_layer):
-                    resp_i, _ = ffht(
+                    resp_i, _ = fourier_dlf(
                         u[:, i]*factor, self.time,
                         self.frequency, self.ftarg
                     )
@@ -456,7 +456,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         elif self.wave_type == 'general':
             # Compute EM responses
             if u.size == self.n_frequency:
-                resp_int, _ = ffht(
+                resp_int, _ = fourier_dlf(
                     u.flatten()*factor, self.time_int,
                     self.frequency, self.ftarg
                 )
@@ -502,7 +502,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
                 # TODO: remove for loop (?)
                 for i in range(self.n_layer):
-                    resp_int_i, _ = ffht(
+                    resp_int_i, _ = fourier_dlf(
                         u[:, i]*factor, self.time_int,
                         self.frequency, self.ftarg
                     )
