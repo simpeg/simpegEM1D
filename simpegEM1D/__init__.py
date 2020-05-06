@@ -1,4 +1,4 @@
-from .EM1D import EM1D
+from .simulation import BaseEM1DSimulation, EM1DFMSimulation, EM1DTMSimulation
 from .survey import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
 from .DigFilter import *
 from .EM1DAnalytics import *

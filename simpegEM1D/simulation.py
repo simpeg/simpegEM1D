@@ -526,7 +526,7 @@ class BaseEM1DSimulation(BaseSimulation):
             dudz = self.forward(m, output_type="sensitivity_height")
 
             self._Jmatrix_height = (
-                self.survey.projectFields(dudz)
+                self.projectFields(dudz)
             ).reshape([-1, 1])
 
             return self._Jmatrix_height
@@ -546,7 +546,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
             dudsig = self.forward(m, output_type="sensitivity_sigma")
 
-            self._Jmatrix_sigma = self.survey.projectFields(dudsig)
+            self._Jmatrix_sigma = self.projectFields(dudsig)
             if self._Jmatrix_sigma.ndim == 1:
                 self._Jmatrix_sigma = self._Jmatrix_sigma.reshape([-1, 1])
             return self._Jmatrix_sigma
