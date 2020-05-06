@@ -3,7 +3,7 @@ from discretize import TensorMesh
 from SimPEG import maps, utils
 from .EM1DAnalytics import skin_depth, diffusion_distance
 from .EM1D import EM1D
-from .Survey import EM1DSurveyFD, EM1DSurveyTD
+from .survey import EM1DSurveyFD, EM1DSurveyTD
 
 
 def get_vertical_discretization_frequency(

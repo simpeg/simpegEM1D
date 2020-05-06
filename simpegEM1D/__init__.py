@@ -1,5 +1,5 @@
 from .EM1D import EM1D
-from .Survey import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
+from .survey import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
 from .DigFilter import *
 from .EM1DAnalytics import *
 from .RTEfun import rTEfunfwd, rTEfunjac

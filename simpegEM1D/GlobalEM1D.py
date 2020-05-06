@@ -9,8 +9,10 @@ else:
 
 import numpy as np
 import scipy.sparse as sp
-from SimPEG import simulation, props, utils, maps, survey
-from .Survey import EM1DSurveyFD, EM1DSurveyTD
+from SimPEG import props, utils, maps, survey
+from SimPEG.simulation import BaseSimulation
+from SimPEG.survey import BaseSurvey
+from .survey import EM1DSurveyFD, EM1DSurveyTD
 from .EM1DSimulation import run_simulation_FD, run_simulation_TD
 import properties
 import warnings
@@ -20,7 +22,7 @@ def dot(args):
     return np.dot(args[0], args[1])
 
 
-class GlobalEM1DProblem(simulation.BaseSimulation):
+class GlobalEM1DProblem(BaseSimulation):
     """
         The GlobalProblem allows you to run a whole bunch of SubProblems,
         potentially in parallel, potentially of different meshes.
@@ -647,7 +649,7 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
     #     return self._Jmatrix
 
 
-class GlobalEM1DSurvey(survey.BaseSurvey, properties.HasProperties):
+class GlobalEM1DSurvey(BaseSurvey, properties.HasProperties):
 
     # This assumes a multiple sounding locations
     rx_locations = properties.Array(

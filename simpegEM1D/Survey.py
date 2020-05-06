@@ -1,4 +1,5 @@
-from SimPEG import maps, survey, utils
+from SimPEG import maps, utils
+from SimPEG.survey import BaseSurvey
 import numpy as np
 import scipy.sparse as sp
 from scipy.constants import mu_0
@@ -19,7 +20,7 @@ from .Waveforms import (
 )
 
 
-class BaseEM1DSurvey(survey.BaseSurvey, properties.HasProperties):
+class BaseEM1DSurvey(BaseSurvey, properties.HasProperties):
     """
         Base EM1D Survey
 
@@ -60,7 +61,7 @@ class BaseEM1DSurvey(survey.BaseSurvey, properties.HasProperties):
     half_switch = properties.Bool("Switch for half-space", default=False)
 
     def __init__(self, **kwargs):
-        survey.BaseSurvey.__init__(self, **kwargs)
+        BaseSurvey.__init__(self, **kwargs)
 
     @property
     def h(self):
@@ -118,17 +119,17 @@ class BaseEM1DSurvey(survey.BaseSurvey, properties.HasProperties):
 
         return self._src_paths
 
-    @utils.requires('prob')
-    def dpred(self, m, f=None):
-        """
-            Computes predicted data.
-            Here we do not store predicted data
-            because projection (`d = P(f)`) is cheap.
-        """
+    # @utils.requires('prob')
+    # def dpred(self, m, f=None):
+    #     """
+    #         Computes predicted data.
+    #         Here we do not store predicted data
+    #         because projection (`d = P(f)`) is cheap.
+    #     """
 
-        if f is None:
-            f = self.prob.fields(m)
-        return utils.mkvc(self.projectFields(f))
+    #     if f is None:
+    #         f = self.prob.fields(m)
+    #     return utils.mkvc(self.projectFields(f))
 
 
 class EM1DSurveyFD(BaseEM1DSurvey):
@@ -165,54 +166,54 @@ class EM1DSurveyFD(BaseEM1DSurvey):
         ):
             return int(self.n_frequency)
 
-    @property
-    def hz_primary(self):
-        # Assumes HCP only at the moment
-        if self.src_type == 'VMD':
-            return -1./(4*np.pi*self.offset**3)
-        elif self.src_type == 'CircularLoop':
-            return self.I/(2*self.a) * np.ones_like(self.frequency)
-        else:
-            raise NotImplementedError()
+    # @property
+    # def hz_primary(self):
+    #     # Assumes HCP only at the moment
+    #     if self.src_type == 'VMD':
+    #         return -1./(4*np.pi*self.offset**3)
+    #     elif self.src_type == 'CircularLoop':
+    #         return self.I/(2*self.a) * np.ones_like(self.frequency)
+    #     else:
+    #         raise NotImplementedError()
 
-    def projectFields(self, u):
-        """
-            Decompose frequency domain EM responses as real and imaginary
-            components
-        """
+    # def projectFields(self, u):
+    #     """
+    #         Decompose frequency domain EM responses as real and imaginary
+    #         components
+    #     """
 
-        ureal = (u.real).copy()
-        uimag = (u.imag).copy()
+    #     ureal = (u.real).copy()
+    #     uimag = (u.imag).copy()
 
-        if self.rx_type == 'Hz':
-            factor = 1.
-        elif self.rx_type == 'ppm':
-            factor = 1./self.hz_primary * 1e6
+    #     if self.rx_type == 'Hz':
+    #         factor = 1.
+    #     elif self.rx_type == 'ppm':
+    #         factor = 1./self.hz_primary * 1e6
 
-        if self.switch_real_imag == 'all':
-            ureal = (u.real).copy()
-            uimag = (u.imag).copy()
-            if ureal.ndim == 1 or 0:
-                resp = np.r_[ureal*factor, uimag*factor]
-            elif ureal.ndim == 2:
-                if np.isscalar(factor):
-                    resp = np.vstack(
-                            (factor*ureal, factor*uimag)
-                    )
-                else:
-                    resp = np.vstack(
-                        (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
-                    )
-            else:
-                raise NotImplementedError()
-        elif self.switch_real_imag == 'real':
-            resp = (u.real).copy()
-        elif self.switch_real_imag == 'imag':
-            resp = (u.imag).copy()
-        else:
-            raise NotImplementedError()
+    #     if self.switch_real_imag == 'all':
+    #         ureal = (u.real).copy()
+    #         uimag = (u.imag).copy()
+    #         if ureal.ndim == 1 or 0:
+    #             resp = np.r_[ureal*factor, uimag*factor]
+    #         elif ureal.ndim == 2:
+    #             if np.isscalar(factor):
+    #                 resp = np.vstack(
+    #                         (factor*ureal, factor*uimag)
+    #                 )
+    #             else:
+    #                 resp = np.vstack(
+    #                     (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
+    #                 )
+    #         else:
+    #             raise NotImplementedError()
+    #     elif self.switch_real_imag == 'real':
+    #         resp = (u.real).copy()
+    #     elif self.switch_real_imag == 'imag':
+    #         resp = (u.imag).copy()
+    #     else:
+    #         raise NotImplementedError()
 
-        return resp
+    #     return resp
 
 
 class EM1DSurveyTD(BaseEM1DSurvey):
@@ -416,132 +417,132 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         self.frequency = frequency
         self.ftarg = ftarg
 
-    def projectFields(self, u):
-        """
-            Transform frequency domain responses to time domain responses
-        """
-        # Compute frequency domain reponses right at filter coefficient values
-        # Src waveform: Step-off
+    # def projectFields(self, u):
+    #     """
+    #         Transform frequency domain responses to time domain responses
+    #     """
+    #     # Compute frequency domain reponses right at filter coefficient values
+    #     # Src waveform: Step-off
 
-        if self.use_lowpass_filter:
-            factor = self.lowpass_filter.copy()
-        else:
-            factor = np.ones_like(self.frequency, dtype=complex)
+    #     if self.use_lowpass_filter:
+    #         factor = self.lowpass_filter.copy()
+    #     else:
+    #         factor = np.ones_like(self.frequency, dtype=complex)
 
-        if self.rx_type == 'Bz':
-            factor *= 1./(2j*np.pi*self.frequency)
+    #     if self.rx_type == 'Bz':
+    #         factor *= 1./(2j*np.pi*self.frequency)
 
-        if self.wave_type == 'stepoff':
-            # Compute EM responses
-            if u.size == self.n_frequency:
-                resp, _ = fourier_dlf(
-                    u.flatten()*factor, self.time,
-                    self.frequency, self.ftarg
-                )
-            # Compute EM sensitivities
-            else:
-                resp = np.zeros(
-                    (self.n_time, self.n_layer), dtype=np.float64, order='F')
-                # )
-                # TODO: remove for loop
-                for i in range(self.n_layer):
-                    resp_i, _ = fourier_dlf(
-                        u[:, i]*factor, self.time,
-                        self.frequency, self.ftarg
-                    )
-                    resp[:, i] = resp_i
+    #     if self.wave_type == 'stepoff':
+    #         # Compute EM responses
+    #         if u.size == self.n_frequency:
+    #             resp, _ = fourier_dlf(
+    #                 u.flatten()*factor, self.time,
+    #                 self.frequency, self.ftarg
+    #             )
+    #         # Compute EM sensitivities
+    #         else:
+    #             resp = np.zeros(
+    #                 (self.n_time, self.n_layer), dtype=np.float64, order='F')
+    #             # )
+    #             # TODO: remove for loop
+    #             for i in range(self.n_layer):
+    #                 resp_i, _ = fourier_dlf(
+    #                     u[:, i]*factor, self.time,
+    #                     self.frequency, self.ftarg
+    #                 )
+    #                 resp[:, i] = resp_i
 
-        # Evaluate piecewise linear input current waveforms
-        # Using Fittermann's approach (19XX) with Gaussian Quadrature
-        elif self.wave_type == 'general':
-            # Compute EM responses
-            if u.size == self.n_frequency:
-                resp_int, _ = fourier_dlf(
-                    u.flatten()*factor, self.time_int,
-                    self.frequency, self.ftarg
-                )
-                # step_func = interp1d(
-                #     self.time_int, resp_int
-                # )
-                step_func = iuSpline(
-                    np.log10(self.time_int), resp_int
-                )
+    #     # Evaluate piecewise linear input current waveforms
+    #     # Using Fittermann's approach (19XX) with Gaussian Quadrature
+    #     elif self.wave_type == 'general':
+    #         # Compute EM responses
+    #         if u.size == self.n_frequency:
+    #             resp_int, _ = fourier_dlf(
+    #                 u.flatten()*factor, self.time_int,
+    #                 self.frequency, self.ftarg
+    #             )
+    #             # step_func = interp1d(
+    #             #     self.time_int, resp_int
+    #             # )
+    #             step_func = iuSpline(
+    #                 np.log10(self.time_int), resp_int
+    #             )
 
-                resp = piecewise_pulse_fast(
-                    step_func, self.time,
-                    self.time_input_currents, self.input_currents,
-                    self.period, n_pulse=self.n_pulse
-                )
+    #             resp = piecewise_pulse_fast(
+    #                 step_func, self.time,
+    #                 self.time_input_currents, self.input_currents,
+    #                 self.period, n_pulse=self.n_pulse
+    #             )
 
-                # Compute response for the dual moment
-                if self.moment_type == "dual":
-                    resp_dual_moment = piecewise_pulse_fast(
-                        step_func, self.time_dual_moment,
-                        self.time_input_currents_dual_moment,
-                        self.input_currents_dual_moment,
-                        self.period_dual_moment,
-                        n_pulse=self.n_pulse
-                    )
-                    # concatenate dual moment response
-                    # so, ordering is the first moment data
-                    # then the second moment data.
-                    resp = np.r_[resp, resp_dual_moment]
+    #             # Compute response for the dual moment
+    #             if self.moment_type == "dual":
+    #                 resp_dual_moment = piecewise_pulse_fast(
+    #                     step_func, self.time_dual_moment,
+    #                     self.time_input_currents_dual_moment,
+    #                     self.input_currents_dual_moment,
+    #                     self.period_dual_moment,
+    #                     n_pulse=self.n_pulse
+    #                 )
+    #                 # concatenate dual moment response
+    #                 # so, ordering is the first moment data
+    #                 # then the second moment data.
+    #                 resp = np.r_[resp, resp_dual_moment]
 
-            # Compute EM sensitivities
-            else:
-                if self.moment_type == "single":
-                    resp = np.zeros(
-                        (self.n_time, self.n_layer),
-                        dtype=np.float64, order='F'
-                    )
-                else:
-                    # For dual moment
-                    resp = np.zeros(
-                        (self.n_time+self.n_time_dual_moment, self.n_layer),
-                        dtype=np.float64, order='F')
+    #         # Compute EM sensitivities
+    #         else:
+    #             if self.moment_type == "single":
+    #                 resp = np.zeros(
+    #                     (self.n_time, self.n_layer),
+    #                     dtype=np.float64, order='F'
+    #                 )
+    #             else:
+    #                 # For dual moment
+    #                 resp = np.zeros(
+    #                     (self.n_time+self.n_time_dual_moment, self.n_layer),
+    #                     dtype=np.float64, order='F')
 
-                # TODO: remove for loop (?)
-                for i in range(self.n_layer):
-                    resp_int_i, _ = fourier_dlf(
-                        u[:, i]*factor, self.time_int,
-                        self.frequency, self.ftarg
-                    )
-                    # step_func = interp1d(
-                    #     self.time_int, resp_int_i
-                    # )
+    #             # TODO: remove for loop (?)
+    #             for i in range(self.n_layer):
+    #                 resp_int_i, _ = fourier_dlf(
+    #                     u[:, i]*factor, self.time_int,
+    #                     self.frequency, self.ftarg
+    #                 )
+    #                 # step_func = interp1d(
+    #                 #     self.time_int, resp_int_i
+    #                 # )
 
-                    step_func = iuSpline(
-                        np.log10(self.time_int), resp_int_i
-                    )
+    #                 step_func = iuSpline(
+    #                     np.log10(self.time_int), resp_int_i
+    #                 )
 
-                    resp_i = piecewise_pulse_fast(
-                        step_func, self.time,
-                        self.time_input_currents, self.input_currents,
-                        self.period, n_pulse=self.n_pulse
-                    )
+    #                 resp_i = piecewise_pulse_fast(
+    #                     step_func, self.time,
+    #                     self.time_input_currents, self.input_currents,
+    #                     self.period, n_pulse=self.n_pulse
+    #                 )
 
-                    if self.moment_type == "single":
-                        resp[:, i] = resp_i
-                    else:
-                        resp_dual_moment_i = piecewise_pulse_fast(
-                            step_func,
-                            self.time_dual_moment,
-                            self.time_input_currents_dual_moment,
-                            self.input_currents_dual_moment,
-                            self.period_dual_moment,
-                            n_pulse=self.n_pulse
-                        )
-                        resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
-        return resp * (-2.0/np.pi) * mu_0
+    #                 if self.moment_type == "single":
+    #                     resp[:, i] = resp_i
+    #                 else:
+    #                     resp_dual_moment_i = piecewise_pulse_fast(
+    #                         step_func,
+    #                         self.time_dual_moment,
+    #                         self.time_input_currents_dual_moment,
+    #                         self.input_currents_dual_moment,
+    #                         self.period_dual_moment,
+    #                         n_pulse=self.n_pulse
+    #                     )
+    #                     resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
+    #     return resp * (-2.0/np.pi) * mu_0
 
-    @utils.requires('prob')
-    def dpred(self, m, f=None):
-        """
-            Computes predicted data.
-            Predicted data (`_pred`) are computed and stored
-            when self.prob.fields(m) is called.
-        """
-        if f is None:
-            f = self.prob.fields(m)
+    # @utils.requires('prob')
+    # def dpred(self, m, f=None):
+    #     """
+    #         Computes predicted data.
+    #         Predicted data (`_pred`) are computed and stored
+    #         when self.prob.fields(m) is called.
+    #     """
+    #     if f is None:
+    #         f = self.prob.fields(m)
 
-        return self._pred
+    #     return self._pred
