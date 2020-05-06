@@ -31,7 +31,7 @@ def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kw
     if ax==None:
         plt.xscale(xscale)
         plt.xlim(sig_min, sig_max)
-        plt.ylim(z.min(), z.max())
+        plt.ylim(z.max(), z.min())
         plt.xlabel('Conductivity (S/m)', fontsize = 14)
         plt.ylabel('Depth (m)', fontsize = 14)
         plt.ylabel('Depth (m)', fontsize = 14)
@@ -43,12 +43,13 @@ def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kw
     else:
         ax.set_xscale(xscale)
         ax.set_xlim(sig_min, sig_max)
-        ax.set_ylim(z.min(), z.max())
+        ax.set_ylim(z.max(), z.min())
         ax.set_xlabel('Conductivity (S/m)', fontsize = 14)
         ax.set_ylabel('Depth (m)', fontsize = 14)
         if showlayers == True:
             for locz in z_grid:
                 ax.plot(np.linspace(sig_min, sig_max, 100), np.ones(100)*locz, 'b--', lw = 0.5)
+
         return ax.plot(sigma, z, 'k-', **kwargs)
 
 def plotComplexData(frequency, val, xscale='log', ax=None, **kwargs):
