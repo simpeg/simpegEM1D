@@ -9,7 +9,7 @@ else:
 
 import numpy as np
 import scipy.sparse as sp
-from SimPEG import Problem, Props, Utils, Maps, Survey
+from SimPEG import simulation, props, utils, maps, survey
 from .Survey import EM1DSurveyFD, EM1DSurveyTD
 from .EM1DSimulation import run_simulation_FD, run_simulation_TD
 import properties
@@ -20,33 +20,33 @@ def dot(args):
     return np.dot(args[0], args[1])
 
 
-class GlobalEM1DProblem(Problem.BaseProblem):
+class GlobalEM1DProblem(simulation.BaseSimulation):
     """
         The GlobalProblem allows you to run a whole bunch of SubProblems,
         potentially in parallel, potentially of different meshes.
         This is handy for working with lots of sources,
     """
-    sigma, sigmaMap, sigmaDeriv = Props.Invertible(
+    sigma, sigmaMap, sigmaDeriv = props.Invertible(
         "Electrical conductivity (S/m)"
     )
 
-    h, hMap, hDeriv = Props.Invertible(
+    h, hMap, hDeriv = props.Invertible(
         "Receiver Height (m), h > 0",
     )
 
-    chi = Props.PhysicalProperty(
+    chi = props.PhysicalProperty(
         "Magnetic susceptibility (H/m)",
     )
 
-    eta = Props.PhysicalProperty(
+    eta = props.PhysicalProperty(
         "Electrical chargeability (V/V), 0 <= eta < 1"
     )
 
-    tau = Props.PhysicalProperty(
+    tau = props.PhysicalProperty(
         "Time constant (s)"
     )
 
-    c = Props.PhysicalProperty(
+    c = props.PhysicalProperty(
         "Frequency Dependency, 0 < c < 1"
     )
 
@@ -62,7 +62,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
     invert_height = None
 
     def __init__(self, mesh, **kwargs):
-        Utils.setKwargs(self, **kwargs)
+        utils.setKwargs(self, **kwargs)
         self.mesh = mesh
         if PARALLEL:
             if self.parallel:
@@ -315,7 +315,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
              Compute d F / d height
         """
         if self.hMap is None:
-            return Utils.Zero()
+            return utils.Zero()
 
         if self._Jmatrix_height is not None:
             return self._Jmatrix_height
@@ -369,7 +369,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         #     # Extra division of sigma is because:
         #     # J_sigma = dF/dlog(sigma)
         #     # And here sigmaMap also includes ExpMap
-        #     v_sigma = Utils.sdiag(1./self.sigma) * self.sigmaMap.deriv(m, v)
+        #     v_sigma = utils.sdiag(1./self.sigma) * self.sigmaMap.deriv(m, v)
         #     V_sigma = v_sigma.reshape((self.n_sounding, self.n_layer))
 
         #     pool = Pool(self.n_cpu)
@@ -391,7 +391,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         #     pool.close()
         #     pool.join()
         # else:
-        Jv = J_sigma*(Utils.sdiag(1./self.sigma)*(self.sigmaDeriv * v))
+        Jv = J_sigma*(utils.sdiag(1./self.sigma)*(self.sigmaDeriv * v))
         if self.hMap is not None:
             Jv += J_height*(self.hDeriv * v)
         return Jv
@@ -424,7 +424,7 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         # Extra division of sigma is because:
         # J_sigma = dF/dlog(sigma)
         # And here sigmaMap also includes ExpMap
-        Jtv = self.sigmaDeriv.T * (Utils.sdiag(1./self.sigma) * (J_sigma.T*v))
+        Jtv = self.sigmaDeriv.T * (utils.sdiag(1./self.sigma) * (J_sigma.T*v))
         if self.hMap is not None:
             Jtv += self.hDeriv.T*(J_height.T*v)
         return Jtv
@@ -435,14 +435,14 @@ class GlobalEM1DProblem(Problem.BaseProblem):
         trace of sensitivity matrix (J)
         """
         J_sigma = self.getJ_sigma(m)
-        J_matrix = J_sigma*(Utils.sdiag(1./self.sigma)*(self.sigmaDeriv))
+        J_matrix = J_sigma*(utils.sdiag(1./self.sigma)*(self.sigmaDeriv))
 
         if self.hMap is not None:
             J_height = self.getJ_height(m)
             J_matrix += J_height*self.hDeriv
 
         if W is None:
-            W = Utils.speye(J_matrix.shape[0])
+            W = utils.speye(J_matrix.shape[0])
 
         J_matrix = W*J_matrix
         JtJ_diag = (J_matrix.T*J_matrix).diagonal()
@@ -647,7 +647,7 @@ class GlobalEM1DProblemTD(GlobalEM1DProblem):
     #     return self._Jmatrix
 
 
-class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
+class GlobalEM1DSurvey(survey.BaseSurvey, properties.HasProperties):
 
     # This assumes a multiple sounding locations
     rx_locations = properties.Array(
@@ -664,7 +664,7 @@ class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
 
     _pred = None
 
-    @Utils.requires('prob')
+    @utils.requires('prob')
     def dpred(self, m, f=None):
         """
             Return predicted data.
@@ -726,8 +726,8 @@ class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
                 np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
                 shift_for_I
             )
-            J.append(Utils.mkvc(J_temp))
-            I.append(Utils.mkvc(I_temp))
+            J.append(utils.mkvc(J_temp))
+            I.append(utils.mkvc(I_temp))
             shift_for_J += m
             shift_for_I = I_temp[-1, -1] + 1
         J = np.hstack(J).astype(int)
@@ -752,8 +752,8 @@ class GlobalEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
                 np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
                 shift_for_I
             )
-            J.append(Utils.mkvc(J_temp))
-            I.append(Utils.mkvc(I_temp))
+            J.append(utils.mkvc(J_temp))
+            I.append(utils.mkvc(I_temp))
             shift_for_J += m
             shift_for_I = I_temp[-1, -1] + 1
         J = np.hstack(J).astype(int)
@@ -863,7 +863,7 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
     )
 
     def __init__(self, **kwargs):
-        GlobalEM1DSurvey.__init__(self, **kwargs)
+        GlobalEM1Dsurvey.__init__(self, **kwargs)
         self.set_parameters()
 
     def set_parameters(self):

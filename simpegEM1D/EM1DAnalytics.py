@@ -1,5 +1,5 @@
 import numpy as np
-from SimPEG import Utils
+from SimPEG import utils
 from scipy.constants import mu_0, pi
 from scipy.special import erf
 import matplotlib.pyplot as plt
@@ -109,7 +109,7 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
         sigma = np.zeros((f.size,sig_inf.size), dtype=complex)
         for i in range(f.size):
             w = 2*np.pi*f[i]
-            sigma[i,:] = Utils.mkvc(sig_inf - sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c))
+            sigma[i,:] = utils.mkvc(sig_inf - sig_inf*eta/(1+(1-eta)*(1j*w*tau)**c))
     return sigma
 
 

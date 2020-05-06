@@ -2,7 +2,8 @@ import properties
 import numpy as np
 from scipy.spatial import cKDTree as kdtree
 import scipy.sparse as sp
-from SimPEG import Utils, Mesh
+from SimPEG import utils
+from discretize import TensorMesh
 from .EM1DSimulation import set_mesh_1d
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -141,8 +142,8 @@ class ModelIO(properties.HasProperties):
 
         contourOpts['cmap'] = cmap
 
-        im = Utils.plot2Ddata(
-            self.topography[:, :2], Utils.mkvc(physical_property_matrix[i_layer, :]), scale=scale,
+        im = utils.plot2Ddata(
+            self.topography[:, :2], utils.mkvc(physical_property_matrix[i_layer, :]), scale=scale,
             ncontour=ncontour, ax=ax,
             contourOpts=contourOpts, dataloc=False,
         )
@@ -220,15 +221,15 @@ class ModelIO(properties.HasProperties):
                 norm=None
 
             contourOpts['cmap'] = cmap
-            im = Utils.plot2Ddata(
-                yz, Utils.mkvc(physical_property_matrix[:, ind_line]), scale='log', ncontour=40, dataloc=False, ax=ax,
+            im = utils.plot2Ddata(
+                yz, utils.mkvc(physical_property_matrix[:, ind_line]), scale='log', ncontour=40, dataloc=False, ax=ax,
                 contourOpts=contourOpts
             )
             ax.fill_between(self.topography[ind_line, 1], self.topography[ind_line, 2], y2=yz[:,1].max(), color='w')
 
             out = ax.scatter(
                 yz[:, 0], yz[:, 1],
-                c=Utils.mkvc(physical_property_matrix[:, ind_line]), s=0.1, vmin=vmin, vmax=vmax,
+                c=utils.mkvc(physical_property_matrix[:, ind_line]), s=0.1, vmin=vmin, vmax=vmax,
                 cmap=cmap, alpha=1, norm=norm
             )
         elif plot_type == "pcolor":
@@ -314,8 +315,8 @@ class ModelIO(properties.HasProperties):
         hy = [(dy, npad_y, -1.2), (dy, ny), (dy, npad_y, -1.2)]
         hz = [(dz, npad_z, -1.2), (dz, nz)]
 
-        zmin = self.topography[:, 2].max() - Utils.meshTensor(hz).sum()
-        self._mesh_3d = Mesh.TensorMesh([hx, hy, hz], x0=[xmin, ymin, zmin])
+        zmin = self.topography[:, 2].max() - utils.meshTensor(hz).sum()
+        self._mesh_3d = TensorMesh([hx, hy, hz], x0=[xmin, ymin, zmin])
 
         return self.mesh_3d
 
@@ -332,29 +333,29 @@ class ModelIO(properties.HasProperties):
     ):
 
         tree_2d = kdtree(self.topography[:, :2])
-        xy = Utils.ndgrid(self.mesh_3d.vectorCCx, self.mesh_3d.vectorCCy)
+        xy = utils.ndgrid(self.mesh_3d.vectorCCx, self.mesh_3d.vectorCCy)
 
         distance, inds = tree_2d.query(xy, k=npts)
         if epsilon is None:
             epsilon = np.min([self.mesh_3d.hx.min(), self.mesh_3d.hy.min()])
 
         w = 1. / (distance + epsilon)**2
-        w = Utils.sdiag(1./np.sum(w, axis=1)) * (w)
-        I = Utils.mkvc(
+        w = utils.sdiag(1./np.sum(w, axis=1)) * (w)
+        I = utils.mkvc(
             np.arange(inds.shape[0]).reshape([-1, 1]).repeat(npts, axis=1)
         )
-        J = Utils.mkvc(inds)
+        J = utils.mkvc(inds)
 
         self._P = sp.coo_matrix(
-            (Utils.mkvc(w), (I, J)),
+            (utils.mkvc(w), (I, J)),
             shape=(inds.shape[0], self.topography.shape[0])
         )
 
-        mesh_1d = Mesh.TensorMesh([np.r_[self.hz[:-1], 1e20]])
+        mesh_1d = TensorMesh([np.r_[self.hz[:-1], 1e20]])
 
         z = self.P*self.topography[:, 2]
 
-        self._actinds = Utils.surface2ind_topo(self.mesh_3d, np.c_[xy, z])
+        self._actinds = utils.surface2ind_topo(self.mesh_3d, np.c_[xy, z])
 
         Z = np.empty(self.mesh_3d.vnC, dtype=float, order='F')
         Z = self.mesh_3d.gridCC[:, 2].reshape(

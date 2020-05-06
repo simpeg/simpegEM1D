@@ -1,4 +1,4 @@
-from SimPEG import Maps, Survey, Utils
+from SimPEG import maps, survey, utils
 import numpy as np
 import scipy.sparse as sp
 from scipy.constants import mu_0
@@ -19,7 +19,7 @@ from .Waveforms import (
 )
 
 
-class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
+class BaseEM1DSurvey(survey.BaseSurvey, properties.HasProperties):
     """
         Base EM1D Survey
 
@@ -60,7 +60,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
     half_switch = properties.Bool("Switch for half-space", default=False)
 
     def __init__(self, **kwargs):
-        Survey.BaseSurvey.__init__(self, **kwargs)
+        survey.BaseSurvey.__init__(self, **kwargs)
 
     @property
     def h(self):
@@ -118,7 +118,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
 
         return self._src_paths
 
-    @Utils.requires('prob')
+    @utils.requires('prob')
     def dpred(self, m, f=None):
         """
             Computes predicted data.
@@ -128,7 +128,7 @@ class BaseEM1DSurvey(Survey.BaseSurvey, properties.HasProperties):
 
         if f is None:
             f = self.prob.fields(m)
-        return Utils.mkvc(self.projectFields(f))
+        return utils.mkvc(self.projectFields(f))
 
 
 class EM1DSurveyFD(BaseEM1DSurvey):
@@ -201,7 +201,7 @@ class EM1DSurveyFD(BaseEM1DSurvey):
                     )
                 else:
                     resp = np.vstack(
-                        (Utils.sdiag(factor)*ureal, Utils.sdiag(factor)*uimag)
+                        (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
                     )
             else:
                 raise NotImplementedError()
@@ -534,7 +534,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                         resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
         return resp * (-2.0/np.pi) * mu_0
 
-    @Utils.requires('prob')
+    @utils.requires('prob')
     def dpred(self, m, f=None):
         """
             Computes predicted data.

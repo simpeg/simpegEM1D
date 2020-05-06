@@ -1,7 +1,9 @@
 import scipy as sp
 import numpy as np
-from SimPEG.regularization import Sparse, SparseSmall, SparseDeriv, Simple
-from SimPEG import Mesh, Utils
+from SimPEG.regularization.sparse import Sparse, SparseSmall, SparseDeriv
+from SimPEG.regularization.tikhonov import Simple
+from SimPEG import utils
+from discretize import TensorMesh
 
 
 def get_2d_mesh(n_sounding, hz):
@@ -13,7 +15,7 @@ def get_2d_mesh(n_sounding, hz):
 
     """
     hx = np.ones(n_sounding)
-    return Mesh.TensorMesh([hz, hx])
+    return TensorMesh([hz, hx])
 
 
 class LateralConstraint(Sparse):
@@ -72,8 +74,8 @@ class LateralConstraint(Sparse):
             A = sp.sparse.csr_matrix((avg, (row, col)), shape=(nN, nStn))
 
             # Kron vertically for nCz
-            Grad = sp.sparse.kron(D, Utils.speye(hz.size))
-            Avg = sp.sparse.kron(A, Utils.speye(hz.size))
+            Grad = sp.sparse.kron(D, utils.speye(hz.size))
+            Avg = sp.sparse.kron(A, utils.speye(hz.size))
 
             # Override the gradient operator in y-drection
             # This is because of ordering ... See def get_2d_mesh

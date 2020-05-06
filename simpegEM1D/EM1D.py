@@ -1,4 +1,4 @@
-from SimPEG import Maps, Utils, Problem, Props
+from SimPEG import maps, utils, simulation, props
 import numpy as np
 from .Survey import BaseEM1DSurvey
 from scipy.constants import mu_0
@@ -15,13 +15,13 @@ except ImportError as e:
     rte_fortran = None
 
 
-class EM1D(Problem.BaseProblem):
+class EM1D(simulation.BaseSimulation):
     """
     Pseudo analytic solutions for frequency and time domain EM problems
     assumingLayered earth (1D).
     """
     surveyPair = BaseEM1DSurvey
-    mapPair = Maps.IdentityMap
+    mapPair = maps.IdentityMap
     chi = None
     hankel_filter = 'key_101_2009'  # Default: Hankel filter
     hankel_pts_per_dec = None       # Default: Standard DLF
@@ -31,36 +31,36 @@ class EM1D(Problem.BaseProblem):
     _Jmatrix_height = None
     _pred = None
 
-    sigma, sigmaMap, sigmaDeriv = Props.Invertible(
+    sigma, sigmaMap, sigmaDeriv = props.Invertible(
         "Electrical conductivity at infinite frequency(S/m)"
     )
 
-    chi = Props.PhysicalProperty(
+    chi = props.PhysicalProperty(
         "Magnetic susceptibility",
         default=0.
     )
 
-    eta, etaMap, etaDeriv = Props.Invertible(
+    eta, etaMap, etaDeriv = props.Invertible(
         "Electrical chargeability (V/V), 0 <= eta < 1",
         default=0.
     )
 
-    tau, tauMap, tauDeriv = Props.Invertible(
+    tau, tauMap, tauDeriv = props.Invertible(
         "Time constant (s)",
         default=1.
     )
 
-    c, cMap, cDeriv = Props.Invertible(
+    c, cMap, cDeriv = props.Invertible(
         "Frequency Dependency, 0 < c < 1",
         default=0.5
     )
 
-    h, hMap, hDeriv = Props.Invertible(
+    h, hMap, hDeriv = props.Invertible(
         "Receiver Height (m), h > 0",
     )
 
     def __init__(self, mesh, **kwargs):
-        Problem.BaseProblem.__init__(self, mesh, **kwargs)
+        simulation.BaseSimulation.__init__(self, mesh, **kwargs)
 
         # Check input arguments. If self.hankel_filter is not a valid filter,
         # it will set it to the default (key_201_2009).
@@ -494,7 +494,7 @@ class EM1D(Problem.BaseProblem):
     # @profile
     def fields(self, m):
         f = self.forward(m, output_type='response')
-        self.survey._pred = Utils.mkvc(self.survey.projectFields(f))
+        self.survey._pred = utils.mkvc(self.survey.projectFields(f))
         return f
 
     def getJ_height(self, m, f=None):
@@ -502,7 +502,7 @@ class EM1D(Problem.BaseProblem):
 
         """
         if self.hMap is None:
-            return Utils.Zero()
+            return utils.Zero()
 
         if self._Jmatrix_height is not None:
             return self._Jmatrix_height
@@ -523,7 +523,7 @@ class EM1D(Problem.BaseProblem):
     def getJ_sigma(self, m, f=None):
 
         if self.sigmaMap is None:
-            return Utils.Zero()
+            return utils.Zero()
 
         if self._Jmatrix_sigma is not None:
             return self._Jmatrix_sigma
@@ -583,7 +583,7 @@ class EM1D(Problem.BaseProblem):
         pred = self.survey._pred.copy()
         delta_d = std * np.log(abs(self.survey.dobs))
         J = self.getJ(self.model)
-        J_sum = abs(Utils.sdiag(1/delta_d/pred) * J).sum(axis=0)
+        J_sum = abs(utils.sdiag(1/delta_d/pred) * J).sum(axis=0)
         S = np.cumsum(J_sum[::-1])[::-1]
         active = S-thres_hold > 0.
         doi = abs(self.survey.depth[active]).max()
@@ -597,7 +597,7 @@ class EM1D(Problem.BaseProblem):
 
     def get_JtJdiag(self, uncert):
         J = self.getJ(self.model)
-        JtJdiag = (np.power((Utils.sdiag(1./uncert)*J), 2)).sum(axis=0)
+        JtJdiag = (np.power((utils.sdiag(1./uncert)*J), 2)).sum(axis=0)
         return JtJdiag
 
 if __name__ == '__main__':
