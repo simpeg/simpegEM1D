@@ -19,8 +19,8 @@ from .KnownSystems import(
 )
 from .Utils1D import *
 from .GlobalEM1D import (
-    GlobalEM1DProblemFD, GlobalEM1DSurveyFD,
-    GlobalEM1DProblemTD, GlobalEM1DSurveyTD
+    GlobalEM1DSimulationFD, GlobalEM1DSurveyFD,
+    GlobalEM1DSimulationTD, GlobalEM1DSurveyTD
 )
 from .EM1DSimulation import (
     get_vertical_discretization_frequency,

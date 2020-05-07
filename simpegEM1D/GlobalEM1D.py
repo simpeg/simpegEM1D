@@ -22,7 +22,7 @@ def dot(args):
     return np.dot(args[0], args[1])
 
 
-class GlobalEM1DProblem(BaseSimulation):
+class GlobalEM1DSimulation(BaseSimulation):
     """
         The GlobalProblem allows you to run a whole bunch of SubProblems,
         potentially in parallel, potentially of different meshes.
@@ -218,22 +218,33 @@ class GlobalEM1DProblem(BaseSimulation):
     def IJLayers(self):
         if getattr(self, '_IJLayers', None) is None:
             # Ordering: first z then x
-            self._IJLayers = self.survey.set_ij_n_layer()
+            self._IJLayers = self.set_ij_n_layer()
         return self._IJLayers
 
     @property
     def IJHeight(self):
         if getattr(self, '_IJHeight', None) is None:
             # Ordering: first z then x
-            self._IJHeight = self.survey.set_ij_n_layer(n_layer=1)
+            self._IJHeight = self.set_ij_n_layer(n_layer=1)
         return self._IJHeight
 
     # ------------- For physics ------------- #
     def fields(self, m):
         if self.verbose:
             print("Compute fields")
-        self.survey._pred = self.forward(m)
-        return []
+
+        return self.forward(m)
+
+    def dpred(self, m, f=None):
+        """
+            Return predicted data.
+            Predicted data, (`_pred`) are computed when
+            self.fields is called.
+        """
+        if f is None:
+            f = self.fields(m)
+
+        return f
 
     def forward(self, m):
         self.model = m
@@ -262,6 +273,63 @@ class GlobalEM1DProblem(BaseSimulation):
                 run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
             ]
         return np.hstack(result)
+
+    def set_ij_n_layer(self, n_layer=None):
+        """
+        Compute (I, J) indicies to form sparse sensitivity matrix
+        This will be used in GlobalEM1DSimulation when after sensitivity matrix
+        for each sounding is computed
+        """
+        I = []
+        J = []
+        shift_for_J = 0
+        shift_for_I = 0
+        if n_layer is None:
+            m = self.n_layer
+        else:
+            m = n_layer
+
+        for i in range(self.survey.n_sounding):
+            n = self.survey.nD_vec[i]
+            J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
+            I_temp = (
+                np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
+                shift_for_I
+            )
+            J.append(utils.mkvc(J_temp))
+            I.append(utils.mkvc(I_temp))
+            shift_for_J += m
+            shift_for_I = I_temp[-1, -1] + 1
+        J = np.hstack(J).astype(int)
+        I = np.hstack(I).astype(int)
+        return (I, J)
+
+    def set_ij_height(self):
+        """
+        Compute (I, J) indicies to form sparse sensitivity matrix
+        This will be used in GlobalEM1DSimulation when after sensitivity matrix
+        for each sounding is computed
+        """
+        I = []
+        J = []
+        shift_for_J = 0
+        shift_for_I = 0
+        m = self.n_layer
+        for i in range(n_sounding):
+            n = self.survey.nD_vec[i]
+            J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
+            I_temp = (
+                np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
+                shift_for_I
+            )
+            J.append(utils.mkvc(J_temp))
+            I.append(utils.mkvc(I_temp))
+            shift_for_J += m
+            shift_for_I = I_temp[-1, -1] + 1
+        J = np.hstack(J).astype(int)
+        I = np.hstack(I).astype(int)
+        return (I, J)
+
 
     def getJ_sigma(self, m):
         """
@@ -465,7 +533,7 @@ class GlobalEM1DProblem(BaseSimulation):
         return toDelete
 
 
-class GlobalEM1DProblemFD(GlobalEM1DProblem):
+class GlobalEM1DSimulationFD(GlobalEM1DSimulation):
 
     def run_simulation(self, args):
         if self.verbose:
@@ -504,7 +572,7 @@ class GlobalEM1DProblemFD(GlobalEM1DProblem):
         return output
 
 
-class GlobalEM1DProblemTD(GlobalEM1DProblem):
+class GlobalEM1DSimulationTD(GlobalEM1DSimulation):
 
     @property
     def wave_type(self):
@@ -664,19 +732,17 @@ class GlobalEM1DSurvey(BaseSurvey, properties.HasProperties):
 
     half_switch = properties.Bool("Switch for half-space", default=False)
 
-    _pred = None
+    # @utils.requires('prob')
+    # def dpred(self, m, f=None):
+    #     """
+    #         Return predicted data.
+    #         Predicted data, (`_pred`) are computed when
+    #         self.prob.fields is called.
+    #     """
+    #     if f is None:
+    #         f = self.prob.fields(m)
 
-    @utils.requires('prob')
-    def dpred(self, m, f=None):
-        """
-            Return predicted data.
-            Predicted data, (`_pred`) are computed when
-            self.prob.fields is called.
-        """
-        if f is None:
-            f = self.prob.fields(m)
-
-        return self._pred
+    #     return self._pred
 
     @property
     def n_sounding(self):
@@ -690,7 +756,7 @@ class GlobalEM1DSurvey(BaseSurvey, properties.HasProperties):
         """
             # of Receiver locations
         """
-        return self.prob.n_layer
+        return self.sim.n_layer
 
     def read_xyz_data(self, fname):
         """
@@ -706,61 +772,7 @@ class GlobalEM1DSurvey(BaseSurvey, properties.HasProperties):
             self._nD = self.nD_vec.sum()
         return self._nD
 
-    def set_ij_n_layer(self, n_layer=None):
-        """
-        Compute (I, J) indicies to form sparse sensitivity matrix
-        This will be used in GlobalEM1DProblem when after sensitivity matrix
-        for each sounding is computed
-        """
-        I = []
-        J = []
-        shift_for_J = 0
-        shift_for_I = 0
-        if n_layer is None:
-            m = self.n_layer
-        else:
-            m = n_layer
-
-        for i in range(self.n_sounding):
-            n = self.nD_vec[i]
-            J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
-            I_temp = (
-                np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
-                shift_for_I
-            )
-            J.append(utils.mkvc(J_temp))
-            I.append(utils.mkvc(I_temp))
-            shift_for_J += m
-            shift_for_I = I_temp[-1, -1] + 1
-        J = np.hstack(J).astype(int)
-        I = np.hstack(I).astype(int)
-        return (I, J)
-
-    def set_ij_height(self):
-        """
-        Compute (I, J) indicies to form sparse sensitivity matrix
-        This will be used in GlobalEM1DProblem when after sensitivity matrix
-        for each sounding is computed
-        """
-        I = []
-        J = []
-        shift_for_J = 0
-        shift_for_I = 0
-        m = self.n_layer
-        for i in range(n_sounding):
-            n = self.nD_vec[i]
-            J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
-            I_temp = (
-                np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
-                shift_for_I
-            )
-            J.append(utils.mkvc(J_temp))
-            I.append(utils.mkvc(I_temp))
-            shift_for_J += m
-            shift_for_I = I_temp[-1, -1] + 1
-        J = np.hstack(J).astype(int)
-        I = np.hstack(I).astype(int)
-        return (I, J)
+    
 
 
 class GlobalEM1DSurveyFD(GlobalEM1DSurvey, EM1DSurveyFD):
@@ -865,7 +877,7 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
     )
 
     def __init__(self, **kwargs):
-        GlobalEM1Dsurvey.__init__(self, **kwargs)
+        GlobalEM1DSurvey.__init__(self, **kwargs)
         self.set_parameters()
 
     def set_parameters(self):

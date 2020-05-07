@@ -2,7 +2,7 @@ import numpy as np
 from discretize import TensorMesh
 from SimPEG import maps, utils
 from .EM1DAnalytics import skin_depth, diffusion_distance
-from .EM1D import EM1D
+from .simulation import EM1DFMSimulation, EM1DTMSimulation
 from .survey import EM1DSurveyFD, EM1DSurveyTD
 
 
@@ -85,45 +85,37 @@ def run_simulation_FD(args):
         # Use Exponential Map
         # This is hard-wired at the moment
         expmap = maps.ExpMap(mesh_1d)
-        prob = EM1D(
-            mesh_1d, sigmaMap=expmap, chi=chi, hankel_filter='key_101_2009',
+        sim = EM1DFMSimulation(
+            mesh_1d, survey=FDsurvey, sigmaMap=expmap, chi=chi, hankel_filter='key_101_2009',
             eta=eta, tau=tau, c=c
         )
-        if prob.ispaired:
-            prob.unpair()
-        if FDsurvey.ispaired:
-            FDsurvey.unpair()
-        prob.pair(FDsurvey)
+        
         if jac_switch == 'sensitivity_sigma':
-            drespdsig = prob.getJ_sigma(np.log(sigma))
-            return utils.mkvc(drespdsig * prob.sigmaDeriv)
+            drespdsig = sim.getJ_sigma(np.log(sigma))
+            return utils.mkvc(drespdsig * sim.sigmaDeriv)
             # return utils.mkvc(drespdsig)
         else:
-            resp = FDsurvey.dpred(np.log(sigma))
+            resp = sim.dpred(np.log(sigma))
             return resp
     else:
         wires = maps.Wires(('sigma', mesh_1d.nC), ('h', 1))
         expmap = maps.ExpMap(mesh_1d)
         sigmaMap = expmap * wires.sigma
-        prob = EM1D(
-            mesh_1d, sigmaMap=sigmaMap, hMap=wires.h, chi=chi, hankel_filter='key_101_2009',
+        sim = EM1DFMSimulation(
+            mesh_1d, survey=FDsurvey, sigmaMap=sigmaMap, hMap=wires.h, chi=chi, hankel_filter='key_101_2009',
             eta=eta, tau=tau, c=c
         )
-        if prob.ispaired:
-            prob.unpair()
-        if FDsurvey.ispaired:
-            FDsurvey.unpair()
-        prob.pair(FDsurvey)
+        
         m = np.r_[np.log(sigma), h]
         if jac_switch == 'sensitivity_sigma':
-            drespdsig = prob.getJ_sigma(m)
+            drespdsig = sim.getJ_sigma(m)
             return utils.mkvc(drespdsig * utils.sdiag(sigma))
             # return utils.mkvc(drespdsig)
         elif jac_switch == 'sensitivity_height':
-            drespdh = prob.getJ_height(m)
+            drespdh = sim.getJ_height(m)
             return utils.mkvc(drespdh)
         else:
-            resp = FDsurvey.dpred(m)
+            resp = sim.dpred(m)
             return resp
 
 
@@ -182,43 +174,35 @@ def run_simulation_TD(args):
         # Use Exponential Map
         # This is hard-wired at the moment
         expmap = maps.ExpMap(mesh_1d)
-        prob = EM1D(
-            mesh_1d, sigmaMap=expmap, hankel_filter='key_101_2009',
+        sim = EM1DTMSimulation(
+            mesh_1d, survey=TDsurvey, sigmaMap=expmap, hankel_filter='key_101_2009',
             eta=eta, tau=tau, c=c
         )
-        if prob.ispaired:
-            prob.unpair()
-        if TDsurvey.ispaired:
-            TDsurvey.unpair()
-        prob.pair(TDsurvey)
+        
         if jac_switch == 'sensitivity_sigma':
-            drespdsig = prob.getJ_sigma(np.log(sigma))
-            return utils.mkvc(drespdsig * prob.sigmaDeriv)
+            drespdsig = sim.getJ_sigma(np.log(sigma))
+            return utils.mkvc(drespdsig * sim.sigmaDeriv)
         else:
-            resp = TDsurvey.dpred(np.log(sigma))
+            resp = sim.dpred(np.log(sigma))
             return resp
     else:
         wires = maps.Wires(('sigma', mesh_1d.nC), ('h', 1))
         expmap = maps.ExpMap(mesh_1d)
         sigmaMap = expmap * wires.sigma
-        prob = EM1D(
-            mesh_1d, sigmaMap=sigmaMap, hMap=wires.h,
+        sim = EM1DTMSimulation(
+            mesh_1d, survey=TDsurvey, sigmaMap=sigmaMap, hMap=wires.h,
             hankel_filter='key_101_2009',
             eta=eta, tau=tau, c=c
         )
-        if prob.ispaired:
-            prob.unpair()
-        if TDsurvey.ispaired:
-            TDsurvey.unpair()
-        prob.pair(TDsurvey)
+        
         m = np.r_[np.log(sigma), h]
         if jac_switch == 'sensitivity_sigma':
-            drespdsig = prob.getJ_sigma(m)
+            drespdsig = sim.getJ_sigma(m)
             return utils.mkvc(drespdsig * utils.sdiag(sigma))
         elif jac_switch == 'sensitivity_height':
-            drespdh = prob.getJ_height(m)
+            drespdh = sim.getJ_height(m)
             return utils.mkvc(drespdh)
         else:
-            resp = TDsurvey.dpred(m)
+            resp = sim.dpred(m)
             return resp
 
