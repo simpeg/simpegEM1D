@@ -1,7 +1,7 @@
 import numpy as np
 from discretize import TensorMesh
 from SimPEG import maps, utils
-from .EM1DAnalytics import skin_depth, diffusion_distance
+from .analytics import skin_depth, diffusion_distance
 from .simulation import EM1DFMSimulation, EM1DTMSimulation
 from .survey import EM1DSurveyFD, EM1DSurveyTD
 

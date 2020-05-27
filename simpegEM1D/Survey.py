@@ -3,7 +3,7 @@ from SimPEG.survey import BaseSurvey
 import numpy as np
 import scipy.sparse as sp
 from scipy.constants import mu_0
-from .EM1DAnalytics import ColeCole
+from .analytics import ColeCole
 from .DigFilter import (
     transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
 )
