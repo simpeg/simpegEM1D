@@ -1,8 +1,10 @@
 from .simulation import BaseEM1DSimulation, EM1DFMSimulation, EM1DTMSimulation
 from .survey import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
-from .DigFilter import *
+from . import supporting_functions
 from .analytics import *
-from .RTEfun import rTEfunfwd, rTEfunjac
+from .sources import *
+from .receivers import *
+# from .RTEfun import rTEfunfwd, rTEfunjac
 from .Waveform import *
 from .Waveforms import (
     skytem_HM_2015, skytem_LM_2015,
@@ -18,7 +20,7 @@ from .KnownSystems import(
     tempest
 )
 from .Utils1D import *
-from .GlobalEM1D import (
+from .simulation_stitched1d import (
     GlobalEM1DSimulationFD, GlobalEM1DSurveyFD,
     GlobalEM1DSimulationTD, GlobalEM1DSurveyTD
 )

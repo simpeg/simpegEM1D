@@ -26,10 +26,38 @@ class BaseEM1DSurvey(BaseSurvey, properties.HasProperties):
 
     """
 
-    frequencies = properties.Array("Frequencies evaluated for forward simulation (Hz)", dtype=float)
+    frequency = properties.Array("Frequency (Hz)", dtype=float)
+
+    rx_location = properties.Array("Receiver location (x, y, z)", dtype=float)
+    src_location = properties.Array("Source location (x, y, z)", dtype=float)
+
+    src_path = properties.Array(
+        "Source path (xi, yi, zi), i=0,...N",
+        dtype=float
+    )
+
+    src_type = properties.StringChoice(
+        "Source type",
+        default="VMD",
+        choices=[
+            "VMD", "CircularLoop", "piecewise_segment"
+        ]
+    )
     offset = properties.Array("Src-Rx offsets", dtype=float)
+    rx_type = properties.StringChoice(
+        "Source location",
+        default="Hz",
+        choices=["Hz", "ppm", "Bz", "dBzdt"]
+    )
+    field_type = properties.StringChoice(
+        "Field type",
+        default="secondary",
+        choices=["total", "secondary"]
+    )
     depth = properties.Array("Depth of the layers", dtype=float)
     topo = properties.Array("Topography (x, y, z)", dtype=float)
+    I = properties.Float("Src loop current", default=1.)
+    a = properties.Float("Src loop radius", default=1.)
     half_switch = properties.Bool("Switch for half-space", default=False)
 
     def __init__(self, **kwargs):

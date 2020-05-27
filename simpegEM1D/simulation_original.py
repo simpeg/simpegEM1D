@@ -2,21 +2,19 @@ from SimPEG import maps, utils, props
 from SimPEG.simulation import BaseSimulation
 import numpy as np
 from .survey import BaseEM1DSurvey
+from .supporting_functions.kernels import *
 from scipy.constants import mu_0
-from .RTEfun_vec import rTEfunfwd, rTEfunjac
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
+import properties
 
 from empymod import filters
-from empymod.transform import dlf, get_dlf_points
+from empymod.transform import dlf, fourier_dlf, get_dlf_points
 from empymod.utils import check_hankel
 
-try:
-    from simpegEM1D.m_rTE_Fortran import rte_fortran
-except ImportError as e:
-    rte_fortran = None
 
 
-class EM1D(BaseSimulation):
+
+class BaseEM1DSimulation(BaseSimulation):
     """
     Pseudo analytic solutions for frequency and time domain EM problems
     assumingLayered earth (1D).
@@ -35,6 +33,12 @@ class EM1D(BaseSimulation):
     sigma, sigmaMap, sigmaDeriv = props.Invertible(
         "Electrical conductivity at infinite frequency(S/m)"
     )
+
+    rho, rhoMap, rhoDeriv = props.Invertible(
+        "Electrical resistivity (Ohm m)"
+    )
+
+    props.Reciprocal(sigma, rho)
 
     chi = props.PhysicalProperty(
         "Magnetic susceptibility",
@@ -60,6 +64,10 @@ class EM1D(BaseSimulation):
         "Receiver Height (m), h > 0",
     )
 
+    survey = properties.Instance(
+        "a survey object", BaseEM1DSurvey, required=True
+    )
+
     def __init__(self, mesh, **kwargs):
         BaseSimulation.__init__(self, mesh, **kwargs)
 
@@ -82,196 +90,6 @@ class EM1D(BaseSimulation):
 
         # if self.hankel_pts_per_dec != 0:
         #     raise NotImplementedError()
-
-    def hz_kernel_vertical_magnetic_dipole(
-        self, lamda, f, n_layer, sig, chi, depth, h, z,
-        flag, I, output_type='response'
-    ):
-
-        """
-            Kernel for vertical magnetic component (Hz) due to
-            vertical magnetic diopole (VMD) source in (kx,ky) domain
-
-        """
-        u0 = lamda
-        coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
-
-        n_frequency = self.survey.n_frequency
-        n_layer = self.survey.n_layer
-        n_filter = self.n_filter
-
-        if output_type == 'sensitivity_sigma':
-            drTE = np.zeros(
-                [n_layer, n_frequency, n_filter],
-                dtype=np.complex128, order='F'
-            )
-            if rte_fortran is None:
-                drTE = rTEfunjac(
-                    n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-                )
-            else:
-                rte_fortran.rte_sensitivity(
-                    f, lamda, sig, chi, depth, self.survey.half_switch, drTE,
-                    n_layer, n_frequency, n_filter
-                    )
-
-            kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
-        else:
-            rTE = np.empty(
-                [n_frequency, n_filter], dtype=np.complex128, order='F'
-            )
-            if rte_fortran is None:
-                    rTE = rTEfunfwd(
-                        n_layer, f, lamda, sig, chi, depth,
-                        self.survey.half_switch
-                    )
-            else:
-                rte_fortran.rte_forward(
-                    f, lamda, sig, chi, depth, self.survey.half_switch,
-                    rTE, n_layer, n_frequency, n_filter
-                )
-
-            kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
-            if output_type == 'sensitivity_height':
-                kernel *= -2*u0
-
-        return kernel * I
-
-        # Note
-        # Here only computes secondary field.
-        # I am not sure why it does not work if we add primary term.
-        # This term can be analytically evaluated, where h = 0.
-        #     kernel = (
-        #         1./(4*np.pi) *
-        #         (np.exp(u0*(z-h))+rTE * np.exp(-u0*(z+h)))*lamda**3/u0
-        #     )
-
-    # TODO: make this to take a vector rather than a single frequency
-    def hz_kernel_circular_loop(
-        self, lamda, f, n_layer, sig, chi, depth, h, z, I, a,
-        flag,  output_type='response'
-    ):
-
-        """
-
-        Kernel for vertical magnetic component (Hz) at the center
-        due to circular loop source in (kx,ky) domain
-
-        .. math::
-
-            H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} +
-            \\r_{TE}e^{u_0|z-h|}]
-            \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
-
-        """
-
-        n_frequency = self.survey.n_frequency
-        n_layer = self.survey.n_layer
-        n_filter = self.n_filter
-
-        w = 2*np.pi*f
-        u0 = lamda
-        radius = np.empty([n_frequency, n_filter], order='F')
-        radius[:, :] = np.tile(a.reshape([-1, 1]), (1, n_filter))
-
-        coefficient_wavenumber = I*radius*0.5*lamda**2/u0
-
-        if output_type == 'sensitivity_sigma':
-            drTE = np.empty(
-                [n_layer, n_frequency, n_filter],
-                dtype=np.complex128, order='F'
-            )
-            if rte_fortran is None:
-                    drTE[:, :] = rTEfunjac(
-                        n_layer, f, lamda, sig, chi, depth,
-                        self.survey.half_switch
-                    )
-            else:
-                rte_fortran.rte_sensitivity(
-                    f, lamda, sig, chi, depth, self.survey.half_switch,
-                    drTE, n_layer, n_frequency, n_filter
-                )
-
-            kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
-        else:
-            rTE = np.empty(
-                [n_frequency, n_filter], dtype=np.complex128, order='F'
-            )
-            if rte_fortran is None:
-                rTE[:, :] = rTEfunfwd(
-                    n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-                )
-            else:
-                rte_fortran.rte_forward(
-                    f, lamda, sig, chi, depth, self.survey.half_switch,
-                    rTE, n_layer, n_frequency, n_filter
-                )
-
-            if flag == 'secondary':
-                kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
-            else:
-                kernel = rTE * (
-                    np.exp(-u0*(z+h)) + np.exp(u0*(z-h))
-                ) * coefficient_wavenumber
-
-            if output_type == 'sensitivity_height':
-                kernel *= -2*u0
-
-        return kernel
-
-    def hz_kernel_horizontal_electric_dipole(
-        self, lamda, f, n_layer, sig, chi, depth, h, z,
-        flag, output_type='response'
-    ):
-
-        """
-            Kernel for vertical magnetic field (Hz) due to
-            horizontal electric diopole (HED) source in (kx,ky) domain
-
-        """
-        n_frequency = self.survey.n_frequency
-        n_layer = self.survey.n_layer
-        n_filter = self.n_filter
-
-        u0 = lamda
-        coefficient_wavenumber = 1/(4*np.pi)*lamda**2/u0
-
-        if output_type == 'sensitivity_sigma':
-            drTE = np.zeros(
-                [n_layer, n_frequency, n_filter], dtype=np.complex128,
-                order='F'
-            )
-            if rte_fortran is None:
-                drTE = rTEfunjac(
-                    n_layer, f, lamda, sig, chi, depth, self.survey.half_switch
-                )
-            else:
-                rte_fortran.rte_sensitivity(
-                    f, lamda, sig, chi, depth, self.survey.half_switch,
-                    drTE, n_layer, n_frequency, n_filter
-                )
-
-            kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
-        else:
-            rTE = np.empty(
-                [n_frequency, n_filter], dtype=np.complex128, order='F'
-            )
-            if rte_fortran is None:
-                rTE = rTEfunfwd(
-                        n_layer, f, lamda, sig, chi, depth,
-                        self.survey.half_switch
-                )
-            else:
-                rte_fortran.rte_forward(
-                    f, lamda, sig, chi, depth, self.survey.half_switch,
-                    rTE, n_layer, n_frequency, n_filter
-                )
-
-            kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
-            if output_type == 'sensitivity_height':
-                kernel *= -2*u0
-
-        return kernel
 
     # make it as a property?
 
@@ -389,8 +207,8 @@ class EM1D(BaseSimulation):
         if output_type == 'response':
             # for simulation
             if self.survey.src_type == 'VMD':
-                hz = self.hz_kernel_vertical_magnetic_dipole(
-                    lambd, f, n_layer,
+                hz = hz_kernel_vertical_magnetic_dipole(
+                    self, lambd, f, n_layer,
                     sig, chi, depth, h, z,
                     flag, I, output_type=output_type
                 )
@@ -400,8 +218,8 @@ class EM1D(BaseSimulation):
                 PJ = (hz, None, None)  # PJ0
 
             elif self.survey.src_type == 'CircularLoop':
-                hz = self.hz_kernel_circular_loop(
-                    lambd, f, n_layer,
+                hz = hz_kernel_circular_loop(
+                    self, lambd, f, n_layer,
                     sig, chi, depth, h, z, I, r,
                     flag, output_type=output_type
                 )
@@ -413,8 +231,8 @@ class EM1D(BaseSimulation):
             # TODO: This has not implemented yet!
             elif self.survey.src_type == "piecewise_line":
                 # Need to compute y
-                hz = self.hz_kernel_horizontal_electric_dipole(
-                    lambd, f, n_layer,
+                hz = hz_kernel_horizontal_electric_dipole(
+                    self, lambd, f, n_layer,
                     sig, chi, depth, h, z, I, r,
                     flag, output_type=output_type
                 )
@@ -429,8 +247,8 @@ class EM1D(BaseSimulation):
 
             # for simulation
             if self.survey.src_type == 'VMD':
-                hz = self.hz_kernel_vertical_magnetic_dipole(
-                    lambd, f, n_layer,
+                hz = hz_kernel_vertical_magnetic_dipole(
+                    self, lambd, f, n_layer,
                     sig, chi, depth, h, z,
                     flag, I, output_type=output_type
                 )
@@ -439,8 +257,8 @@ class EM1D(BaseSimulation):
 
             elif self.survey.src_type == 'CircularLoop':
 
-                hz = self.hz_kernel_circular_loop(
-                    lambd, f, n_layer,
+                hz = hz_kernel_circular_loop(
+                    self, lambd, f, n_layer,
                     sig, chi, depth, h, z, I, r,
                     flag, output_type=output_type
                 )
@@ -456,8 +274,8 @@ class EM1D(BaseSimulation):
 
             # for simulation
             if self.survey.src_type == 'VMD':
-                hz = self.hz_kernel_vertical_magnetic_dipole(
-                    lambd, f, n_layer,
+                hz = hz_kernel_vertical_magnetic_dipole(
+                    self, lambd, f, n_layer,
                     sig, chi, depth, h, z,
                     flag, I, output_type=output_type
                 )
@@ -466,8 +284,8 @@ class EM1D(BaseSimulation):
 
             elif self.survey.src_type == 'CircularLoop':
 
-                hz = self.hz_kernel_circular_loop(
-                    lambd, f, n_layer,
+                hz = hz_kernel_circular_loop(
+                    self, lambd, f, n_layer,
                     sig, chi, depth, h, z, I, r,
                     flag, output_type=output_type
                 )
@@ -495,7 +313,7 @@ class EM1D(BaseSimulation):
     # @profile
     def fields(self, m):
         f = self.forward(m, output_type='response')
-        self.survey._pred = utils.mkvc(self.survey.projectFields(f))
+        # self.survey._pred = utils.mkvc(self.survey.projectFields(f))
         return f
 
     def getJ_height(self, m, f=None):
@@ -515,7 +333,7 @@ class EM1D(BaseSimulation):
             dudz = self.forward(m, output_type="sensitivity_height")
 
             self._Jmatrix_height = (
-                self.survey.projectFields(dudz)
+                self.projectFields(dudz)
             ).reshape([-1, 1])
 
             return self._Jmatrix_height
@@ -535,7 +353,7 @@ class EM1D(BaseSimulation):
 
             dudsig = self.forward(m, output_type="sensitivity_sigma")
 
-            self._Jmatrix_sigma = self.survey.projectFields(dudsig)
+            self._Jmatrix_sigma = self.projectFields(dudsig)
             if self._Jmatrix_sigma.ndim == 1:
                 self._Jmatrix_sigma = self._Jmatrix_sigma.reshape([-1, 1])
             return self._Jmatrix_sigma
@@ -600,6 +418,226 @@ class EM1D(BaseSimulation):
         J = self.getJ(self.model)
         JtJdiag = (np.power((utils.sdiag(1./uncert)*J), 2)).sum(axis=0)
         return JtJdiag
+
+
+    def dpred(self, m, f=None):
+        """
+            Computes predicted data.
+            Here we do not store predicted data
+            because projection (`d = P(f)`) is cheap.
+        """
+
+        if f is None:
+            f = self.fields(m)
+        return utils.mkvc(self.projectFields(f))
+
+
+
+class EM1DFMSimulation(BaseEM1DSimulation):
+
+    def __init__(self, mesh, **kwargs):
+        BaseEM1DSimulation.__init__(self, mesh, **kwargs)
+
+
+    @property
+    def hz_primary(self):
+        # Assumes HCP only at the moment
+        if self.survey.src_type == 'VMD':
+            return -1./(4*np.pi*self.survey.offset**3)
+        elif self.survey.src_type == 'CircularLoop':
+            return self.I/(2*self.survey.a) * np.ones_like(self.survey.frequency)
+        else:
+            raise NotImplementedError()
+
+    
+    def projectFields(self, u):
+        """
+            Decompose frequency domain EM responses as real and imaginary
+            components
+        """
+
+        ureal = (u.real).copy()
+        uimag = (u.imag).copy()
+
+        if self.survey.rx_type == 'Hz':
+            factor = 1.
+        elif self.survey.rx_type == 'ppm':
+            factor = 1./self.hz_primary * 1e6
+
+        if self.survey.switch_real_imag == 'all':
+            ureal = (u.real).copy()
+            uimag = (u.imag).copy()
+            if ureal.ndim == 1 or 0:
+                resp = np.r_[ureal*factor, uimag*factor]
+            elif ureal.ndim == 2:
+                if np.isscalar(factor):
+                    resp = np.vstack(
+                            (factor*ureal, factor*uimag)
+                    )
+                else:
+                    resp = np.vstack(
+                        (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
+                    )
+            else:
+                raise NotImplementedError()
+        elif self.survey.switch_real_imag == 'real':
+            resp = (u.real).copy()
+        elif self.survey.switch_real_imag == 'imag':
+            resp = (u.imag).copy()
+        else:
+            raise NotImplementedError()
+
+        return resp
+
+
+
+
+
+
+class EM1DTMSimulation(BaseEM1DSimulation):
+
+
+
+
+
+    def __init__(self, mesh, **kwargs):
+        BaseEM1DSimulation.__init__(self, mesh, **kwargs)
+
+
+    def projectFields(self, u):
+        """
+            Transform frequency domain responses to time domain responses
+        """
+        # Compute frequency domain reponses right at filter coefficient values
+        # Src waveform: Step-off
+
+        if self.survey.use_lowpass_filter:
+            factor = self.survey.lowpass_filter.copy()
+        else:
+            factor = np.ones_like(self.survey.frequency, dtype=complex)
+
+        if self.survey.rx_type == 'Bz':
+            factor *= 1./(2j*np.pi*self.survey.frequency)
+
+        if self.survey.wave_type == 'stepoff':
+            # Compute EM responses
+            if u.size == self.survey.n_frequency:
+                resp, _ = fourier_dlf(
+                    u.flatten()*factor, self.survey.time,
+                    self.survey.frequency, self.survey.ftarg
+                )
+            # Compute EM sensitivities
+            else:
+                resp = np.zeros(
+                    (self.survey.n_time, self.survey.n_layer), dtype=np.float64, order='F')
+                # )
+                # TODO: remove for loop
+                for i in range(self.survey.n_layer):
+                    resp_i, _ = fourier_dlf(
+                        u[:, i]*factor, self.survey.time,
+                        self.survey.frequency, self.survey.ftarg
+                    )
+                    resp[:, i] = resp_i
+
+        # Evaluate piecewise linear input current waveforms
+        # Using Fittermann's approach (19XX) with Gaussian Quadrature
+        elif self.survey.wave_type == 'general':
+            # Compute EM responses
+            if u.size == self.survey.n_frequency:
+                resp_int, _ = fourier_dlf(
+                    u.flatten()*factor, self.survey.time_int,
+                    self.survey.frequency, self.survey.ftarg
+                )
+                # step_func = interp1d(
+                #     self.time_int, resp_int
+                # )
+                step_func = iuSpline(
+                    np.log10(self.survey.time_int), resp_int
+                )
+
+                resp = piecewise_pulse_fast(
+                    step_func, self.survey.time,
+                    self.survey.time_input_currents,
+                    self.survey.input_currents,
+                    self.survey.period,
+                    n_pulse=self.survey.n_pulse
+                )
+
+                # Compute response for the dual moment
+                if self.survey.moment_type == "dual":
+                    resp_dual_moment = piecewise_pulse_fast(
+                        step_func, self.survey.time_dual_moment,
+                        self.survey.time_input_currents_dual_moment,
+                        self.survey.input_currents_dual_moment,
+                        self.survey.period_dual_moment,
+                        n_pulse=self.survey.n_pulse
+                    )
+                    # concatenate dual moment response
+                    # so, ordering is the first moment data
+                    # then the second moment data.
+                    resp = np.r_[resp, resp_dual_moment]
+
+            # Compute EM sensitivities
+            else:
+                if self.survey.moment_type == "single":
+                    resp = np.zeros(
+                        (self.survey.n_time, self.survey.n_layer),
+                        dtype=np.float64, order='F'
+                    )
+                else:
+                    # For dual moment
+                    resp = np.zeros(
+                        (self.survey.n_time+self.survey.n_time_dual_moment, self.survey.n_layer),
+                        dtype=np.float64, order='F')
+
+                # TODO: remove for loop (?)
+                for i in range(self.survey.n_layer):
+                    resp_int_i, _ = fourier_dlf(
+                        u[:, i]*factor, self.survey.time_int,
+                        self.survey.frequency, self.survey.ftarg
+                    )
+                    # step_func = interp1d(
+                    #     self.time_int, resp_int_i
+                    # )
+
+                    step_func = iuSpline(
+                        np.log10(self.survey.time_int), resp_int_i
+                    )
+
+                    resp_i = piecewise_pulse_fast(
+                        step_func, self.survey.time,
+                        self.survey.time_input_currents, self.survey.input_currents,
+                        self.survey.period, n_pulse=self.survey.n_pulse
+                    )
+
+                    if self.survey.moment_type == "single":
+                        resp[:, i] = resp_i
+                    else:
+                        resp_dual_moment_i = piecewise_pulse_fast(
+                            step_func,
+                            self.survey.time_dual_moment,
+                            self.survey.time_input_currents_dual_moment,
+                            self.survey.input_currents_dual_moment,
+                            self.survey.period_dual_moment,
+                            n_pulse=self.survey.n_pulse
+                        )
+                        resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
+        return resp * (-2.0/np.pi) * mu_0
+
+
+    # def dpred(self, m, f=None):
+    #     """
+    #         Computes predicted data.
+    #         Predicted data (`_pred`) are computed and stored
+    #         when self.prob.fields(m) is called.
+    #     """
+    #     if f is None:
+    #         f = self.fields(m)
+
+    #     return f
+
+
+
 
 if __name__ == '__main__':
     main()

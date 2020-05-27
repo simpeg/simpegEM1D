@@ -3,7 +3,7 @@ from SimPEG import utils
 from scipy.constants import mu_0, pi
 from scipy.special import erf
 import matplotlib.pyplot as plt
-from .DigFilter import transFiltImpulse, transFilt, setFrequency
+from .supporting_functions.digital_filter import transFiltImpulse, transFilt, setFrequency
 
 
 def Hzanal(sig, f, r, flag):

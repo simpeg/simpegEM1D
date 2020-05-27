@@ -2,7 +2,7 @@ from SimPEG import maps, utils, props
 from SimPEG.simulation import BaseSimulation
 import numpy as np
 from .survey import BaseEM1DSurvey
-from .kernels import *
+from .supporting_functions.kernels import *
 from scipy.constants import mu_0
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 import properties
