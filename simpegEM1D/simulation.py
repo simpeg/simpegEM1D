@@ -1,6 +1,7 @@
 from SimPEG import maps, utils, props
 from SimPEG.simulation import BaseSimulation
 import numpy as np
+from .sources import *
 from .survey import BaseEM1DSurvey
 from .supporting_functions.kernels import *
 from scipy.constants import mu_0
@@ -68,6 +69,12 @@ class BaseEM1DSimulation(BaseSimulation):
         "a survey object", BaseEM1DSurvey, required=True
     )
 
+    topo = properties.Array("Topography (x, y, z)", dtype=float)
+
+    half_switch = properties.Bool("Switch for half-space", default=False)
+
+    depth = properties.Array("Depth of the layers", dtype=float)
+
     def __init__(self, mesh, **kwargs):
         BaseSimulation.__init__(self, mesh, **kwargs)
 
@@ -91,9 +98,36 @@ class BaseEM1DSimulation(BaseSimulation):
         # if self.hankel_pts_per_dec != 0:
         #     raise NotImplementedError()
 
-    # make it as a property?
+    @property
+    def h(self):
+        """
+            Source height
+        """
 
-    def sigma_cole(self):
+        if self._h is not None:
+            return self._h
+
+        else:
+            if self.survey.source_list is not None:
+                # Could include topography here too
+                self._h = np.array([src.location[2] for src in self.source_list])
+                return self._h
+
+            else:
+                return
+
+
+    @property
+    def n_layer(self):
+        """
+            number of layers
+        """
+        if self.half_switch is False:
+            return self.depth.size
+        elif self.half_switch is True:
+            return int(1)
+
+    def sigma_cole(self, frequencies):
         """
         Computes Pelton's Cole-Cole conductivity model
         in frequency domain.
@@ -113,10 +147,9 @@ class BaseEM1DSimulation(BaseSimulation):
             Cole-Cole conductivity values at given frequencies
 
         """
-        n_layer = self.survey.n_layer
-        n_frequency = self.survey.n_frequency
+        n_layer = self.n_layer
+        n_frequency = len(frequencies)
         n_filter = self.n_filter
-        f = self.survey.frequency
 
         sigma = np.tile(self.sigma.reshape([-1, 1]), (1, n_frequency))
         if np.isscalar(self.eta):
@@ -129,7 +162,7 @@ class BaseEM1DSimulation(BaseSimulation):
             c = np.tile(self.c.reshape([-1, 1]), (1, n_frequency))
 
         w = np.tile(
-            2*np.pi*f,
+            2*np.pi*frequencies,
             (n_layer, 1)
         )
 
@@ -155,165 +188,210 @@ class BaseEM1DSimulation(BaseSimulation):
         """ Length of filter """
         return self.fhtfilt.base.size
 
-    def forward(self, m, output_type='response'):
+    def compute_integral(self, m, output_type='response'):
         """
-            Return Bz or dBzdt
+            
         """
 
+        # Physical Properties
         self.model = m
 
-        n_frequency = self.survey.n_frequency
-        flag = self.survey.field_type
-        n_layer = self.survey.n_layer
-        depth = self.survey.depth
-        I = self.survey.I
-        n_filter = self.n_filter
-
-        # Get lambd and offset, will depend on pts_per_dec
-        if self.survey.src_type == "VMD":
-            r = self.survey.offset
-        else:
-            # a is the radius of the loop
-            r = self.survey.a * np.ones(n_frequency)
-
-        # Use function from empymod
-        # size of lambd is (n_frequency x n_filter)
-        lambd = np.empty([self.survey.frequency.size, n_filter], order='F')
-        lambd[:, :], _ = get_dlf_points(
-            self.fhtfilt, r, self.hankel_pts_per_dec
-        )
-
-        # TODO: potentially store
-        f = np.empty([self.survey.frequency.size, n_filter], order='F')
-        f[:, :] = np.tile(
-            self.survey.frequency.reshape([-1, 1]), (1, n_filter)
-        )
-        # h is an inversion parameter
-        if self.hMap is not None:
-            h = self.h
-        else:
-            h = self.survey.h
-
-        z = h + self.survey.dz
-
         chi = self.chi
-
         if np.isscalar(self.chi):
             chi = np.ones_like(self.sigma) * self.chi
 
-        # TODO: potentially store
-        sig = self.sigma_cole()
+        n_layer = self.n_layer
+        depth = self.depth
 
-        if output_type == 'response':
-            # for simulation
-            if self.survey.src_type == 'VMD':
-                hz = hz_kernel_vertical_magnetic_dipole(
-                    self, lambd, f, n_layer,
-                    sig, chi, depth, h, z,
-                    flag, I, output_type=output_type
-                )
 
-                # kernels for each bessel function
-                # (j0, j1, j2)
-                PJ = (hz, None, None)  # PJ0
-
-            elif self.survey.src_type == 'CircularLoop':
-                hz = hz_kernel_circular_loop(
-                    self, lambd, f, n_layer,
-                    sig, chi, depth, h, z, I, r,
-                    flag, output_type=output_type
-                )
-
-                # kernels for each bessel function
-                # (j0, j1, j2)
-                PJ = (None, hz, None)  # PJ1
-
-            # TODO: This has not implemented yet!
-            elif self.survey.src_type == "piecewise_line":
-                # Need to compute y
-                hz = hz_kernel_horizontal_electric_dipole(
-                    self, lambd, f, n_layer,
-                    sig, chi, depth, h, z, I, r,
-                    flag, output_type=output_type
-                )
-                # kernels for each bessel function
-                # (j0, j1, j2)
-                PJ = (None, hz, None)  # PJ1
-
+        # Source heights
+        if self.hMap is not None:
+            h_vector = self.h
+        else:
+            if self.topo is None:
+                h_vector = np.array([src.location[2] for src in self.survey.source_list])
             else:
-                raise Exception("Src options are only VMD or CircularLoop!!")
+                h_vector = np.array([src.location[2]-self.topo[0] for src in self.survey.source_list])
 
-        elif output_type == 'sensitivity_sigma':
 
-            # for simulation
-            if self.survey.src_type == 'VMD':
-                hz = hz_kernel_vertical_magnetic_dipole(
-                    self, lambd, f, n_layer,
-                    sig, chi, depth, h, z,
-                    flag, I, output_type=output_type
+
+        
+        n_filter = self.n_filter
+
+        f_full = []
+        
+        for ii, src in enumerate(self.survey.source_list):
+
+            # list of x,y,z offsets between sources and receivers
+            offset_list = src.offset_list
+            I = src.I
+
+            for jj, rx in enumerate(src.receiver_list):
+
+                n_frequency = len(rx.frequencies)
+                # TODO: potentially store
+                
+                f = np.empty([n_frequency, n_filter], order='F')
+                f[:, :] = np.tile(
+                    rx.frequencies.reshape([-1, 1]), (1, n_filter)
                 )
 
-                PJ = (hz, None, None)  # PJ0
+                # Create globally, not for each receiver
+                sig = self.sigma_cole(rx.frequencies)
 
-            elif self.survey.src_type == 'CircularLoop':
+                for kk in range(0, rx.nD):
 
-                hz = hz_kernel_circular_loop(
-                    self, lambd, f, n_layer,
-                    sig, chi, depth, h, z, I, r,
-                    flag, output_type=output_type
-                )
+                    if isinstance(src, HarmonicMagneticDipoleSource):
+                        r = np.sqrt(np.sum(offset_list[jj][kk, 0:2]**2)) * np.ones(n_frequency)
+                    else:
+                        # a is the radius of the loop
+                        r = src.a * np.ones(n_frequency)
 
-                PJ = (None, hz, None)  # PJ1
+                    # Use function from empymod
+                    # size of lambd is (n_frequency x n_filter)
+                    lambd = np.empty([n_frequency, n_filter], order='F')
+                    lambd[:, :], _ = get_dlf_points(
+                        self.fhtfilt, r, self.hankel_pts_per_dec
+                    )
 
-            else:
-                raise Exception("Src options are only VMD or CircularLoop!!")
+                    # Compute receiver height
+                    h = h_vector[ii]
+                    z = h + offset_list[jj][kk, 2]
 
-            r = np.tile(r, (n_layer, 1))
+                    flag = rx.field_type
+        
+                    if output_type == 'response':
+                        # for forward simulation
+                        if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+                            hz = hz_kernel_vertical_magnetic_dipole(
+                                self, lambd, f, n_layer,
+                                sig, chi, depth, h, z,
+                                flag, I, output_type=output_type
+                            )
 
-        elif output_type == 'sensitivity_height':
+                            # kernels for each bessel function
+                            # (j0, j1, j2)
+                            PJ = (hz, None, None)  # PJ0
 
-            # for simulation
-            if self.survey.src_type == 'VMD':
-                hz = hz_kernel_vertical_magnetic_dipole(
-                    self, lambd, f, n_layer,
-                    sig, chi, depth, h, z,
-                    flag, I, output_type=output_type
-                )
+                        elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
+                            hz = hz_kernel_circular_loop(
+                                self, lambd, f, n_layer,
+                                sig, chi, depth, h, z, I, r,
+                                flag, output_type=output_type
+                            )
 
-                PJ = (hz, None, None)  # PJ0
+                            # kernels for each bessel function
+                            # (j0, j1, j2)
+                            PJ = (None, hz, None)  # PJ1
 
-            elif self.survey.src_type == 'CircularLoop':
+                        # TODO: This has not implemented yet!
+                        elif isinstance(src, HarmonicLineSource) | isinstance(src, TimeDomainLineSource):
+                            # Need to compute y
+                            hz = hz_kernel_horizontal_electric_dipole(
+                                self, lambd, f, n_layer,
+                                sig, chi, depth, h, z, I, r,
+                                flag, output_type=output_type
+                            )
+                            # kernels for each bessel function
+                            # (j0, j1, j2)
+                            PJ = (None, hz, None)  # PJ1
 
-                hz = hz_kernel_circular_loop(
-                    self, lambd, f, n_layer,
-                    sig, chi, depth, h, z, I, r,
-                    flag, output_type=output_type
-                )
+                        else:
+                            raise Exception("Src options are only VMD or CircularLoop!!")
 
-                PJ = (None, hz, None)  # PJ1
+                    elif output_type == 'sensitivity_sigma':
 
-            else:
-                raise Exception("Src options are only VMD or CircularLoop!!")
+                        # for simulation
+                        if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+                            hz = hz_kernel_vertical_magnetic_dipole(
+                                self, lambd, f, n_layer,
+                                sig, chi, depth, h, z,
+                                flag, I, output_type=output_type
+                            )
 
-        # Carry out Hankel DLF
-        # ab=66 => 33 (vertical magnetic src and rec)
-        # For response
-        # HzFHT size = (n_frequency,)
-        # For sensitivity
-        # HzFHT size = (n_layer, n_frequency)
+                            PJ = (hz, None, None)  # PJ0
 
-        HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
-                    ang_fact=None, ab=33)
+                        elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
+                            
+                            hz = hz_kernel_circular_loop(
+                                self, lambd, f, n_layer,
+                                sig, chi, depth, h, z, I, r,
+                                flag, output_type=output_type
+                            )
 
-        if output_type == "sensitivity_sigma":
-            return HzFHT.T
+                            PJ = (None, hz, None)  # PJ1
 
-        return HzFHT
+                        else:
+                            raise Exception("Src options are only VMD or CircularLoop!!")
 
-    # @profile
+                        r = np.tile(r, (n_layer, 1))
+
+                    elif output_type == 'sensitivity_height':
+
+                        # for simulation
+                        if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+                            hz = hz_kernel_vertical_magnetic_dipole(
+                                self, lambd, f, n_layer,
+                                sig, chi, depth, h, z,
+                                flag, I, output_type=output_type
+                            )
+
+                            PJ = (hz, None, None)  # PJ0
+
+                        elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
+                            
+                            hz = hz_kernel_circular_loop(
+                                self, lambd, f, n_layer,
+                                sig, chi, depth, h, z, I, r,
+                                flag, output_type=output_type
+                            )
+
+                            PJ = (None, hz, None)  # PJ1
+
+                        else:
+                            raise Exception("Src options are only VMD or CircularLoop!!")
+
+                    # Carry out Hankel DLF
+                    # ab=66 => 33 (vertical magnetic src and rec)
+                    # For response
+                    # HzFHT size = (n_frequency,)
+                    # For sensitivity
+                    # HzFHT size = (n_layer, n_frequency)
+
+                    HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
+                                ang_fact=None, ab=33)
+
+                    if output_type == "sensitivity_sigma":
+                        return HzFHT.T
+
+                    return HzFHT
+
+
+
+
+
+
     def fields(self, m):
-        f = self.forward(m, output_type='response')
+        f = self.compute_integral(m, output_type='response')
         # self.survey._pred = utils.mkvc(self.survey.projectFields(f))
+        return f
+
+    def dpred(self, m, f=None):
+        """
+            Computes predicted data.
+            Here we do not store predicted data
+            because projection (`d = P(f)`) is cheap.
+        """
+
+        # if f is None:
+        #     f = self.fields(m)
+        # return utils.mkvc(self.projectFields(f))
+
+        if f is None:
+            if m is None:
+                m = self.model
+            f = self.fields(m)
+
         return f
 
     def getJ_height(self, m, f=None):
@@ -330,7 +408,7 @@ class BaseEM1DSimulation(BaseSimulation):
             if self.verbose:
                 print(">> Compute J height ")
 
-            dudz = self.forward(m, output_type="sensitivity_height")
+            dudz = self.compute_integral(m, output_type="sensitivity_height")
 
             self._Jmatrix_height = (
                 self.projectFields(dudz)
@@ -351,7 +429,7 @@ class BaseEM1DSimulation(BaseSimulation):
             if self.verbose:
                 print(">> Compute J sigma")
 
-            dudsig = self.forward(m, output_type="sensitivity_sigma")
+            dudsig = self.compute_integral(m, output_type="sensitivity_sigma")
 
             self._Jmatrix_sigma = self.projectFields(dudsig)
             if self._Jmatrix_sigma.ndim == 1:
@@ -420,16 +498,7 @@ class BaseEM1DSimulation(BaseSimulation):
         return JtJdiag
 
 
-    def dpred(self, m, f=None):
-        """
-            Computes predicted data.
-            Here we do not store predicted data
-            because projection (`d = P(f)`) is cheap.
-        """
-
-        if f is None:
-            f = self.fields(m)
-        return utils.mkvc(self.projectFields(f))
+    
 
 
 
@@ -449,6 +518,9 @@ class EM1DFMSimulation(BaseEM1DSimulation):
         else:
             raise NotImplementedError()
 
+
+
+
     
     def projectFields(self, u):
         """
@@ -456,38 +528,42 @@ class EM1DFMSimulation(BaseEM1DSimulation):
             components
         """
 
-        ureal = (u.real).copy()
-        uimag = (u.imag).copy()
+        
 
-        if self.survey.rx_type == 'Hz':
-            factor = 1.
-        elif self.survey.rx_type == 'ppm':
-            factor = 1./self.hz_primary * 1e6
 
-        if self.survey.switch_real_imag == 'all':
-            ureal = (u.real).copy()
-            uimag = (u.imag).copy()
-            if ureal.ndim == 1 or 0:
-                resp = np.r_[ureal*factor, uimag*factor]
-            elif ureal.ndim == 2:
-                if np.isscalar(factor):
-                    resp = np.vstack(
-                            (factor*ureal, factor*uimag)
-                    )
-                else:
-                    resp = np.vstack(
-                        (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
-                    )
-            else:
-                raise NotImplementedError()
-        elif self.survey.switch_real_imag == 'real':
-            resp = (u.real).copy()
-        elif self.survey.switch_real_imag == 'imag':
-            resp = (u.imag).copy()
-        else:
-            raise NotImplementedError()
 
-        return resp
+        # ureal = (u.real).copy()
+        # uimag = (u.imag).copy()
+
+        # if self.survey.rx_type == 'Hz':
+        #     factor = 1.
+        # elif self.survey.rx_type == 'ppm':
+        #     factor = 1./self.hz_primary * 1e6
+
+        # if self.survey.switch_real_imag == 'all':
+        #     ureal = (u.real).copy()
+        #     uimag = (u.imag).copy()
+        #     if ureal.ndim == 1 or 0:
+        #         resp = np.r_[ureal*factor, uimag*factor]
+        #     elif ureal.ndim == 2:
+        #         if np.isscalar(factor):
+        #             resp = np.vstack(
+        #                     (factor*ureal, factor*uimag)
+        #             )
+        #         else:
+        #             resp = np.vstack(
+        #                 (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
+        #             )
+        #     else:
+        #         raise NotImplementedError()
+        # elif self.survey.switch_real_imag == 'real':
+        #     resp = (u.real).copy()
+        # elif self.survey.switch_real_imag == 'imag':
+        #     resp = (u.imag).copy()
+        # else:
+        #     raise NotImplementedError()
+
+        # return resp
 
 
 
@@ -529,10 +605,10 @@ class EM1DTMSimulation(BaseEM1DSimulation):
             # Compute EM sensitivities
             else:
                 resp = np.zeros(
-                    (self.survey.n_time, self.survey.n_layer), dtype=np.float64, order='F')
+                    (self.survey.n_time, self.n_layer), dtype=np.float64, order='F')
                 # )
                 # TODO: remove for loop
-                for i in range(self.survey.n_layer):
+                for i in range(self.n_layer):
                     resp_i, _ = fourier_dlf(
                         u[:, i]*factor, self.survey.time,
                         self.survey.frequency, self.survey.ftarg

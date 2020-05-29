@@ -1,7 +1,7 @@
 from SimPEG import maps, utils, props
 from SimPEG.simulation import BaseSimulation
 import numpy as np
-from .survey import BaseEM1DSurvey
+from .survey_original import BaseEM1DSurvey
 from .supporting_functions.kernels import *
 from scipy.constants import mu_0
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
@@ -454,7 +454,7 @@ class EM1DFMSimulation(BaseEM1DSimulation):
         """
             Decompose frequency domain EM responses as real and imaginary
             components
-        """
+        """ 
 
         ureal = (u.real).copy()
         uimag = (u.imag).copy()

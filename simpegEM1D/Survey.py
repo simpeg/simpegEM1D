@@ -26,70 +26,39 @@ class BaseEM1DSurvey(BaseSurvey, properties.HasProperties):
 
     """
 
-    frequencies = properties.Array("Frequencies evaluated for forward simulation (Hz)", dtype=float)
-    offset = properties.Array("Src-Rx offsets", dtype=float)
     depth = properties.Array("Depth of the layers", dtype=float)
-    topo = properties.Array("Topography (x, y, z)", dtype=float)
+    # topo = properties.Array("Topography (x, y, z)", dtype=float)
     half_switch = properties.Bool("Switch for half-space", default=False)
 
-    def __init__(self, **kwargs):
-        BaseSurvey.__init__(self, **kwargs)
+    def __init__(self, source_list=None, **kwargs):
+        BaseSurvey.__init__(self, source_list, **kwargs)
 
-    @property
-    def h(self):
-        """
-            Source height
-        """
-        return self.src_location[2]-self.topo[2]
+    
 
-    @property
-    def z(self):
-        """
-            Receiver height
-        """
-        return self.rx_location[2]-self.topo[2]
+    # @property
+    # def n_frequency(self):
+    #     """
+    #         # of frequency
+    #     """
 
-    @property
-    def dz(self):
-        """
-            Source height - Rx height
-        """
-        return self.z - self.h
+    #     return int(self.frequency.size)
 
-    @property
-    def n_layer(self):
-        """
-            Srource height
-        """
-        if self.half_switch is False:
-            return self.depth.size
-        elif self.half_switch is True:
-            return int(1)
+    # @property
+    # def src_paths_on_x(self):
+    #     """
+    #         # of frequency
+    #     """
+    #     if getattr(self, '_src_paths_on_x', None) is None:
+    #         offset = np.unique(self.offset)
+    #         if offset.size != 1:
+    #             raise Exception(
+    #                 "For the sourth paths, only single offset works!"
+    #             )
+    #         xy_rot, xy_obs_rot, angle = rotate_to_x_axis(
+    #             np.flipud(xy), np.r_[offset, 0.]
+    #         )
 
-    @property
-    def n_frequency(self):
-        """
-            # of frequency
-        """
-
-        return int(self.frequency.size)
-
-    @property
-    def src_paths_on_x(self):
-        """
-            # of frequency
-        """
-        if getattr(self, '_src_paths_on_x', None) is None:
-            offset = np.unique(self.offset)
-            if offset.size != 1:
-                raise Exception(
-                    "For the sourth paths, only single offset works!"
-                )
-            xy_rot, xy_obs_rot, angle = rotate_to_x_axis(
-                np.flipud(xy), np.r_[offset, 0.]
-            )
-
-        return self._src_paths
+    #     return self._src_paths
 
     # @utils.requires('prob')
     # def dpred(self, m, f=None):
@@ -108,35 +77,28 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     """
         Freqency-domain EM1D survey
     """
-    # Nfreq = None
-    switch_real_imag = properties.StringChoice(
-        "Switch for real and imaginary part of the data",
-        default="all",
-        choices=["all", "real", "imag"]
-    )
 
-    def __init__(self, **kwargs):
-        BaseEM1DSurvey.__init__(self, **kwargs)
+    # switch_real_imag = properties.StringChoice(
+    #     "Switch for real and imaginary part of the data",
+    #     default="all",
+    #     choices=["all", "real", "imag"]
+    # )
 
-        if self.src_type == "VMD":
-            if self.offset is None:
-                raise Exception("offset is required!")
+    def __init__(self, source_list=None, **kwargs):
+        BaseEM1DSurvey.__init__(self, source_list, **kwargs)
 
-            if self.offset.size == 1:
-                self.offset = self.offset * np.ones(self.n_frequency)
+    # @property
+    # def nD(self):
+    #     """
+    #         # of data
+    #     """
 
-    @property
-    def nD(self):
-        """
-            # of data
-        """
-
-        if self.switch_real_imag == "all":
-            return int(self.frequency.size * 2)
-        elif (
-            self.switch_real_imag == "imag" or self.switch_real_imag == "real"
-        ):
-            return int(self.n_frequency)
+    #     if self.switch_real_imag == "all":
+    #         return int(self.frequency.size * 2)
+    #     elif (
+    #         self.switch_real_imag == "imag" or self.switch_real_imag == "real"
+    #     ):
+    #         return int(self.n_frequency)
 
     # @property
     # def hz_primary(self):
@@ -147,45 +109,6 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     #         return self.I/(2*self.a) * np.ones_like(self.frequency)
     #     else:
     #         raise NotImplementedError()
-
-    # def projectFields(self, u):
-    #     """
-    #         Decompose frequency domain EM responses as real and imaginary
-    #         components
-    #     """
-
-    #     ureal = (u.real).copy()
-    #     uimag = (u.imag).copy()
-
-    #     if self.rx_type == 'Hz':
-    #         factor = 1.
-    #     elif self.rx_type == 'ppm':
-    #         factor = 1./self.hz_primary * 1e6
-
-    #     if self.switch_real_imag == 'all':
-    #         ureal = (u.real).copy()
-    #         uimag = (u.imag).copy()
-    #         if ureal.ndim == 1 or 0:
-    #             resp = np.r_[ureal*factor, uimag*factor]
-    #         elif ureal.ndim == 2:
-    #             if np.isscalar(factor):
-    #                 resp = np.vstack(
-    #                         (factor*ureal, factor*uimag)
-    #                 )
-    #             else:
-    #                 resp = np.vstack(
-    #                     (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
-    #                 )
-    #         else:
-    #             raise NotImplementedError()
-    #     elif self.switch_real_imag == 'real':
-    #         resp = (u.real).copy()
-    #     elif self.switch_real_imag == 'imag':
-    #         resp = (u.imag).copy()
-    #     else:
-    #         raise NotImplementedError()
-
-    #     return resp
 
 
 class EM1DSurveyTD(BaseEM1DSurvey):

@@ -3,7 +3,9 @@ import properties
 from SimPEG.survey import BaseRx, BaseTimeRx
         
 
-class HarmonicPointReceiver(BaseRx)
+class HarmonicPointReceiver(BaseRx):
+
+    frequencies = properties.Array("Frequency (Hz)", dtype=float)
     
     orientation = properties.StringChoice(
         "Field orientation", default="z", choices=["z"]
@@ -22,9 +24,11 @@ class HarmonicPointReceiver(BaseRx)
         }
     )
 
-    def __init__(self, locations=None, orientation=None, field_type=None, component=None, **kwargs):
+    def __init__(self, locations=None, frequencies=None, orientation=None, field_type=None, component=None, **kwargs):
 
         super(HarmonicPointReceiver, self).__init__(locations, **kwargs)
+        if frequencies is not None:
+            self.frequencies = frequencies
         if orientation is not None:
             self.orientation = orientation
         if component is not None:
@@ -34,20 +38,16 @@ class HarmonicPointReceiver(BaseRx)
 
         
 
-class TDEMPointReceiver(BaseTimeRx):
+class TimeDomainPointReceiver(BaseTimeRx):
 
     orientation = properties.StringChoice(
         "Field orientation", default="z", choices=["z"]
     )
 
     component = properties.StringChoice(
-        "component of the field (h, b, dhdt, dbdt)", {
-            "h": ["h", "H"],
-            "b": ["b", "B"],
-            "dhdt": ["dhdt", "dHdt"],
-            "dbdt": ["dbdt", "dBdt"]
-        },
-        default="dbdt"
+        "component of the field (h, b, dhdt, dbdt)",
+        default="dbdt",
+        choices=["h", "b", "dhdt", "dbdt"]
     )
 
     def __init__(self, locations=None, times=None, orientation=None, component=None, **kwargs):

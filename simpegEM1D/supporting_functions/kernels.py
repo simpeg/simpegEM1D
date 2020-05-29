@@ -533,8 +533,7 @@ def hz_kernel_vertical_magnetic_dipole(
     u0 = lamda
     coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
 
-    n_frequency = simulation.survey.n_frequency
-    n_layer = simulation.survey.n_layer
+    n_frequency = len(f)
     n_filter = simulation.n_filter
 
     if output_type == 'sensitivity_sigma':
@@ -544,11 +543,11 @@ def hz_kernel_vertical_magnetic_dipole(
         )
         if rte_fortran is None:
             drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, depth, simulation.survey.half_switch
+                n_layer, f, lamda, sig, chi, depth, simulation.half_switch
             )
         else:
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.survey.half_switch, drTE,
+                f, lamda, sig, chi, depth, simulation.half_switch, drTE,
                 n_layer, n_frequency, n_filter
                 )
 
@@ -560,11 +559,11 @@ def hz_kernel_vertical_magnetic_dipole(
         if rte_fortran is None:
                 rTE = rTEfunfwd(
                     n_layer, f, lamda, sig, chi, depth,
-                    simulation.survey.half_switch
+                    simulation.half_switch
                 )
         else:
             rte_fortran.rte_forward(
-                f, lamda, sig, chi, depth, simulation.survey.half_switch,
+                f, lamda, sig, chi, depth, simulation.half_switch,
                 rTE, n_layer, n_frequency, n_filter
             )
 
@@ -602,8 +601,7 @@ def hz_kernel_circular_loop(
 
     """
 
-    n_frequency = simulation.survey.n_frequency
-    n_layer = simulation.survey.n_layer
+    n_frequency = len(f)
     n_filter = simulation.n_filter
 
     w = 2*np.pi*f
@@ -621,11 +619,11 @@ def hz_kernel_circular_loop(
         if rte_fortran is None:
                 drTE[:, :] = rTEfunjac(
                     n_layer, f, lamda, sig, chi, depth,
-                    simulation.survey.half_switch
+                    simulation.half_switch
                 )
         else:
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.survey.half_switch,
+                f, lamda, sig, chi, depth, simulation.half_switch,
                 drTE, n_layer, n_frequency, n_filter
             )
 
@@ -636,11 +634,11 @@ def hz_kernel_circular_loop(
         )
         if rte_fortran is None:
             rTE[:, :] = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, depth, simulation.survey.half_switch
+                n_layer, f, lamda, sig, chi, depth, simulation.half_switch
             )
         else:
             rte_fortran.rte_forward(
-                f, lamda, sig, chi, depth, simulation.survey.half_switch,
+                f, lamda, sig, chi, depth, simulation.half_switch,
                 rTE, n_layer, n_frequency, n_filter
             )
 
@@ -666,8 +664,7 @@ def hz_kernel_horizontal_electric_dipole(
         horizontal electric diopole (HED) source in (kx,ky) domain
 
     """
-    n_frequency = simulation.survey.n_frequency
-    n_layer = simulation.survey.n_layer
+    n_frequency = len(f)
     n_filter = simulation.n_filter
 
     u0 = lamda
@@ -680,11 +677,11 @@ def hz_kernel_horizontal_electric_dipole(
         )
         if rte_fortran is None:
             drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, depth, simulation.survey.half_switch
+                n_layer, f, lamda, sig, chi, depth, simulation.half_switch
             )
         else:
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.survey.half_switch,
+                f, lamda, sig, chi, depth, simulation.half_switch,
                 drTE, n_layer, n_frequency, n_filter
             )
 
@@ -696,11 +693,11 @@ def hz_kernel_horizontal_electric_dipole(
         if rte_fortran is None:
             rTE = rTEfunfwd(
                     n_layer, f, lamda, sig, chi, depth,
-                    simulation.survey.half_switch
+                    simulation.half_switch
             )
         else:
             rte_fortran.rte_forward(
-                f, lamda, sig, chi, depth, simulation.survey.half_switch,
+                f, lamda, sig, chi, depth, simulation.half_switch,
                 rTE, n_layer, n_frequency, n_filter
             )
 

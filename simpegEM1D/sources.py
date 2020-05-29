@@ -1,59 +1,67 @@
 import numpy as np
-from SimPEG.survey import BaseSrc
+from SimPEG import survey
 import properties
+
+class BaseSrc(survey.BaseSrc):
+
+    _offset_list = properties.List("List containing offsets") # Contains the list of xyz offsets for each source-receiver pair
+
+    I = properties.Float("Source loop current", default=1.)
+
+    def __init__(self, receiver_list=None, **kwargs):
+        super(BaseSrc, self).__init__(receiver_list=receiver_list, **kwargs)
+
+    @property
+    def offset_list(self):
+        
+        if self._offset_list is not None:
+            return self._offset_list
+
+        else:
+            if self.receiver_list is not None:
+                temp = len(self.receiver_list)*[None]
+                src_loc = np.reshape(self.location, (1, 3))
+                for ii, rx in enumerate(self.receiver_list):
+                    temp[ii] = rx.locations - np.repeat(src_loc, rx.nD, axis=0)
+
+                self._offset_list = temp
+                return self._offset_list
+
+            else:
+                return
+    
+
 
 class HarmonicMagneticDipoleSource(BaseSrc):
     
-    frequency = properties.Array("Frequency (Hz)", dtype=float)
-    
-    I = properties.Float("Source loop current", default=1.)
-    
     orientation = properties.StringChoice(
-        "Dipole Orientation", default="Z", choices=["Z"]
+        "Dipole Orientation", default="z", choices=["z"]
     )
 
-    def __init__(self, receiver_list=None, frequency=None, **kwargs):
+    def __init__(self, receiver_list=None, **kwargs):
         super(HarmonicMagneticDipoleSource, self).__init__(receiver_list=receiver_list, **kwargs)
-        if frequency is not None:
-            self.frequency = frequency
 
 class HarmonicHorizontalLoopSource(BaseSrc):
-
-    frequency = properties.Array("Frequency (Hz)", dtype=float)
-    
-    I = properties.Float("Source loop current", default=1.)
     
     a = properties.Float("Source loop radius", default=1.)
 
-    def __init__(self, receiver_list=None, frequency=None, **kwargs):
+    def __init__(self, receiver_list=None, **kwargs):
         super(HarmonicHorizontalLoopSource, self).__init__(receiver_list=receiver_list, **kwargs)
-        if frequency is not None:
-            self.frequency = frequency
 
 
 class HarmonicLineSource(BaseSrc):
-
-    frequency = properties.Array("Frequency (Hz)", dtype=float)
-    
-    I = properties.Float("Source loop current", default=1.)
     
     src_path = properties.Array(
         "Source path (xi, yi, zi), i=0,...N",
         dtype=float
     )
 
-    def __init__(self, receiver_list=None, frequency=None, **kwargs):
+    def __init__(self, receiver_list=None, **kwargs):
         super(HarmonicLineSource, self).__init__(receiver_list=receiver_list, **kwargs)
-        if frequency is not None:
-            self.frequency = frequency
 
 
 class TimeDomainMagneticDipoleSource(BaseSrc):
 
-    time = properties.Array("Time channels (s) at current off-time", dtype=float)
-    
-    I = properties.Float("Source loop current", default=1.)
-    
     orientation = properties.StringChoice(
         "Dipole Orientation", default="z", choices=["z"]
     )
@@ -64,18 +72,12 @@ class TimeDomainMagneticDipoleSource(BaseSrc):
         choices=["stepoff", "general"]
     )
 
-    def __init__(self, receiver_list=None, time=None, **kwargs):
+    def __init__(self, receiver_list=None, **kwargs):
         super(TimeDomainMagneticDipoleSource, self).__init__(receiver_list=receiver_list, **kwargs)
-        if time is not None:
-            self.time = time
 
 
 class TimeDomainHorizontalLoopSource(BaseSrc):
 
-    time = properties.Array("Time channels (s) at current off-time", dtype=float)
-    
-    I = properties.Float("Source loop current", default=1.)
-    
     a = properties.Float("Source loop radius", default=1.)
     
     wave_type = properties.StringChoice(
@@ -84,16 +86,11 @@ class TimeDomainHorizontalLoopSource(BaseSrc):
         choices=["stepoff", "general"]
     )
 
-    def __init__(self, receiver_list=None, time=None, **kwargs):
+    def __init__(self, receiver_list=None, **kwargs):
         super(TimeDomainHorizontalLoopSource, self).__init__(receiver_list=receiver_list, **kwargs)
-        if time is not None:
-            self.time = time
+
 
 class TimeDomainLineSource(BaseSrc):
-
-    time = properties.Array("Time channels (s) at current off-time", dtype=float)
-    
-    I = properties.Float("Source loop current", default=1.)
     
     src_path = properties.Array(
         "Source path (xi, yi, zi), i=0,...N",
@@ -106,10 +103,8 @@ class TimeDomainLineSource(BaseSrc):
         choices=["stepoff", "general"]
     )
 
-    def __init__(self, receiver_list=None, time=None, **kwargs):
+    def __init__(self, receiver_list=None, **kwargs):
         super(TimeDomainLineSource, self).__init__(receiver_list=receiver_list, **kwargs)
-        if time is not None:
-            self.time = time
     
     
 

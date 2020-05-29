@@ -1,9 +1,12 @@
-from .simulation import BaseEM1DSimulation, EM1DFMSimulation, EM1DTMSimulation
-from .survey import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
+from .simulation_original import BaseEM1DSimulation, EM1DFMSimulation, EM1DTMSimulation
+from .survey_original import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
 from . import supporting_functions
 from .analytics import *
-from .sources import *
-from .receivers import *
+from .sources import (
+    HarmonicMagneticDipoleSource, HarmonicHorizontalLoopSource, HarmonicLineSource,
+    TimeDomainMagneticDipoleSource, TimeDomainHorizontalLoopSource, TimeDomainLineSource
+)
+from .receivers import HarmonicPointReceiver, TimeDomainPointReceiver
 # from .RTEfun import rTEfunfwd, rTEfunjac
 from .Waveform import *
 from .Waveforms import (
