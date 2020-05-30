@@ -76,7 +76,20 @@ class EM1DSurveyTD(BaseEM1DSurvey):
         self.fftfilt = filters.key_81_CosSin_2009()
 
 
+    @property
+    def nD(self):
+        """
+            # of data
 
+        """
+
+        nD = 0
+
+        for src in self.source_list:
+            for rx in src.receiver_list:
+                nD += len(rx.times)
+
+        return int(nD)
     
 
     @property
