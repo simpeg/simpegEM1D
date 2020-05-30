@@ -38,18 +38,20 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     def __init__(self, source_list=None, **kwargs):
         BaseEM1DSurvey.__init__(self, source_list, **kwargs)
 
-    # @property
-    # def nD(self):
-    #     """
-    #         # of data
-    #     """
+    @property
+    def nD(self):
+        """
+            # of data
 
-    #     if self.switch_real_imag == "all":
-    #         return int(self.frequency.size * 2)
-    #     elif (
-    #         self.switch_real_imag == "imag" or self.switch_real_imag == "real"
-    #     ):
-    #         return int(self.n_frequency)
+        """
+
+        nD = 0
+
+        for src in self.source_list:
+            for rx in src.receiver_list:
+                nD += len(rx.frequencies)
+
+        return int(nD)
 
     # @property
     # def hz_primary(self):

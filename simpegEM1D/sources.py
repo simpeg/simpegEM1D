@@ -45,12 +45,58 @@ class HarmonicMagneticDipoleSource(BaseSrc):
     def __init__(self, receiver_list=None, **kwargs):
         super(HarmonicMagneticDipoleSource, self).__init__(receiver_list=receiver_list, **kwargs)
 
+
+    def PrimaryField(self, xyz, orientation):
+
+        I = self.I
+        r0 = self.location
+
+        if self.orientation == "x":
+            m = np.r_[1., 0., 0.]
+        elif self.orientation == "y":
+            m = np.r_[0., 1., 0.]
+        elif self.orientation == "z":
+            m = np.r_[0., 0., 1.]
+
+        r = np.sqrt((xyz[0]-r0[0])**2 + (xyz[1]-r0[1])**2 + (xyz[2]-r0[2])**2)
+        mdotr = m[0]*(xyz[0]-r0[0]) + m[1]*(xyz[1]-r0[1]) + m[2]*(xyz[2]-r0[2])
+
+        if orientation == "x":
+            return (1/(4*np.pi))*(3*(xyz[0]-r0[0])*mdotr/r**5 - m[0]/r**3)
+        elif orientation == "y":
+            return (1/(4*np.pi))*(3*(xyz[1]-r0[1])*mdotr/r**5 - m[1]/r**3)
+        elif orientation == "z":
+            return (1/(4*np.pi))*(3*(xyz[2]-r0[2])*mdotr/r**5 - m[2]/r**3)
+
+
+
 class HarmonicHorizontalLoopSource(BaseSrc):
     
     a = properties.Float("Source loop radius", default=1.)
 
     def __init__(self, receiver_list=None, **kwargs):
         super(HarmonicHorizontalLoopSource, self).__init__(receiver_list=receiver_list, **kwargs)
+
+
+    def PrimaryField(self, xyz, orientation):
+
+        r0 = self.location
+        a = self.radius
+        I = self.Imax
+
+        x1 = np.c_[xyz[0]-r0[0], xyz[1]-r0[1], xyz[2]-r0[2]]
+        x2 = np.c_[xyz[0]-r0[0], xyz[1]-r0[1], xyz[2]-r0[2]]
+        x3 = np.c_[xyz[0]-r0[0], xyz[1]-r0[1], xyz[2]-r0[2]]
+
+        s = np.sqrt(x1**2 + x2**2) + 1e-10     # Radial distance
+        k = 4*a*s/(x3**2 + (a+s)**2)
+
+        if orientation == "x":
+            return (x1/s)*(x3*I/(2*np.pi*s*np.sqrt(x3**2 + (a + s)**2)))*(((a**2 + x3**2 + s**2)/(x3**2 + (s-a)**2))*spec.ellipe(k) - spec.ellipk(k))
+        elif orientation == "y":
+            return (x2/s)*(x3*I/(2*np.pi*s*np.sqrt(x3**2 + (a + s)**2)))*(((a**2 + x3**2 + s**2)/(x3**2 + (s-a)**2))*spec.ellipe(k) - spec.ellipk(k))
+        elif orientation == "z":
+            return (    I/(2*np.pi* np.sqrt(x3**2 + (a + s)**2)))*(((a**2 - x3**2 - s**2)/(x3**2 + (s-a)**2))*spec.ellipe(k) + spec.ellipk(k))
 
 
 class HarmonicLineSource(BaseSrc):

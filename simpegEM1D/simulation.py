@@ -6,6 +6,7 @@ from .survey import BaseEM1DSurvey, EM1DSurveyTD
 from .supporting_functions.kernels import *
 from scipy.constants import mu_0
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
+from scipy.linalg import block_diag
 import properties
 
 from empymod.utils import check_time
@@ -96,26 +97,21 @@ class BaseEM1DSimulation(BaseSimulation):
         if self.verbose:
             print(">> Use "+self.hankel_filter+" filter for Hankel Transform")
 
+        self.depth = -mesh.gridN[0:-1]
+
         # if self.hankel_pts_per_dec != 0:
         #     raise NotImplementedError()
 
-    @property
-    def h(self):
-        """
-            Source height
-        """
+    # @property
+    # def h(self):
+    #     """
+    #         Source height
+    #     """
 
-        if self._h is not None:
-            return self._h
+    #     if getattr(self, '_h', None) is None:
+    #         self._h = np.array([src.location[2] for src in self.survey.source_list])
 
-        else:
-            if self.survey.source_list is not None:
-                # Could include topography here too
-                self._h = np.array([src.location[2] for src in self.source_list])
-                return self._h
-
-            else:
-                return
+    #     return self._h
 
 
     @property
@@ -211,7 +207,6 @@ class BaseEM1DSimulation(BaseSimulation):
         n_layer = self.n_layer
         depth = self.depth
 
-
         # Source heights
         if self.hMap is not None:
             h_vector = self.h
@@ -220,7 +215,7 @@ class BaseEM1DSimulation(BaseSimulation):
                 h_vector = np.array([src.location[2] for src in self.survey.source_list])
             else:
                 h_vector = np.array([src.location[2]-self.topo[0] for src in self.survey.source_list])
-        
+
         n_filter = self.n_filter
 
         fields_list = []
@@ -374,7 +369,6 @@ class BaseEM1DSimulation(BaseSimulation):
 
     def fields(self, m):
         f = self.compute_integral(m, output_type='response')
-        print(np.shape(f))
         f = self.projectFields(f)
         return np.hstack(f)
 
@@ -411,11 +405,21 @@ class BaseEM1DSimulation(BaseSimulation):
                 print(">> Compute J height ")
 
             dudz = self.compute_integral(m, output_type="sensitivity_height")
+            dudz = self.projectFields(dudz)
 
-            self._Jmatrix_height = (
-                self.projectFields(dudz)
-            ).reshape([-1, 1])
-
+            if self.survey.nSrc == 1:
+                self._Jmatrix_height = np.hstack(dudz).reshape([-1, 1])
+            else:
+                COUNT = 0
+                dudz_by_source = []
+                for ii, src in enumerate(self.survey.source_list):
+                    temp = np.array([])
+                    for jj, rx in enumerate(src.receiver_list):
+                        temp = np.r_[temp, dudz[COUNT]]
+                        COUNT += 1
+                    dudz_by_source.append(temp.reshape([-1, 1]))
+                
+                self._Jmatrix_height= block_diag(*dudz_by_source)
             return self._Jmatrix_height
 
     # @profile
@@ -432,8 +436,10 @@ class BaseEM1DSimulation(BaseSimulation):
                 print(">> Compute J sigma")
 
             dudsig = self.compute_integral(m, output_type="sensitivity_sigma")
+            # print("SIGMA SENSITIVITIES LIST")
+            # print(np.shape(dudsig))
 
-            self._Jmatrix_sigma = self.projectFields(dudsig)
+            self._Jmatrix_sigma = np.vstack(self.projectFields(dudsig))
             if self._Jmatrix_sigma.ndim == 1:
                 self._Jmatrix_sigma = self._Jmatrix_sigma.reshape([-1, 1])
             return self._Jmatrix_sigma
@@ -509,20 +515,6 @@ class EM1DFMSimulation(BaseEM1DSimulation):
     def __init__(self, mesh, **kwargs):
         BaseEM1DSimulation.__init__(self, mesh, **kwargs)
 
-
-    @property
-    def hz_primary(self):
-        # Assumes HCP only at the moment
-        if self.survey.src_type == 'VMD':
-            return -1./(4*np.pi*self.survey.offset**3)
-        elif self.survey.src_type == 'CircularLoop':
-            return self.I/(2*self.survey.a) * np.ones_like(self.survey.frequency)
-        else:
-            raise NotImplementedError()
-
-
-
-
     
     def projectFields(self, u):
         """
@@ -543,8 +535,7 @@ class EM1DFMSimulation(BaseEM1DSimulation):
 
                 if rx.field_type != "secondary":
 
-                    # COMPUTE PRIMARY FIELD FOR TX-RX PAIR
-                    u_primary = 1
+                    u_primary = src.PrimaryField(rx.locations, rx.orientation)
 
                     if rx.field_type == "ppm":
                         u_temp = 1e6 * u_temp/u_primary
