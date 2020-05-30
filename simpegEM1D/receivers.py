@@ -5,7 +5,13 @@ from SimPEG.survey import BaseRx, BaseTimeRx
 
 class HarmonicPointReceiver(BaseRx):
 
-    frequencies = properties.Array("Frequency (Hz)", dtype=float)
+    locations = properties.Array(
+        "Receiver Location", dtype=float, shape=("*",), required=True
+    )
+
+    frequencies = properties.Array(
+        "Frequency (Hz)", dtype=float, shape=("*",), required=True
+    )
     
     orientation = properties.StringChoice(
         "Field orientation", default="z", choices=["z"]
@@ -40,6 +46,12 @@ class HarmonicPointReceiver(BaseRx):
 
 class TimeDomainPointReceiver(BaseTimeRx):
 
+    ftarg = None
+
+    locations = properties.Array(
+        "Receiver Location", dtype=float, shape=("*",), required=True
+    )
+
     orientation = properties.StringChoice(
         "Field orientation", default="z", choices=["z"]
     )
@@ -50,15 +62,40 @@ class TimeDomainPointReceiver(BaseTimeRx):
         choices=["h", "b", "dhdt", "dbdt"]
     )
 
+    frequencies = properties.Array(
+        "Frequency (Hz)", dtype=float, shape=("*",), required=True
+    )
+
+    time_interval = properties.Array(
+        "Full time interval", dtype=float, shape=("*",)
+    )
+
+
+
     def __init__(self, locations=None, times=None, orientation=None, component=None, **kwargs):
 
-        super(TDEMPointReceiver, self).__init__(locations, times, **kwargs)
+        super(TimeDomainPointReceiver, self).__init__(locations, times, **kwargs)
 
         if orientation is not None:
             self.orientation = orientation
         if component is not None:
             self.component = component
 
+        # Required static property
+        self.field_type = "secondary"
 
+
+
+    @property
+    def n_time(self):
+        return int(self.times.size)
+
+    @property
+    def n_frequency(self):
+        """
+            # of frequency
+        """
+
+        return int(self.frequencies.size)
 
 

@@ -2,12 +2,13 @@ from SimPEG import maps, utils, props
 from SimPEG.simulation import BaseSimulation
 import numpy as np
 from .sources import *
-from .survey import BaseEM1DSurvey
+from .survey import BaseEM1DSurvey, EM1DSurveyTD
 from .supporting_functions.kernels import *
 from scipy.constants import mu_0
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 import properties
 
+from empymod.utils import check_time
 from empymod import filters
 from empymod.transform import dlf, fourier_dlf, get_dlf_points
 from empymod.utils import check_hankel
@@ -193,6 +194,13 @@ class BaseEM1DSimulation(BaseSimulation):
             
         """
 
+        
+        # Set evaluation frequencies for time domain
+        if isinstance(self.survey, EM1DSurveyTD):
+            # self.set_time_intervals()  # SOMETHING IS UP WITH THIS
+            self.set_frequencies()
+            self.intervals_are_set = True
+
         # Physical Properties
         self.model = m
 
@@ -212,18 +220,13 @@ class BaseEM1DSimulation(BaseSimulation):
                 h_vector = np.array([src.location[2] for src in self.survey.source_list])
             else:
                 h_vector = np.array([src.location[2]-self.topo[0] for src in self.survey.source_list])
-
-
-
         
         n_filter = self.n_filter
 
-        f_full = []
+        fields_list = []
         
         for ii, src in enumerate(self.survey.source_list):
 
-            # list of x,y,z offsets between sources and receivers
-            offset_list = src.offset_list
             I = src.I
 
             for jj, rx in enumerate(src.receiver_list):
@@ -239,142 +242,141 @@ class BaseEM1DSimulation(BaseSimulation):
                 # Create globally, not for each receiver
                 sig = self.sigma_cole(rx.frequencies)
 
-                for kk in range(0, rx.nD):
+                if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+                    r = src.location[0:2] - rx.locations[0:2]
+                    r = np.sqrt(np.sum(r**2)) * np.ones(n_frequency)
+                else:
+                    # a is the radius of the loop
+                    r = src.a * np.ones(n_frequency)
 
-                    if isinstance(src, HarmonicMagneticDipoleSource):
-                        r = np.sqrt(np.sum(offset_list[jj][kk, 0:2]**2)) * np.ones(n_frequency)
+                # Use function from empymod
+                # size of lambd is (n_frequency x n_filter)
+                lambd = np.empty([n_frequency, n_filter], order='F')
+                lambd[:, :], _ = get_dlf_points(
+                    self.fhtfilt, r, self.hankel_pts_per_dec
+                )
+
+                # Compute receiver height
+                h = h_vector[ii]
+                z = h + src.location[2] - rx.locations[2]
+
+                flag = rx.field_type
+    
+                if output_type == 'response':
+                    # for forward simulation
+                    if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+                        hz = hz_kernel_vertical_magnetic_dipole(
+                            self, lambd, f, n_layer,
+                            sig, chi, depth, h, z,
+                            flag, I, output_type=output_type
+                        )
+
+                        # kernels for each bessel function
+                        # (j0, j1, j2)
+                        PJ = (hz, None, None)  # PJ0
+
+                    elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
+                        hz = hz_kernel_circular_loop(
+                            self, lambd, f, n_layer,
+                            sig, chi, depth, h, z, I, r,
+                            flag, output_type=output_type
+                        )
+
+                        # kernels for each bessel function
+                        # (j0, j1, j2)
+                        PJ = (None, hz, None)  # PJ1
+
+                    # TODO: This has not implemented yet!
+                    elif isinstance(src, HarmonicLineSource) | isinstance(src, TimeDomainLineSource):
+                        # Need to compute y
+                        hz = hz_kernel_horizontal_electric_dipole(
+                            self, lambd, f, n_layer,
+                            sig, chi, depth, h, z, I, r,
+                            flag, output_type=output_type
+                        )
+                        # kernels for each bessel function
+                        # (j0, j1, j2)
+                        PJ = (None, hz, None)  # PJ1
+
                     else:
-                        # a is the radius of the loop
-                        r = src.a * np.ones(n_frequency)
+                        raise Exception("Src options are only VMD or CircularLoop!!")
 
-                    # Use function from empymod
-                    # size of lambd is (n_frequency x n_filter)
-                    lambd = np.empty([n_frequency, n_filter], order='F')
-                    lambd[:, :], _ = get_dlf_points(
-                        self.fhtfilt, r, self.hankel_pts_per_dec
-                    )
+                elif output_type == 'sensitivity_sigma':
 
-                    # Compute receiver height
-                    h = h_vector[ii]
-                    z = h + offset_list[jj][kk, 2]
+                    # for simulation
+                    if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+                        hz = hz_kernel_vertical_magnetic_dipole(
+                            self, lambd, f, n_layer,
+                            sig, chi, depth, h, z,
+                            flag, I, output_type=output_type
+                        )
 
-                    flag = rx.field_type
-        
-                    if output_type == 'response':
-                        # for forward simulation
-                        if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                            hz = hz_kernel_vertical_magnetic_dipole(
-                                self, lambd, f, n_layer,
-                                sig, chi, depth, h, z,
-                                flag, I, output_type=output_type
-                            )
+                        PJ = (hz, None, None)  # PJ0
 
-                            # kernels for each bessel function
-                            # (j0, j1, j2)
-                            PJ = (hz, None, None)  # PJ0
+                    elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
+                        
+                        hz = hz_kernel_circular_loop(
+                            self, lambd, f, n_layer,
+                            sig, chi, depth, h, z, I, r,
+                            flag, output_type=output_type
+                        )
 
-                        elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
-                            hz = hz_kernel_circular_loop(
-                                self, lambd, f, n_layer,
-                                sig, chi, depth, h, z, I, r,
-                                flag, output_type=output_type
-                            )
+                        PJ = (None, hz, None)  # PJ1
 
-                            # kernels for each bessel function
-                            # (j0, j1, j2)
-                            PJ = (None, hz, None)  # PJ1
+                    else:
+                        raise Exception("Src options are only VMD or CircularLoop!!")
 
-                        # TODO: This has not implemented yet!
-                        elif isinstance(src, HarmonicLineSource) | isinstance(src, TimeDomainLineSource):
-                            # Need to compute y
-                            hz = hz_kernel_horizontal_electric_dipole(
-                                self, lambd, f, n_layer,
-                                sig, chi, depth, h, z, I, r,
-                                flag, output_type=output_type
-                            )
-                            # kernels for each bessel function
-                            # (j0, j1, j2)
-                            PJ = (None, hz, None)  # PJ1
+                    r = np.tile(r, (n_layer, 1))
 
-                        else:
-                            raise Exception("Src options are only VMD or CircularLoop!!")
+                elif output_type == 'sensitivity_height':
 
-                    elif output_type == 'sensitivity_sigma':
+                    # for simulation
+                    if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+                        hz = hz_kernel_vertical_magnetic_dipole(
+                            self, lambd, f, n_layer,
+                            sig, chi, depth, h, z,
+                            flag, I, output_type=output_type
+                        )
 
-                        # for simulation
-                        if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                            hz = hz_kernel_vertical_magnetic_dipole(
-                                self, lambd, f, n_layer,
-                                sig, chi, depth, h, z,
-                                flag, I, output_type=output_type
-                            )
+                        PJ = (hz, None, None)  # PJ0
 
-                            PJ = (hz, None, None)  # PJ0
+                    elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
+                        
+                        hz = hz_kernel_circular_loop(
+                            self, lambd, f, n_layer,
+                            sig, chi, depth, h, z, I, r,
+                            flag, output_type=output_type
+                        )
 
-                        elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
-                            
-                            hz = hz_kernel_circular_loop(
-                                self, lambd, f, n_layer,
-                                sig, chi, depth, h, z, I, r,
-                                flag, output_type=output_type
-                            )
+                        PJ = (None, hz, None)  # PJ1
 
-                            PJ = (None, hz, None)  # PJ1
+                    else:
+                        raise Exception("Src options are only VMD or CircularLoop!!")
 
-                        else:
-                            raise Exception("Src options are only VMD or CircularLoop!!")
+                # Carry out Hankel DLF
+                # ab=66 => 33 (vertical magnetic src and rec)
+                # For response
+                # HzFHT size = (n_frequency,)
+                # For sensitivity
+                # HzFHT size = (n_layer, n_frequency)
 
-                        r = np.tile(r, (n_layer, 1))
+                HzFHT = dlf(
+                    PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec, ang_fact=None, ab=33
+                )
 
-                    elif output_type == 'sensitivity_height':
+                if output_type == "sensitivity_sigma":
+                    fields_list.append(HzFHT.T)
+                else:
+                    fields_list.append(HzFHT)
 
-                        # for simulation
-                        if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                            hz = hz_kernel_vertical_magnetic_dipole(
-                                self, lambd, f, n_layer,
-                                sig, chi, depth, h, z,
-                                flag, I, output_type=output_type
-                            )
-
-                            PJ = (hz, None, None)  # PJ0
-
-                        elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
-                            
-                            hz = hz_kernel_circular_loop(
-                                self, lambd, f, n_layer,
-                                sig, chi, depth, h, z, I, r,
-                                flag, output_type=output_type
-                            )
-
-                            PJ = (None, hz, None)  # PJ1
-
-                        else:
-                            raise Exception("Src options are only VMD or CircularLoop!!")
-
-                    # Carry out Hankel DLF
-                    # ab=66 => 33 (vertical magnetic src and rec)
-                    # For response
-                    # HzFHT size = (n_frequency,)
-                    # For sensitivity
-                    # HzFHT size = (n_layer, n_frequency)
-
-                    HzFHT = dlf(PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec,
-                                ang_fact=None, ab=33)
-
-                    if output_type == "sensitivity_sigma":
-                        return HzFHT.T
-
-                    return HzFHT
-
-
-
-
+        return fields_list
 
 
     def fields(self, m):
         f = self.compute_integral(m, output_type='response')
-        # self.survey._pred = utils.mkvc(self.survey.projectFields(f))
-        return f
+        print(np.shape(f))
+        f = self.projectFields(f)
+        return np.hstack(f)
 
     def dpred(self, m, f=None):
         """
@@ -483,7 +485,7 @@ class BaseEM1DSimulation(BaseSimulation):
         J_sum = abs(utils.sdiag(1/delta_d/pred) * J).sum(axis=0)
         S = np.cumsum(J_sum[::-1])[::-1]
         active = S-thres_hold > 0.
-        doi = abs(self.survey.depth[active]).max()
+        doi = abs(self.depth[active]).max()
         return doi, active
 
     def get_threshold(self, uncert):
@@ -528,56 +530,124 @@ class EM1DFMSimulation(BaseEM1DSimulation):
             components
         """
 
-        
+        COUNT = 0
+        for ii, src in enumerate(self.survey.source_list):
+            for jj, rx in enumerate(src.receiver_list):
 
+                u_temp = u[COUNT]
 
+                if rx.component == 'real':
+                    u_temp = np.real(u_temp)
+                else:
+                    u_temp = np.imag(u_temp)
 
-        # ureal = (u.real).copy()
-        # uimag = (u.imag).copy()
+                if rx.field_type != "secondary":
 
-        # if self.survey.rx_type == 'Hz':
-        #     factor = 1.
-        # elif self.survey.rx_type == 'ppm':
-        #     factor = 1./self.hz_primary * 1e6
+                    # COMPUTE PRIMARY FIELD FOR TX-RX PAIR
+                    u_primary = 1
 
-        # if self.survey.switch_real_imag == 'all':
-        #     ureal = (u.real).copy()
-        #     uimag = (u.imag).copy()
-        #     if ureal.ndim == 1 or 0:
-        #         resp = np.r_[ureal*factor, uimag*factor]
-        #     elif ureal.ndim == 2:
-        #         if np.isscalar(factor):
-        #             resp = np.vstack(
-        #                     (factor*ureal, factor*uimag)
-        #             )
-        #         else:
-        #             resp = np.vstack(
-        #                 (utils.sdiag(factor)*ureal, utils.sdiag(factor)*uimag)
-        #             )
-        #     else:
-        #         raise NotImplementedError()
-        # elif self.survey.switch_real_imag == 'real':
-        #     resp = (u.real).copy()
-        # elif self.survey.switch_real_imag == 'imag':
-        #     resp = (u.imag).copy()
-        # else:
-        #     raise NotImplementedError()
+                    if rx.field_type == "ppm":
+                        u_temp = 1e6 * u_temp/u_primary
+                    else:
+                        u_temp =+ u_primary
 
-        # return resp
+                u[COUNT] = u_temp
+                COUNT = COUNT + 1
 
-
-
-
+        return u
 
 
 class EM1DTMSimulation(BaseEM1DSimulation):
 
 
-
+    intervals_are_set = False
 
 
     def __init__(self, mesh, **kwargs):
         BaseEM1DSimulation.__init__(self, mesh, **kwargs)
+
+        self.fftfilt = filters.key_81_CosSin_2009()
+
+
+    
+
+
+    
+
+
+
+    def set_time_intervals(self):
+        """
+        Set time interval for particular receiver
+        """
+
+        for src in self.survey.source_list:
+            for rx in src.receiver_list:
+
+                if src.moment_type == "single":
+                    time = rx.times
+                    pulse_period = src.pulse_period
+                    period = src.period
+                # Dual moment
+                else:
+                    time = np.unique(np.r_[rx.times, src.time_dual_moment])
+                    pulse_period = np.maximum(
+                        src.pulse_period, src.pulse_period_dual_moment
+                    )
+                    period = np.maximum(src.period, src.period_dual_moment)
+                tmin = time[time>0.].min()
+                if src.n_pulse == 1:
+                    tmax = time.max() + pulse_period
+                elif src.n_pulse == 2:
+                    tmax = time.max() + pulse_period + period/2.
+                else:
+                    raise NotImplementedError("n_pulse must be either 1 or 2")
+                n_time = int((np.log10(tmax)-np.log10(tmin))*10+1)
+                
+                rx.time_interval = np.logspace(
+                    np.log10(tmin), np.log10(tmax), n_time
+                )
+            # print (tmin, tmax)
+
+
+    def set_frequencies(self, pts_per_dec=-1):
+        """
+        Compute Frequency reqired for frequency to time transform
+        """
+        
+        for src in self.survey.source_list:
+            for rx in src.receiver_list:
+
+                if src.wave_type == "general":
+                    _, freq, ft, ftarg = check_time(
+                        rx.time_interval, -1, 'dlf',
+                        {'pts_per_dec': pts_per_dec, 'dlf': self.fftfilt}, 0
+                    )
+                elif src.wave_type == "stepoff":
+                    _, freq, ft, ftarg = check_time(
+                        rx.times, -1, 'dlf',
+                        {'pts_per_dec': pts_per_dec, 'dlf': self.fftfilt}, 0,
+                    )
+                else:
+                    raise Exception("wave_type must be either general or stepoff")
+
+                rx.frequencies = freq
+                rx.ftarg = ftarg
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def projectFields(self, u):
@@ -587,133 +657,125 @@ class EM1DTMSimulation(BaseEM1DSimulation):
         # Compute frequency domain reponses right at filter coefficient values
         # Src waveform: Step-off
 
-        if self.survey.use_lowpass_filter:
-            factor = self.survey.lowpass_filter.copy()
-        else:
-            factor = np.ones_like(self.survey.frequency, dtype=complex)
+        COUNT = 0
+        for ii, src in enumerate(self.survey.source_list):
 
-        if self.survey.rx_type == 'Bz':
-            factor *= 1./(2j*np.pi*self.survey.frequency)
+            for jj, rx in enumerate(src.receiver_list):
 
-        if self.survey.wave_type == 'stepoff':
-            # Compute EM responses
-            if u.size == self.survey.n_frequency:
-                resp, _ = fourier_dlf(
-                    u.flatten()*factor, self.survey.time,
-                    self.survey.frequency, self.survey.ftarg
-                )
-            # Compute EM sensitivities
-            else:
-                resp = np.zeros(
-                    (self.survey.n_time, self.n_layer), dtype=np.float64, order='F')
-                # )
-                # TODO: remove for loop
-                for i in range(self.n_layer):
-                    resp_i, _ = fourier_dlf(
-                        u[:, i]*factor, self.survey.time,
-                        self.survey.frequency, self.survey.ftarg
-                    )
-                    resp[:, i] = resp_i
+                u_temp = u[COUNT]
 
-        # Evaluate piecewise linear input current waveforms
-        # Using Fittermann's approach (19XX) with Gaussian Quadrature
-        elif self.survey.wave_type == 'general':
-            # Compute EM responses
-            if u.size == self.survey.n_frequency:
-                resp_int, _ = fourier_dlf(
-                    u.flatten()*factor, self.survey.time_int,
-                    self.survey.frequency, self.survey.ftarg
-                )
-                # step_func = interp1d(
-                #     self.time_int, resp_int
-                # )
-                step_func = iuSpline(
-                    np.log10(self.survey.time_int), resp_int
-                )
-
-                resp = piecewise_pulse_fast(
-                    step_func, self.survey.time,
-                    self.survey.time_input_currents,
-                    self.survey.input_currents,
-                    self.survey.period,
-                    n_pulse=self.survey.n_pulse
-                )
-
-                # Compute response for the dual moment
-                if self.survey.moment_type == "dual":
-                    resp_dual_moment = piecewise_pulse_fast(
-                        step_func, self.survey.time_dual_moment,
-                        self.survey.time_input_currents_dual_moment,
-                        self.survey.input_currents_dual_moment,
-                        self.survey.period_dual_moment,
-                        n_pulse=self.survey.n_pulse
-                    )
-                    # concatenate dual moment response
-                    # so, ordering is the first moment data
-                    # then the second moment data.
-                    resp = np.r_[resp, resp_dual_moment]
-
-            # Compute EM sensitivities
-            else:
-                if self.survey.moment_type == "single":
-                    resp = np.zeros(
-                        (self.survey.n_time, self.survey.n_layer),
-                        dtype=np.float64, order='F'
-                    )
+                if src.use_lowpass_filter:
+                    factor = src.lowpass_filter.copy()
                 else:
-                    # For dual moment
-                    resp = np.zeros(
-                        (self.survey.n_time+self.survey.n_time_dual_moment, self.survey.n_layer),
-                        dtype=np.float64, order='F')
+                    factor = np.ones_like(rx.frequencies, dtype=complex)
 
-                # TODO: remove for loop (?)
-                for i in range(self.survey.n_layer):
-                    resp_int_i, _ = fourier_dlf(
-                        u[:, i]*factor, self.survey.time_int,
-                        self.survey.frequency, self.survey.ftarg
-                    )
-                    # step_func = interp1d(
-                    #     self.time_int, resp_int_i
-                    # )
+                if rx.component in ["b", "h"]:
+                    factor *= 1./(2j*np.pi*rx.frequencies)
 
-                    step_func = iuSpline(
-                        np.log10(self.survey.time_int), resp_int_i
-                    )
+                if rx.component in ["h", "dhdt"]:
+                    factor *= mu_0
 
-                    resp_i = piecewise_pulse_fast(
-                        step_func, self.survey.time,
-                        self.survey.time_input_currents, self.survey.input_currents,
-                        self.survey.period, n_pulse=self.survey.n_pulse
-                    )
-
-                    if self.survey.moment_type == "single":
-                        resp[:, i] = resp_i
-                    else:
-                        resp_dual_moment_i = piecewise_pulse_fast(
-                            step_func,
-                            self.survey.time_dual_moment,
-                            self.survey.time_input_currents_dual_moment,
-                            self.survey.input_currents_dual_moment,
-                            self.survey.period_dual_moment,
-                            n_pulse=self.survey.n_pulse
+                if src.wave_type == 'stepoff':
+                    # Compute EM responses
+                    if u_temp.size == rx.n_frequency:
+                        resp, _ = fourier_dlf(
+                            u_temp.flatten()*factor, rx.times, rx.frequencies, rx.ftarg
                         )
-                        resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
-        return resp * (-2.0/np.pi) * mu_0
+                    # Compute EM sensitivities
+                    else:
+                        resp = np.zeros(
+                            (rx.n_time, self.n_layer), dtype=np.float64, order='F')
+                        # )
+                        # TODO: remove for loop
+                        for i in range(self.n_layer):
+                            resp_i, _ = fourier_dlf(
+                                u_temp[:, i]*factor, rx.times, rx.frequencies, rx.ftarg
+                            )
+                            resp[:, i] = resp_i
 
+                # Evaluate piecewise linear input current waveforms
+                # Using Fittermann's approach (19XX) with Gaussian Quadrature
+                elif src.wave_type == 'general':
+                    # Compute EM responses
+                    if u_temp.size == rx.n_frequency:
+                        resp_int, _ = fourier_dlf(
+                            u_temp.flatten()*factor, rx.time_interval, rx.frequencies, rx.ftarg
+                        )
+                        # step_func = interp1d(
+                        #     self.time_int, resp_int
+                        # )
+                        step_func = iuSpline(
+                            np.log10(rx.time_interval), resp_int
+                        )
 
-    # def dpred(self, m, f=None):
-    #     """
-    #         Computes predicted data.
-    #         Predicted data (`_pred`) are computed and stored
-    #         when self.prob.fields(m) is called.
-    #     """
-    #     if f is None:
-    #         f = self.fields(m)
+                        resp = piecewise_pulse_fast(
+                            step_func, rx.times,
+                            src.time_input_currents,
+                            src.input_currents,
+                            src.period,
+                            n_pulse=src.n_pulse
+                        )
 
-    #     return f
+                        # Compute response for the dual moment
+                        if src.moment_type == "dual":
+                            resp_dual_moment = piecewise_pulse_fast(
+                                step_func, src.time_dual_moment,
+                                src.time_input_currents_dual_moment,
+                                src.input_currents_dual_moment,
+                                src.period_dual_moment,
+                                n_pulse=src.n_pulse
+                            )
+                            # concatenate dual moment response
+                            # so, ordering is the first moment data
+                            # then the second moment data.
+                            resp = np.r_[resp, resp_dual_moment]
 
+                    # Compute EM sensitivities
+                    else:
+                        if src.moment_type == "single":
+                            resp = np.zeros(
+                                (rx.n_time, self.survey.n_layer), dtype=np.float64, order='F'
+                            )
+                        else:
+                            # For dual moment
+                            resp = np.zeros(
+                                (rx.n_time+src.n_time_dual_moment, self.n_layer),
+                                dtype=np.float64, order='F'
+                            )
 
+                        # TODO: remove for loop (?)
+                        for i in range(self.n_layer):
+                            resp_int_i, _ = fourier_dlf(
+                                u_temp[:, i]*factor, rx.time_interval, rx.frequencies, rx.ftarg
+                            )
+                            # step_func = interp1d(
+                            #     self.time_int, resp_int_i
+                            # )
 
+                            step_func = iuSpline(
+                                np.log10(rx.time_interval), resp_int_i
+                            )
 
-if __name__ == '__main__':
-    main()
+                            resp_i = piecewise_pulse_fast(
+                                step_func, rx.times,
+                                src.time_input_currents, src.input_currents,
+                                src.period, n_pulse=src.n_pulse
+                            )
+
+                            if src.moment_type == "single":
+                                resp[:, i] = resp_i
+                            else:
+                                resp_dual_moment_i = piecewise_pulse_fast(
+                                    step_func,
+                                    src.time_dual_moment,
+                                    src.time_input_currents_dual_moment,
+                                    src.input_currents_dual_moment,
+                                    src.period_dual_moment,
+                                    n_pulse=src.n_pulse
+                                )
+                                resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
+                
+                u[COUNT] = resp * (-2.0/np.pi)
+                COUNT = COUNT + 1
+
+        return u
