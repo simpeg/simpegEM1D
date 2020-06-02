@@ -2,7 +2,7 @@ import numpy as np
 from scipy.constants import mu_0
 
 try:
-    from simpegEM1D.m_rTE_Fortran import rte_fortran
+    from simpegEM1D.Fortran.m_rTE_Fortran import rte_fortran
 except ImportError as e:
     rte_fortran = None
 
@@ -11,7 +11,7 @@ except ImportError as e:
 
 
 
-def rTEfunfwd(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
+def rTEfunfwd(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.
         Only one for loop for multiple layers.
@@ -52,7 +52,6 @@ def rTEfunfwd(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
     M1sum01 = np.zeros((n_frequency, n_filter), dtype=complex)
     M1sum11 = np.zeros((n_frequency, n_filter), dtype=complex)
 
-    thick = -np.diff(depth)
     w = 2*np.pi*f
 
     rTE = np.zeros((n_frequency, n_filter), dtype=complex)
@@ -139,7 +138,7 @@ def matmul(a00, a10, a01, a11, b00, b10, b01, b11):
 
 
 # TODO: make this to take a vector rather than a single frequency
-def rTEfunjac(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
+def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
     """
         Compute sensitivity of reflection coefficients for
         Transverse Electric (TE) mode with regard to conductivity
@@ -200,7 +199,6 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
     dj1temp01 = np.zeros((n_frequency, n_filter), dtype=complex)
     dj1temp11 = np.zeros((n_frequency, n_filter), dtype=complex)
 
-    thick = -np.diff(depth)
     w = 2*np.pi*f
 
     rTE = np.zeros((n_frequency, n_filter), dtype=complex)
@@ -521,7 +519,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, depth, HalfSwitch):
 
 
 def hz_kernel_vertical_magnetic_dipole(
-    simulation, lamda, f, n_layer, sig, chi, depth, h, z,
+    simulation, lamda, f, n_layer, sig, chi, h, z,
     flag, I, output_type='response'
 ):
 
@@ -542,10 +540,12 @@ def hz_kernel_vertical_magnetic_dipole(
             dtype=np.complex128, order='F'
         )
         if rte_fortran is None:
+            thick = simulation.thicknesses
             drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, depth, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
             )
         else:
+            depth = simulation.depth
             rte_fortran.rte_sensitivity(
                 f, lamda, sig, chi, depth, simulation.half_switch, drTE,
                 n_layer, n_frequency, n_filter
@@ -557,11 +557,12 @@ def hz_kernel_vertical_magnetic_dipole(
             [n_frequency, n_filter], dtype=np.complex128, order='F'
         )
         if rte_fortran is None:
-                rTE = rTEfunfwd(
-                    n_layer, f, lamda, sig, chi, depth,
-                    simulation.half_switch
-                )
+            thick = simulation.thicknesses
+            rTE = rTEfunfwd(
+                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+            )
         else:
+            depth = simulation.depth
             rte_fortran.rte_forward(
                 f, lamda, sig, chi, depth, simulation.half_switch,
                 rTE, n_layer, n_frequency, n_filter
@@ -584,8 +585,8 @@ def hz_kernel_vertical_magnetic_dipole(
 
 # TODO: make this to take a vector rather than a single frequency
 def hz_kernel_circular_loop(
-    simulation, lamda, f, n_layer, sig, chi, depth, h, z, I, a,
-    flag,  output_type='response'
+    simulation, lamda, f, n_layer, sig, chi, h, z, I, a,
+    flag, output_type='response'
 ):
 
     """
@@ -617,11 +618,12 @@ def hz_kernel_circular_loop(
             dtype=np.complex128, order='F'
         )
         if rte_fortran is None:
-                drTE[:, :] = rTEfunjac(
-                    n_layer, f, lamda, sig, chi, depth,
-                    simulation.half_switch
-                )
+            thick = simulation.thicknesses
+            drTE[:, :] = rTEfunjac(
+                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+            )
         else:
+            depth = simulation.depth
             rte_fortran.rte_sensitivity(
                 f, lamda, sig, chi, depth, simulation.half_switch,
                 drTE, n_layer, n_frequency, n_filter
@@ -633,10 +635,12 @@ def hz_kernel_circular_loop(
             [n_frequency, n_filter], dtype=np.complex128, order='F'
         )
         if rte_fortran is None:
+            thick = simulation.thicknesses
             rTE[:, :] = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, depth, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
             )
         else:
+            depth = simulation.depth
             rte_fortran.rte_forward(
                 f, lamda, sig, chi, depth, simulation.half_switch,
                 rTE, n_layer, n_frequency, n_filter
@@ -655,7 +659,7 @@ def hz_kernel_circular_loop(
     return kernel
 
 def hz_kernel_horizontal_electric_dipole(
-    simulation, lamda, f, n_layer, sig, chi, depth, h, z,
+    simulation, lamda, f, n_layer, sig, chi, h, z,
     flag, output_type='response'
 ):
 
@@ -676,10 +680,12 @@ def hz_kernel_horizontal_electric_dipole(
             order='F'
         )
         if rte_fortran is None:
+            thick = simulation.thicknesses
             drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, depth, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
             )
         else:
+            depth = simulation.depth
             rte_fortran.rte_sensitivity(
                 f, lamda, sig, chi, depth, simulation.half_switch,
                 drTE, n_layer, n_frequency, n_filter
@@ -691,11 +697,12 @@ def hz_kernel_horizontal_electric_dipole(
             [n_frequency, n_filter], dtype=np.complex128, order='F'
         )
         if rte_fortran is None:
+            thick = simulation.thicknesses
             rTE = rTEfunfwd(
-                    n_layer, f, lamda, sig, chi, depth,
-                    simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
             )
         else:
+            depth = simulation.depth
             rte_fortran.rte_forward(
                 f, lamda, sig, chi, depth, simulation.half_switch,
                 rTE, n_layer, n_frequency, n_filter

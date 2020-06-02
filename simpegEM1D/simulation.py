@@ -14,6 +14,11 @@ from empymod import filters
 from empymod.transform import dlf, fourier_dlf, get_dlf_points
 from empymod.utils import check_hankel
 
+from .Waveforms import (
+    piecewise_pulse_fast,
+    butterworth_type_filter, butter_lowpass_filter
+)
+
 
 
 
@@ -75,10 +80,14 @@ class BaseEM1DSimulation(BaseSimulation):
 
     half_switch = properties.Bool("Switch for half-space", default=False)
 
-    depth = properties.Array("Depth of the layers", dtype=float)
+    # depth = properties.Array("Depth of the layers", dtype=float, required=True)
+    # Add layer thickness as invertible property
+    thicknesses, thicknessesMap, thicknessesDeriv = props.Invertible(
+        "thicknesses of the layers"
+    )
 
-    def __init__(self, mesh, **kwargs):
-        BaseSimulation.__init__(self, mesh, **kwargs)
+    def __init__(self, **kwargs):
+        BaseSimulation.__init__(self, **kwargs)
 
         # Check input arguments. If self.hankel_filter is not a valid filter,
         # it will set it to the default (key_201_2009).
@@ -97,10 +106,6 @@ class BaseEM1DSimulation(BaseSimulation):
         if self.verbose:
             print(">> Use "+self.hankel_filter+" filter for Hankel Transform")
 
-        self.depth = -mesh.gridN[0:-1]
-
-        # if self.hankel_pts_per_dec != 0:
-        #     raise NotImplementedError()
 
     # @property
     # def h(self):
@@ -120,7 +125,7 @@ class BaseEM1DSimulation(BaseSimulation):
             number of layers
         """
         if self.half_switch is False:
-            return self.depth.size
+            return int(self.thicknesses.size + 1)
         elif self.half_switch is True:
             return int(1)
 
@@ -185,6 +190,11 @@ class BaseEM1DSimulation(BaseSimulation):
         """ Length of filter """
         return self.fhtfilt.base.size
 
+    def depth(self):
+        if self.thicknesses is not None:
+            return np.r_[0., -np.cumsum(self.thicknesses)]
+    
+
     def compute_integral(self, m, output_type='response'):
         """
             
@@ -194,8 +204,8 @@ class BaseEM1DSimulation(BaseSimulation):
         # Set evaluation frequencies for time domain
         if isinstance(self.survey, EM1DSurveyTD):
             # self.set_time_intervals()  # SOMETHING IS UP WITH THIS
-            self.set_frequencies()
-            self.intervals_are_set = True
+            if self.frequencies_are_set is False:
+                self.set_frequencies()
 
         # Physical Properties
         self.model = m
@@ -205,7 +215,6 @@ class BaseEM1DSimulation(BaseSimulation):
             chi = np.ones_like(self.sigma) * self.chi
 
         n_layer = self.n_layer
-        depth = self.depth
 
         # Source heights
         if self.hMap is not None:
@@ -262,7 +271,7 @@ class BaseEM1DSimulation(BaseSimulation):
                     if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
                         hz = hz_kernel_vertical_magnetic_dipole(
                             self, lambd, f, n_layer,
-                            sig, chi, depth, h, z,
+                            sig, chi, h, z,
                             flag, I, output_type=output_type
                         )
 
@@ -273,7 +282,7 @@ class BaseEM1DSimulation(BaseSimulation):
                     elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
                         hz = hz_kernel_circular_loop(
                             self, lambd, f, n_layer,
-                            sig, chi, depth, h, z, I, r,
+                            sig, chi, h, z, I, r,
                             flag, output_type=output_type
                         )
 
@@ -286,7 +295,7 @@ class BaseEM1DSimulation(BaseSimulation):
                         # Need to compute y
                         hz = hz_kernel_horizontal_electric_dipole(
                             self, lambd, f, n_layer,
-                            sig, chi, depth, h, z, I, r,
+                            sig, chi, h, z, I, r,
                             flag, output_type=output_type
                         )
                         # kernels for each bessel function
@@ -302,7 +311,7 @@ class BaseEM1DSimulation(BaseSimulation):
                     if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
                         hz = hz_kernel_vertical_magnetic_dipole(
                             self, lambd, f, n_layer,
-                            sig, chi, depth, h, z,
+                            sig, chi, h, z,
                             flag, I, output_type=output_type
                         )
 
@@ -312,7 +321,7 @@ class BaseEM1DSimulation(BaseSimulation):
                         
                         hz = hz_kernel_circular_loop(
                             self, lambd, f, n_layer,
-                            sig, chi, depth, h, z, I, r,
+                            sig, chi, h, z, I, r,
                             flag, output_type=output_type
                         )
 
@@ -329,7 +338,7 @@ class BaseEM1DSimulation(BaseSimulation):
                     if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
                         hz = hz_kernel_vertical_magnetic_dipole(
                             self, lambd, f, n_layer,
-                            sig, chi, depth, h, z,
+                            sig, chi, h, z,
                             flag, I, output_type=output_type
                         )
 
@@ -339,7 +348,7 @@ class BaseEM1DSimulation(BaseSimulation):
                         
                         hz = hz_kernel_circular_loop(
                             self, lambd, f, n_layer,
-                            sig, chi, depth, h, z, I, r,
+                            sig, chi, h, z, I, r,
                             flag, output_type=output_type
                         )
 
@@ -512,8 +521,8 @@ class BaseEM1DSimulation(BaseSimulation):
 
 class EM1DFMSimulation(BaseEM1DSimulation):
 
-    def __init__(self, mesh, **kwargs):
-        BaseEM1DSimulation.__init__(self, mesh, **kwargs)
+    def __init__(self, **kwargs):
+        BaseEM1DSimulation.__init__(self, **kwargs)
 
     
     def projectFields(self, u):
@@ -551,20 +560,14 @@ class EM1DFMSimulation(BaseEM1DSimulation):
 class EM1DTMSimulation(BaseEM1DSimulation):
 
 
-    intervals_are_set = False
+    time_intervals_are_set = False
+    frequencies_are_set = False
 
 
-    def __init__(self, mesh, **kwargs):
-        BaseEM1DSimulation.__init__(self, mesh, **kwargs)
+    def __init__(self, **kwargs):
+        BaseEM1DSimulation.__init__(self, **kwargs)
 
         self.fftfilt = filters.key_81_CosSin_2009()
-
-
-    
-
-
-    
-
 
 
     def set_time_intervals(self):
@@ -573,31 +576,34 @@ class EM1DTMSimulation(BaseEM1DSimulation):
         """
 
         for src in self.survey.source_list:
-            for rx in src.receiver_list:
+            if src.wave_type == "general":
+                for rx in src.receiver_list:
 
-                if src.moment_type == "single":
-                    time = rx.times
-                    pulse_period = src.pulse_period
-                    period = src.period
-                # Dual moment
-                else:
-                    time = np.unique(np.r_[rx.times, src.time_dual_moment])
-                    pulse_period = np.maximum(
-                        src.pulse_period, src.pulse_period_dual_moment
+                    if src.moment_type == "single":
+                        time = rx.times
+                        pulse_period = src.pulse_period
+                        period = src.period
+                    # Dual moment
+                    else:
+                        time = np.unique(np.r_[rx.times, src.time_dual_moment])
+                        pulse_period = np.maximum(
+                            src.pulse_period, src.pulse_period_dual_moment
+                        )
+                        period = np.maximum(src.period, src.period_dual_moment)
+                    tmin = time[time>0.].min()
+                    if src.n_pulse == 1:
+                        tmax = time.max() + pulse_period
+                    elif src.n_pulse == 2:
+                        tmax = time.max() + pulse_period + period/2.
+                    else:
+                        raise NotImplementedError("n_pulse must be either 1 or 2")
+                    n_time = int((np.log10(tmax)-np.log10(tmin))*10+1)
+                    
+                    rx.time_interval = np.logspace(
+                        np.log10(tmin), np.log10(tmax), n_time
                     )
-                    period = np.maximum(src.period, src.period_dual_moment)
-                tmin = time[time>0.].min()
-                if src.n_pulse == 1:
-                    tmax = time.max() + pulse_period
-                elif src.n_pulse == 2:
-                    tmax = time.max() + pulse_period + period/2.
-                else:
-                    raise NotImplementedError("n_pulse must be either 1 or 2")
-                n_time = int((np.log10(tmax)-np.log10(tmin))*10+1)
-                
-                rx.time_interval = np.logspace(
-                    np.log10(tmin), np.log10(tmax), n_time
-                )
+
+        self.time_intervals_are_set = True
             # print (tmin, tmax)
 
 
@@ -605,10 +611,13 @@ class EM1DTMSimulation(BaseEM1DSimulation):
         """
         Compute Frequency reqired for frequency to time transform
         """
+
+        if self.time_intervals_are_set == False:
+            self.set_time_intervals()
         
         for src in self.survey.source_list:
             for rx in src.receiver_list:
-
+                
                 if src.wave_type == "general":
                     _, freq, ft, ftarg = check_time(
                         rx.time_interval, -1, 'dlf',
@@ -625,20 +634,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                 rx.frequencies = freq
                 rx.ftarg = ftarg
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        self.frequencies_are_set = True
 
 
     def projectFields(self, u):
