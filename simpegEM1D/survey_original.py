@@ -7,14 +7,14 @@ from .analytics import ColeCole
 from .supporting_functions.digital_filter import (
     transFilt, transFiltImpulse, transFiltInterp, transFiltImpulseInterp
 )
-from .Waveform import CausalConv
+from .waveforms import CausalConv
 from scipy.interpolate import interp1d
 from scipy.interpolate import InterpolatedUnivariateSpline as iuSpline
 import properties
 from empymod import filters
 from empymod.utils import check_time
 from empymod.transform import fourier_dlf
-from .Waveforms import (
+from .KnownWaveforms import (
     piecewise_pulse_fast,
     butterworth_type_filter, butter_lowpass_filter
 )

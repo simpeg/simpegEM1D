@@ -8,8 +8,8 @@ from .sources import (
 )
 from .receivers import HarmonicPointReceiver, TimeDomainPointReceiver
 # from .RTEfun import rTEfunfwd, rTEfunjac
-from .Waveform import *
-from .Waveforms import (
+from .waveforms import *
+from .KnownWaveforms import (
     skytem_HM_2015, skytem_LM_2015,
     butter_lowpass_filter, butterworth_type_filter,
     piecewise_pulse, get_geotem_wave, get_nanotem_wave,

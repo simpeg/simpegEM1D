@@ -524,10 +524,17 @@ def hz_kernel_vertical_magnetic_dipole(
 ):
 
     """
-        Kernel for vertical magnetic component (Hz) due to
-        vertical magnetic diopole (VMD) source in (kx,ky) domain
+    Kernel for vertical magnetic component (Hz) due to
+    vertical magnetic diopole (VMD) source in (kx,ky) domain
+
+    .. math::
+
+        H_z = \\frac{m}{4\\pi} \\int_0^{\\infty}
+        \\r_{TE} e^{u_0|z-h|}
+        \\frac{\\lambda^3}{u_0} J_0(\\lambda r) d \\lambda
 
     """
+
     u0 = lamda
     coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
 
@@ -596,9 +603,9 @@ def hz_kernel_circular_loop(
 
     .. math::
 
-        H_z = \\frac{Ia}{2} \int_0^{\infty} [e^{-u_0|z+h|} +
-        \\r_{TE}e^{u_0|z-h|}]
-        \\frac{\lambda^2}{u_0} J_1(\lambda a)] d \lambda
+        H_z = \\frac{Ia}{2} \\int_0^{\\infty}
+        \\r_{TE}e^{u_0|z-h|}] \\frac{\\lambda^2}{u_0}
+        J_1(\\lambda a) J_0(\\lambda r) d \\lambda
 
     """
 
@@ -607,10 +614,10 @@ def hz_kernel_circular_loop(
 
     w = 2*np.pi*f
     u0 = lamda
-    radius = np.empty([n_frequency, n_filter], order='F')
-    radius[:, :] = np.tile(a.reshape([-1, 1]), (1, n_filter))
+    a = np.empty([n_frequency, n_filter], order='F')
+    a[:, :] = np.tile(a.reshape([-1, 1]), (1, n_filter))
 
-    coefficient_wavenumber = I*radius*0.5*lamda**2/u0
+    coefficient_wavenumber = I*a*0.5*lamda**2/u0
 
     if output_type == 'sensitivity_sigma':
         drTE = np.empty(

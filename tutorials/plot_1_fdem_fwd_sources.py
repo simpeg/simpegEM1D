@@ -1,6 +1,6 @@
 """
-Forward Simulation of 1D Frequency-Domain Data
-==============================================
+Forward Simulation over a Chargeable Earth
+==========================================
 
 
 
@@ -14,16 +14,11 @@ Forward Simulation of 1D Frequency-Domain Data
 #
 
 import numpy as np
-import os
 from matplotlib import pyplot as plt
-from discretize import TensorMesh
 
 from SimPEG import maps
 import simpegEM1D as em1d
-from simpegEM1D.Utils1D import plotLayer
 
-plt.rcParams.update({'font.size': 16})
-save_file = True
 
 #####################################################################
 # Create Survey
@@ -31,15 +26,19 @@ save_file = True
 #
 #
 
-source_location = np.array([0., 0., 30.])  
+source_location = np.array([0., 0., 0.])  
+source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
-source_radius = 1.
+source_radius = np.sqrt(1/np.pi)
 
-receiver_location = np.array([10., 0., 30.])
+phi = (np.pi/4)*np.r_[1, 3, 5, 7, 1]
+node_locations = np.c_[np.cos(phi), np.sin(phi), np.zeros(len(phi))]
+
+receiver_location = np.array([20., 0., 0.])
 receiver_orientation = "z"  # "x", "y" or "z"
-field_type = "ppm"  # "secondary", "total" or "ppm"
+field_type = "secondary"  # "secondary", "total" or "ppm"
 
-frequencies = np.array([382, 1822, 7970, 35920, 130100], dtype=float)
+frequencies = np.logspace(-1, 8, 51)
 
 # Receiver list
 receiver_list = []
@@ -49,6 +48,7 @@ receiver_list.append(
         field_type=field_type, component="real"
     )
 )
+
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
         receiver_location, frequencies, orientation=receiver_orientation,
@@ -57,19 +57,28 @@ receiver_list.append(
 )
 
 # Sources
-#source_list = [
-#    em1d.sources.HarmonicHorizontalLoopSource(
-#        receiver_list=receiver_list, location=source_location, a=source_radius,
+source_list = []
+
+source_list.append(
+    em1d.sources.HarmonicMagneticDipoleSource(
+        receiver_list=receiver_list, location=source_location,
+        orientation=source_orientation, I=source_current
+    )
+)
+    
+source_list.append(
+    em1d.sources.HarmonicHorizontalLoopSource(
+        receiver_list=receiver_list, location=source_location,
+        a=source_radius, I=source_current
+    )
+)
+
+#source_list.append(
+#    em1d.sources.HarmonicLineSource(
+#        receiver_list=receiver_list, location=node_locations,
 #        I=source_current
 #    )
-#]
-    
-source_list = [
-    em1d.sources.HarmonicMagneticDipoleSource(
-        receiver_list=receiver_list, location=source_location, orientation="z",
-        I=source_current
-    )
-]
+#)
 
 # Survey
 survey = em1d.survey.EM1DSurveyFD(source_list)
@@ -85,24 +94,26 @@ survey = em1d.survey.EM1DSurveyFD(source_list)
 # infinity.
 #
 
-# Physical properties
-background_conductivity = 1e-1
-layer_conductivity = 1e0
-
 # Layer thicknesses
-thicknesses = np.array([20., 40.])
+thicknesses = np.array([20., 20.])
 n_layer = len(thicknesses) + 1
 
+# half-space physical properties
+sigma = 1e-2
+eta = 0.5
+tau = 0.001
+c = 0.5
+chi = 0.
+
 # physical property models
-model = background_conductivity*np.ones(n_layer)
-model[1] = layer_conductivity
+sigma_model = sigma * np.ones(n_layer)
+eta_model = eta * np.ones(n_layer)
+tau_model =  tau * np.ones(n_layer)
+c_model = c * np.ones(n_layer)
+chi_model = chi * np.ones(n_layer)
 
 # Define a mapping for conductivities
 model_mapping = maps.IdentityMap(nP=n_layer)
-
-# Plot conductivity model
-plotting_mesh = TensorMesh([np.r_[thicknesses, 40.]])
-plotLayer(model, plotting_mesh, showlayers=False)
 
 #######################################################################
 # Define the Forward Simulation and Predic Data
@@ -113,10 +124,10 @@ plotLayer(model, plotting_mesh, showlayers=False)
 # Simulate response for static conductivity
 simulation = em1d.simulation.EM1DFMSimulation(
     survey=survey, thicknesses=thicknesses, sigmaMap=model_mapping,
+    chi=chi_model
 )
 
-dpred = simulation.dpred(model)
-
+dpred = simulation.dpred(sigma_model)
 
 #######################################################################
 # Plotting Results
@@ -124,25 +135,24 @@ dpred = simulation.dpred(model)
 #
 #
 
+dpred = np.reshape(dpred, (4, len(frequencies))).T
+
 
 fig, ax = plt.subplots(1,1, figsize = (7, 7))
-ax.loglog(frequencies, np.abs(dpred[0:len(frequencies)]), 'k-o', lw=3, ms=10)
-ax.loglog(frequencies, np.abs(dpred[len(frequencies):]), 'k:o', lw=3, ms=10)
+ax.loglog(frequencies, np.abs(dpred[:,0]), 'b-', lw=2)
+ax.loglog(frequencies, np.abs(dpred[:,1]), 'b--', lw=2)
+ax.loglog(frequencies, np.abs(dpred[:,2]), 'r-', lw=2)
+ax.loglog(frequencies, np.abs(dpred[:,3]), 'r--', lw=2)
 ax.set_xlabel("Frequency (Hz)")
-ax.set_ylabel("|Hs/Hp| (ppm)")
+ax.set_ylabel("|H| (A/m)")
 ax.set_title("Magnetic Field as a Function of Frequency")
-ax.legend(["Real", "Imaginary"])
+ax.legend((
+    'Real (dipole)', 'Imaginary (dipole)',
+    'Real (loop)', 'Imaginary (loop)',
+    'Real (line)', 'Imaginary (line)'
+))
 
-if save_file == True:
 
-    noise = 0.05*np.abs(dpred)*np.random.rand(len(dpred))
-    dpred += noise
-    fname = os.path.dirname(em1d.__file__) + '\\..\\tutorials\\assets\\em1dfm_data.obs'
-    np.savetxt(
-        fname,
-        np.c_[frequencies, dpred[0:len(frequencies)], dpred[len(frequencies):]],
-        fmt='%.4e'
-    )
 
 
 

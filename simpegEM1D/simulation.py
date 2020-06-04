@@ -14,7 +14,7 @@ from empymod import filters
 from empymod.transform import dlf, fourier_dlf, get_dlf_points
 from empymod.utils import check_hankel
 
-from .Waveforms import (
+from .KnownWaveforms import (
     piecewise_pulse_fast,
     butterworth_type_filter, butter_lowpass_filter
 )
@@ -544,10 +544,11 @@ class EM1DFMSimulation(BaseEM1DSimulation):
 
                 if rx.field_type != "secondary":
 
-                    u_primary = src.PrimaryField(rx.locations, rx.orientation)
+                    u_primary = src.PrimaryField(rx.locations)
 
                     if rx.field_type == "ppm":
-                        u_temp = 1e6 * u_temp/u_primary
+                        k = [comp == rx.orientation for comp in ["x", "y", "z"]]
+                        u_temp = 1e6 * u_temp/u_primary[0, k]
                     else:
                         u_temp =+ u_primary
 
