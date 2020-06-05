@@ -12,8 +12,8 @@ import scipy.sparse as sp
 from SimPEG import props, utils, maps, survey
 from SimPEG.simulation import BaseSimulation
 from SimPEG.survey import BaseSurvey
-from .survey import EM1DSurveyFD, EM1DSurveyTD
-from .EM1DSimulation import run_simulation_FD, run_simulation_TD
+from .survey_original import EM1DSurveyFD, EM1DSurveyTD
+from .EM1DSimulation_original import run_simulation_FD, run_simulation_TD
 import properties
 import warnings
 

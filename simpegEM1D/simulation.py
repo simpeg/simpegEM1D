@@ -42,6 +42,10 @@ class BaseEM1DSimulation(BaseSimulation):
         "Electrical conductivity at infinite frequency(S/m)"
     )
 
+    h, hMap, hDeriv = props.Invertible(
+        "Receiver Height (m), h > 0",
+    )
+
     rho, rhoMap, rhoDeriv = props.Invertible(
         "Electrical resistivity (Ohm m)"
     )
@@ -66,10 +70,6 @@ class BaseEM1DSimulation(BaseSimulation):
     c, cMap, cDeriv = props.Invertible(
         "Frequency Dependency, 0 < c < 1",
         default=0.5
-    )
-
-    h, hMap, hDeriv = props.Invertible(
-        "Receiver Height (m), h > 0",
     )
 
     survey = properties.Instance(

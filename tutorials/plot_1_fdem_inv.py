@@ -76,7 +76,7 @@ ax.legend(["Real", "Imaginary"])
 
 source_location = np.array([0., 0., 30.]) 
 source_current = 1.
-source_radius = 1.
+source_radius = 5.
 
 receiver_location = np.array([10., 0., 30.])
 receiver_orientation = "z"

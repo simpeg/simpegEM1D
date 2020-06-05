@@ -53,41 +53,34 @@ def run_simulation_FD(args):
     """
         args
 
-        rx_location: Recevier location (x, y, z)
-        src_location: Source location (x, y, z)
+        src: source object
         topo: Topographic location (x, y, z)
         hz: Thickeness of the vertical layers
-        offset: Source-Receiver offset
-        frequency: Frequency (Hz)
-        field_type:
-        rx_type:
-        src_type:
-        sigma:
-        jac_switch :
+        sigma: conductivities
+        eta
+        tau
+        c
+        chi
+        h
+        jac_switch
+        invert_height
+        half_switch :
     """
 
-    rx_location, src_location, topo, hz, offset, frequency, field_type, rx_type, src_type, sigma, eta, tau, c, chi, h, jac_switch, invert_height, half_switch = args
-    mesh_1d = set_mesh_1d(hz)
-    depth = -mesh_1d.gridN[:-1]
-    FDsurvey = EM1DSurveyFD(
-        rx_location=rx_location,
-        src_location=src_location,
-        topo=topo,
-        frequency=frequency,
-        offset=offset,
-        field_type=field_type,
-        rx_type=rx_type,
-        src_type=src_type,
-        depth=depth,
-        half_switch=half_switch
-    )
+    src, topo, hz, sigma, eta, tau, c, chi, h, jac_switch, invert_height, half_switch = args
+
+    local_survey = EM1DSurveyFD([src])
+    expmap = maps.ExpMap(nP=len(hz))
+    thicknesses = hz[0:-1]
+
     if not invert_height:
         # Use Exponential Map
         # This is hard-wired at the moment
-        expmap = maps.ExpMap(mesh_1d)
+        
         sim = EM1DFMSimulation(
-            mesh_1d, survey=FDsurvey, sigmaMap=expmap, chi=chi, hankel_filter='key_101_2009',
-            eta=eta, tau=tau, c=c
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
         )
         
         if jac_switch == 'sensitivity_sigma':
@@ -98,12 +91,16 @@ def run_simulation_FD(args):
             resp = sim.dpred(np.log(sigma))
             return resp
     else:
-        wires = maps.Wires(('sigma', mesh_1d.nC), ('h', 1))
-        expmap = maps.ExpMap(mesh_1d)
+        
+        mesh1D = set_mesh_1d(hz)
+        wires = maps.Wires(('sigma', mesh1D.nC), ('h', 1))
         sigmaMap = expmap * wires.sigma
+        
         sim = EM1DFMSimulation(
-            mesh_1d, survey=FDsurvey, sigmaMap=sigmaMap, hMap=wires.h, chi=chi, hankel_filter='key_101_2009',
-            eta=eta, tau=tau, c=c
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=sigmaMap, Map=wires.h,
+            chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
         )
         
         m = np.r_[np.log(sigma), h]
@@ -123,60 +120,33 @@ def run_simulation_TD(args):
     """
         args
 
-        rx_location: Recevier location (x, y, z)
-        src_location: Source location (x, y, z)
+        src: source object
         topo: Topographic location (x, y, z)
         hz: Thickeness of the vertical layers
-        time: Time (s)
-        field_type: 'secondary'
-        rx_type:
-        src_type:
-        wave_type:
-        offset: Source-Receiver offset (for VMD)
-        a: Source-loop radius (for Circular Loop)
-        time_input_currents:
-        input_currents:
-        n_pulse:
-        base_frequency:
-        sigma:
-        jac_switch:
+        sigma: conductivities
+        eta
+        tau
+        c
+        chi
+        h
+        jac_switch
+        invert_height
+        half_switch :
     """
 
-    rx_location, src_location, topo, hz, time, field_type, rx_type, src_type, wave_type, offset, a, time_input_currents, input_currents, n_pulse, base_frequency, use_lowpass_filter, high_cut_frequency, moment_type, time_dual_moment, time_input_currents_dual_moment, input_currents_dual_moment, base_frequency_dual_moment, sigma, eta, tau, c, h, jac_switch, invert_height, half_switch = args
+    src, topo, hz, sigma, eta, tau, c, chi, h, jac_switch, invert_height, half_switch = args
 
-    mesh_1d = set_mesh_1d(hz)
-    depth = -mesh_1d.gridN[:-1]
-    TDsurvey = EM1DSurveyTD(
-        rx_location=rx_location,
-        src_location=src_location,
-        topo=topo,
-        depth=depth,
-        time=time,
-        field_type=field_type,
-        rx_type=rx_type,
-        src_type=src_type,
-        wave_type=wave_type,
-        offset=offset,
-        a=a,
-        time_input_currents=time_input_currents,
-        input_currents=input_currents,
-        n_pulse=n_pulse,
-        base_frequency=base_frequency,
-        high_cut_frequency=high_cut_frequency,
-        moment_type=moment_type,
-        time_dual_moment=time_dual_moment,
-        time_input_currents_dual_moment=time_input_currents_dual_moment,
-        input_currents_dual_moment=input_currents_dual_moment,
-        base_frequency_dual_moment=base_frequency_dual_moment,
-        half_switch=half_switch,
-    )
+    local_survey = EM1DSurveyTD([src])
+    expmap = maps.ExpMap(nP=len(hz))
+    thicknesses = hz[0:-1]
+
     if not invert_height:
         # Use Exponential Map
         # This is hard-wired at the moment
-        expmap = maps.ExpMap(mesh_1d)
         sim = EM1DTMSimulation(
-            mesh_1d, survey=TDsurvey, sigmaMap=expmap, hankel_filter='key_101_2009',
-            eta=eta, tau=tau, c=c
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
         )
         
         if jac_switch == 'sensitivity_sigma':
@@ -186,13 +156,15 @@ def run_simulation_TD(args):
             resp = sim.dpred(np.log(sigma))
             return resp
     else:
-        wires = maps.Wires(('sigma', mesh_1d.nC), ('h', 1))
-        expmap = maps.ExpMap(mesh_1d)
+        
+        mesh1D = set_mesh_1d(hz)
+        wires = maps.Wires(('sigma', mesh1D.nC), ('h', 1))
         sigmaMap = expmap * wires.sigma
         sim = EM1DTMSimulation(
-            mesh_1d, survey=TDsurvey, sigmaMap=sigmaMap, hMap=wires.h,
-            hankel_filter='key_101_2009',
-            eta=eta, tau=tau, c=c
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=sigmaMap, Map=wires.h,
+            chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
         )
         
         m = np.r_[np.log(sigma), h]

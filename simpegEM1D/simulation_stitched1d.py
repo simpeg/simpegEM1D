@@ -12,7 +12,7 @@ import scipy.sparse as sp
 from SimPEG import props, utils, maps, survey
 from SimPEG.simulation import BaseSimulation
 from SimPEG.survey import BaseSurvey
-from .survey import EM1DSurveyFD, EM1DSurveyTD
+from .survey import *
 from .EM1DSimulation import run_simulation_FD, run_simulation_TD
 import properties
 import warnings
@@ -28,6 +28,18 @@ class GlobalEM1DSimulation(BaseSimulation):
         potentially in parallel, potentially of different meshes.
         This is handy for working with lots of sources,
     """
+    
+    _Jmatrix_sigma = None
+    _Jmatrix_height = None
+    run_simulation = None
+    n_cpu = None
+    hz = None
+    parallel = False
+    parallel_jvec_jtvec = False
+    verbose = False
+    fix_Jmatrix = False
+    invert_height = None
+
     sigma, sigmaMap, sigmaDeriv = props.Invertible(
         "Electrical conductivity (S/m)"
     )
@@ -52,16 +64,13 @@ class GlobalEM1DSimulation(BaseSimulation):
         "Frequency Dependency, 0 < c < 1"
     )
 
-    _Jmatrix_sigma = None
-    _Jmatrix_height = None
-    run_simulation = None
-    n_cpu = None
-    hz = None
-    parallel = False
-    parallel_jvec_jtvec = False
-    verbose = False
-    fix_Jmatrix = False
-    invert_height = None
+    topo = properties.Array("Topography (x, y, z)", dtype=float, shape=('*', 3))
+
+    survey = properties.Instance(
+        "a survey object", BaseEM1DSurvey, required=True
+    )
+
+    half_switch = properties.Bool("Switch for half-space", default=False)
 
     def __init__(self, mesh, **kwargs):
         utils.setKwargs(self, **kwargs)
@@ -90,51 +99,13 @@ class GlobalEM1DSimulation(BaseSimulation):
 
     @property
     def n_sounding(self):
-        return self.survey.n_sounding
+        return len(self.survey.source_list)
 
-    @property
-    def rx_locations(self):
-        return self.survey.rx_locations
-
-    @property
-    def src_locations(self):
-        return self.survey.src_locations
 
     @property
     def data_index(self):
         return self.survey.data_index
 
-    @property
-    def topo(self):
-        return self.survey.topo
-
-    @property
-    def offset(self):
-        return self.survey.offset
-
-    @property
-    def a(self):
-        return self.survey.a
-
-    @property
-    def I(self):
-        return self.survey.I
-
-    @property
-    def field_type(self):
-        return self.survey.field_type
-
-    @property
-    def rx_type(self):
-        return self.survey.rx_type
-
-    @property
-    def src_type(self):
-        return self.survey.src_type
-
-    @property
-    def half_switch(self):
-        return self.survey.half_switch
 
     # ------------- For physical properties ------------- #
     @property
@@ -229,6 +200,24 @@ class GlobalEM1DSimulation(BaseSimulation):
         return self._IJHeight
 
     # ------------- For physics ------------- #
+
+    def input_args(self, i_sounding, jac_switch='forward'):
+        output = (
+            self.survey.source_list[i_sounding],
+            self.topo[i_sounding, :],
+            self.hz,
+            self.Sigma[i_sounding, :],
+            self.Eta[i_sounding, :],
+            self.Tau[i_sounding, :],
+            self.C[i_sounding, :],
+            self.Chi[i_sounding, :],
+            self.H[i_sounding],
+            jac_switch,
+            self.invert_height,
+            self.half_switch
+        )
+        return output
+
     def fields(self, m):
         if self.verbose:
             print("Compute fields")
@@ -252,14 +241,15 @@ class GlobalEM1DSimulation(BaseSimulation):
         if self.verbose:
             print(">> Compute response")
 
-        if self.survey.__class__ == GlobalEM1DSurveyFD:
+        if self.survey.__class__ == EM1DSurveyFD:
+            print("Correct Run Simulation")
             run_simulation = run_simulation_FD
         else:
             run_simulation = run_simulation_TD
 
         if self.parallel:
             pool = Pool(self.n_cpu)
-            # This assumes the same # of layer for each of soundings
+            # This assumes the same # of layers for each of sounding
             result = pool.map(
                 run_simulation,
                 [
@@ -315,7 +305,7 @@ class GlobalEM1DSimulation(BaseSimulation):
         shift_for_J = 0
         shift_for_I = 0
         m = self.n_layer
-        for i in range(n_sounding):
+        for i in range(self.n_sounding):
             n = self.survey.nD_vec[i]
             J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
             I_temp = (
@@ -341,7 +331,7 @@ class GlobalEM1DSimulation(BaseSimulation):
             print(">> Compute J sigma")
         self.model = m
 
-        if self.survey.__class__ == GlobalEM1DSurveyFD:
+        if self.survey.__class__ == EM1DSurveyFD:
             run_simulation = run_simulation_FD
         else:
             run_simulation = run_simulation_TD
@@ -394,7 +384,7 @@ class GlobalEM1DSimulation(BaseSimulation):
 
         self.model = m
 
-        if self.survey.__class__ == GlobalEM1DSurveyFD:
+        if self.survey.__class__ == EM1DSurveyFD:
             run_simulation = run_simulation_FD
         else:
             run_simulation = run_simulation_TD
@@ -540,126 +530,68 @@ class GlobalEM1DSimulationFD(GlobalEM1DSimulation):
             print(">> Frequency-domain")
         return run_simulation_FD(args)
 
-    @property
-    def frequency(self):
-        return self.survey.frequency
+    # @property
+    # def frequency(self):
+    #     return self.survey.frequency
 
-    @property
-    def switch_real_imag(self):
-        return self.survey.switch_real_imag
-
-    def input_args(self, i_sounding, jac_switch='forward'):
-        output = (
-            self.rx_locations[i_sounding, :],
-            self.src_locations[i_sounding, :],
-            self.topo[i_sounding, :],
-            self.hz,
-            self.offset,
-            self.frequency,
-            self.field_type,
-            self.rx_type,
-            self.src_type,
-            self.Sigma[i_sounding, :],
-            self.Eta[i_sounding, :],
-            self.Tau[i_sounding, :],
-            self.C[i_sounding, :],
-            self.Chi[i_sounding, :],
-            self.H[i_sounding],
-            jac_switch,
-            self.invert_height,
-            self.half_switch
-        )
-        return output
+    # @property
+    # def switch_real_imag(self):
+    #     return self.survey.switch_real_imag
 
 
 class GlobalEM1DSimulationTD(GlobalEM1DSimulation):
 
-    @property
-    def wave_type(self):
-        return self.survey.wave_type
+    # @property
+    # def wave_type(self):
+    #     return self.survey.wave_type
 
-    @property
-    def input_currents(self):
-        return self.survey.input_currents
+    # @property
+    # def input_currents(self):
+    #     return self.survey.input_currents
 
-    @property
-    def time_input_currents(self):
-        return self.survey.time_input_currents
+    # @property
+    # def time_input_currents(self):
+    #     return self.survey.time_input_currents
 
-    @property
-    def n_pulse(self):
-        return self.survey.n_pulse
+    # @property
+    # def n_pulse(self):
+    #     return self.survey.n_pulse
 
-    @property
-    def base_frequency(self):
-        return self.survey.base_frequency
+    # @property
+    # def base_frequency(self):
+    #     return self.survey.base_frequency
 
-    @property
-    def time(self):
-        return self.survey.time
+    # @property
+    # def time(self):
+    #     return self.survey.time
 
-    @property
-    def use_lowpass_filter(self):
-        return self.survey.use_lowpass_filter
+    # @property
+    # def use_lowpass_filter(self):
+    #     return self.survey.use_lowpass_filter
 
-    @property
-    def high_cut_frequency(self):
-        return self.survey.high_cut_frequency
+    # @property
+    # def high_cut_frequency(self):
+    #     return self.survey.high_cut_frequency
 
-    @property
-    def moment_type(self):
-        return self.survey.moment_type
+    # @property
+    # def moment_type(self):
+    #     return self.survey.moment_type
 
-    @property
-    def time_dual_moment(self):
-        return self.survey.time_dual_moment
+    # @property
+    # def time_dual_moment(self):
+    #     return self.survey.time_dual_moment
 
-    @property
-    def time_input_currents_dual_moment(self):
-        return self.survey.time_input_currents_dual_moment
+    # @property
+    # def time_input_currents_dual_moment(self):
+    #     return self.survey.time_input_currents_dual_moment
 
-    @property
-    def input_currents_dual_moment(self):
-        return self.survey.input_currents_dual_moment
+    # @property
+    # def input_currents_dual_moment(self):
+    #     return self.survey.input_currents_dual_moment
 
-    @property
-    def base_frequency_dual_moment(self):
-        return self.survey.base_frequency_dual_moment
-
-    def input_args(self, i_sounding, jac_switch='forward'):
-        output = (
-            self.rx_locations[i_sounding, :],
-            self.src_locations[i_sounding, :],
-            self.topo[i_sounding, :],
-            self.hz,
-            self.time[i_sounding],
-            self.field_type[i_sounding],
-            self.rx_type[i_sounding],
-            self.src_type[i_sounding],
-            self.wave_type[i_sounding],
-            self.offset[i_sounding],
-            self.a[i_sounding],
-            self.time_input_currents[i_sounding],
-            self.input_currents[i_sounding],
-            self.n_pulse[i_sounding],
-            self.base_frequency[i_sounding],
-            self.use_lowpass_filter[i_sounding],
-            self.high_cut_frequency[i_sounding],
-            self.moment_type[i_sounding],
-            self.time_dual_moment[i_sounding],
-            self.time_input_currents_dual_moment[i_sounding],
-            self.input_currents_dual_moment[i_sounding],
-            self.base_frequency_dual_moment[i_sounding],
-            self.Sigma[i_sounding, :],
-            self.Eta[i_sounding, :],
-            self.Tau[i_sounding, :],
-            self.C[i_sounding, :],
-            self.H[i_sounding],
-            jac_switch,
-            self.invert_height,
-            self.half_switch
-        )
-        return output
+    # @property
+    # def base_frequency_dual_moment(self):
+    #     return self.survey.base_frequency_dual_moment
 
     def run_simulation(self, args):
         if self.verbose:
@@ -720,12 +652,12 @@ class GlobalEM1DSimulationTD(GlobalEM1DSimulation):
 class GlobalEM1DSurvey(BaseSurvey, properties.HasProperties):
 
     # This assumes a multiple sounding locations
-    rx_locations = properties.Array(
-        "Receiver locations ", dtype=float, shape=('*', 3)
-    )
-    src_locations = properties.Array(
-        "Source locations ", dtype=float, shape=('*', 3)
-    )
+    # rx_locations = properties.Array(
+    #     "Receiver locations ", dtype=float, shape=('*', 3)
+    # )
+    # src_locations = properties.Array(
+    #     "Source locations ", dtype=float, shape=('*', 3)
+    # )
     topo = properties.Array(
         "Topography", dtype=float, shape=('*', 3)
     )

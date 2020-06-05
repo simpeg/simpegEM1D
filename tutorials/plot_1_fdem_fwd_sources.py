@@ -26,7 +26,7 @@ import simpegEM1D as em1d
 #
 #
 
-source_location = np.array([0., 0., 0.])  
+source_location = np.array([0., 0., 10.])  
 source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = np.sqrt(1/np.pi)
@@ -34,7 +34,7 @@ source_radius = np.sqrt(1/np.pi)
 phi = (np.pi/4)*np.r_[1, 3, 5, 7, 1]
 node_locations = np.c_[np.cos(phi), np.sin(phi), np.zeros(len(phi))]
 
-receiver_location = np.array([20., 0., 0.])
+receiver_location = np.array([0.1, 0., 10.])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
 
@@ -139,8 +139,8 @@ dpred = np.reshape(dpred, (4, len(frequencies))).T
 
 
 fig, ax = plt.subplots(1,1, figsize = (7, 7))
-ax.loglog(frequencies, np.abs(dpred[:,0]), 'b-', lw=2)
-ax.loglog(frequencies, np.abs(dpred[:,1]), 'b--', lw=2)
+ax.loglog(frequencies, np.abs(dpred[:,0]), 'b-o', lw=2)
+ax.loglog(frequencies, np.abs(dpred[:,1]), 'b--o', lw=2)
 ax.loglog(frequencies, np.abs(dpred[:,2]), 'r-', lw=2)
 ax.loglog(frequencies, np.abs(dpred[:,3]), 'r--', lw=2)
 ax.set_xlabel("Frequency (Hz)")
