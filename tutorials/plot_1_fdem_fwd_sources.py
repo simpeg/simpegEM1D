@@ -26,7 +26,7 @@ import simpegEM1D as em1d
 #
 #
 
-source_location = np.array([0., 0., 10.])  
+source_location = np.array([0., 0., 5.])  
 source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = np.sqrt(1/np.pi)
@@ -34,7 +34,8 @@ source_radius = np.sqrt(1/np.pi)
 phi = (np.pi/4)*np.r_[1, 3, 5, 7, 1]
 node_locations = np.c_[np.cos(phi), np.sin(phi), np.zeros(len(phi))]
 
-receiver_location = np.array([10., 0., 10.])
+receiver_location_1 = np.array([0., 0., 10.])
+receiver_location_2 = np.array([0., 0., 10.])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
 
@@ -44,28 +45,28 @@ frequencies = np.logspace(-1, 8, 51)
 receiver_list = []
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location, frequencies, orientation='x',
+        receiver_location_1, frequencies, orientation='x',
         field_type=field_type, component="real"
     )
 )
 
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location, frequencies, orientation='x',
+        receiver_location_1, frequencies, orientation='x',
         field_type=field_type, component="imag"
     )
 )
     
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location, frequencies, orientation='z',
+        receiver_location_2, frequencies, orientation='y',
         field_type=field_type, component="real"
     )
 )
 
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location, frequencies, orientation='z',
+        receiver_location_2, frequencies, orientation='y',
         field_type=field_type, component="imag"
     )
 )
@@ -75,8 +76,15 @@ source_list = []
 
 source_list.append(
     em1d.sources.HarmonicMagneticDipoleSource(
-        receiver_list=receiver_list, location=source_location,
-        orientation=source_orientation, I=source_current
+        receiver_list=receiver_list[0:2], location=source_location,
+        orientation="x", I=source_current
+    )
+)
+    
+source_list.append(
+    em1d.sources.HarmonicMagneticDipoleSource(
+        receiver_list=receiver_list[2:], location=source_location,
+        orientation="y", I=source_current
     )
 )
     

@@ -59,7 +59,7 @@ class BaseHarmonicSrc(BaseSrc):
 class HarmonicMagneticDipoleSource(BaseSrc):
     
     orientation = properties.StringChoice(
-        "Dipole Orientation", default="z", choices=["z"]
+        "Dipole Orientation", default="z", choices=["x", "y", "z"]
     )
 
     def __init__(self, receiver_list=None, **kwargs):

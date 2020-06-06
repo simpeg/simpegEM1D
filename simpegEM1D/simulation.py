@@ -263,28 +263,46 @@ class BaseEM1DSimulation(BaseSimulation):
                 # Compute receiver height
                 h = h_vector[ii]
                 z = h + src.location[2] - rx.locations[2]
-
-                flag = rx.field_type
     
                 if output_type == 'response':
                     # for forward simulation
                     if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                        hz = h_kernel_vertical_magnetic_dipole(
-                            self, lambd, f, n_layer,
-                            sig, chi, h, z,
-                            flag, I, output_type=output_type
+                        PJ = magnetic_dipole_kernel(
+                            self, lambd, f, n_layer, sig, chi, h, z, I, 
+                            src.orientation, rx.orientation, output_type=output_type
                         )
 
                         # kernels for each bessel function
                         # (j0, j1, j2)
-                        if rx.orientation == 'x':
-                            hz *= -rx.locations[0]/np.sqrt(np.sum(rx.locations[0:-1]))
-                            PJ = (None, hz, None)  # PJ1
-                        elif rx.orientation == 'y':
-                            hz *= -rx.locations[1]/np.sqrt(np.sum(rx.locations[0:-1]))
-                            PJ = (None, hz, None)  # PJ1
-                        elif rx.orientation == 'z':
-                            PJ = (hz, None, None)  # PJ0
+                        if src.orientation == "z":
+                            if rx.orientation == "x":
+                                PJ[1] *= -rx.locations[0]/np.sqrt(np.sum(rx.locations[0:-1]))
+                            elif rx.orientation == "y":
+                                PJ[1] *= -rx.locations[1]/np.sqrt(np.sum(rx.locations[0:-1]))
+                            # "z" component doesn't need multplier
+                        elif src.orientation == "x":
+                            rho = np.sqrt(np.sum(rx.locations[0:-1]**2))
+                            if rx.orientation == "x":
+                                PJ[0] *= rx.locations[0]**2/rho**2
+                                PJ[1] *= (1/rho - 2*rx.locations[0]**2/rho**3)
+                            elif rx.orienation == "y":
+                                PJ[0] *= rx.locations[0]*rx.locations[1]/rho**2
+                                PJ[1] *= -2*rx.locations[0]*rx.locations[1]/rho**3
+                            elif rx.orientation == "z":
+                                PJ[1] *= rx.locations[0]/rho
+                        elif src.orientation == "y":
+                            rho = np.sqrt(np.sum(rx.locations[0:-1]**2))
+                            if rx.orientation == "x":
+                                PJ[0] *= -rx.locations[0]*rx.locations[1]/rho**2
+                                PJ[1] *= 2*rx.locations[0]*rx.locations[1]/rho**3
+                            elif rx.orientation == "y":
+                                PJ[0] *= rx.locations[1]**2/rho**2
+                                PJ[1] *= (1/rho - 2*rx.locations[1]**2/rho**3)
+                            elif rx.orientation == "z":
+                                PJ[1] *= rx.locations[1]/rho
+
+                        PJ = tuple(PJ)
+                            
 
                     elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
                         hz = hz_kernel_circular_loop(
