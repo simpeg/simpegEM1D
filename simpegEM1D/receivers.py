@@ -14,7 +14,7 @@ class HarmonicPointReceiver(BaseRx):
     )
     
     orientation = properties.StringChoice(
-        "Field orientation", default="z", choices=["z"]
+        "Field orientation", default="z", choices=["x", "y", "z"]
     )
 
     field_type = properties.StringChoice(

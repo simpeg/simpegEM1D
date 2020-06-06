@@ -518,25 +518,30 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
 
 
 
-def hz_kernel_vertical_magnetic_dipole(
+def h_kernel_vertical_magnetic_dipole(
     simulation, lamda, f, n_layer, sig, chi, h, z,
     flag, I, output_type='response'
 ):
 
     """
-    Kernel for vertical magnetic component (Hz) due to
-    vertical magnetic diopole (VMD) source in (kx,ky) domain
+    Kernel for vertical (Hz) and radial (Hrho) magnetic component due to
+    vertical magnetic diopole (VMD) source in (kx,ky) domain.
 
     .. math::
 
-        H_z = \\frac{m}{4\\pi} \\int_0^{\\infty}
-        \\r_{TE} e^{u_0|z-h|}
-        \\frac{\\lambda^3}{u_0} J_0(\\lambda r) d \\lambda
+        H_z = \\frac{m}{4\\pi} \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+        \\lambda^2 J_0(\\lambda r) d \\lambda
+
+    and
+
+    .. math::
+
+        H_{\\rho} = - \\frac{m}{4\\pi} \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+        \\lambda^2 J_1(\\lambda r) d \\lambda
 
     """
 
-    u0 = lamda
-    coefficient_wavenumber = 1/(4*np.pi)*lamda**3/u0
+    coefficient_wavenumber = 1/(4*np.pi)*lamda**2
 
     n_frequency = len(f)
     n_filter = simulation.n_filter
@@ -558,7 +563,7 @@ def hz_kernel_vertical_magnetic_dipole(
                 n_layer, n_frequency, n_filter
                 )
 
-        kernel = drTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
+        kernel = drTE * np.exp(-lamda*(z+h)) * coefficient_wavenumber
     else:
         rTE = np.empty(
             [n_frequency, n_filter], dtype=np.complex128, order='F'
@@ -575,9 +580,9 @@ def hz_kernel_vertical_magnetic_dipole(
                 rTE, n_layer, n_frequency, n_filter
             )
 
-        kernel = rTE * np.exp(-u0*(z+h)) * coefficient_wavenumber
+        kernel = rTE * np.exp(-lamda*(z+h)) * coefficient_wavenumber
         if output_type == 'sensitivity_height':
-            kernel *= -2*u0
+            kernel *= -2*lamda
 
     return kernel * I
 

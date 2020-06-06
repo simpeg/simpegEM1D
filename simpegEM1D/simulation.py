@@ -269,7 +269,7 @@ class BaseEM1DSimulation(BaseSimulation):
                 if output_type == 'response':
                     # for forward simulation
                     if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                        hz = hz_kernel_vertical_magnetic_dipole(
+                        hz = h_kernel_vertical_magnetic_dipole(
                             self, lambd, f, n_layer,
                             sig, chi, h, z,
                             flag, I, output_type=output_type
@@ -277,7 +277,14 @@ class BaseEM1DSimulation(BaseSimulation):
 
                         # kernels for each bessel function
                         # (j0, j1, j2)
-                        PJ = (hz, None, None)  # PJ0
+                        if rx.orientation == 'x':
+                            hz *= -rx.locations[0]/np.sqrt(np.sum(rx.locations[0:-1]))
+                            PJ = (None, hz, None)  # PJ1
+                        elif rx.orientation == 'y':
+                            hz *= -rx.locations[1]/np.sqrt(np.sum(rx.locations[0:-1]))
+                            PJ = (None, hz, None)  # PJ1
+                        elif rx.orientation == 'z':
+                            PJ = (hz, None, None)  # PJ0
 
                     elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
                         hz = hz_kernel_circular_loop(
