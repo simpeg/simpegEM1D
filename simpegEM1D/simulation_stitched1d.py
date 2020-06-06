@@ -279,8 +279,8 @@ class GlobalEM1DSimulation(BaseSimulation):
         else:
             m = n_layer
 
-        for i in range(self.survey.n_sounding):
-            n = self.survey.nD_vec[i]
+        for i in range(self.n_sounding):
+            n = self.survey.vnD_by_sounding[i]
             J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
             I_temp = (
                 np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
@@ -306,7 +306,7 @@ class GlobalEM1DSimulation(BaseSimulation):
         shift_for_I = 0
         m = self.n_layer
         for i in range(self.n_sounding):
-            n = self.survey.nD_vec[i]
+            n = self.survey.vnD[i]
             J_temp = np.tile(np.arange(m), (n, 1)) + shift_for_J
             I_temp = (
                 np.tile(np.arange(n), (1, m)).reshape((n, m), order='F') +
@@ -701,7 +701,7 @@ class GlobalEM1DSurvey(BaseSurvey, properties.HasProperties):
     def nD(self):
         # Need to generalize this for the dual moment data
         if getattr(self, '_nD', None) is None:
-            self._nD = self.nD_vec.sum()
+            self._nD = self.vnD.sum()
         return self._nD
 
     
@@ -709,21 +709,21 @@ class GlobalEM1DSurvey(BaseSurvey, properties.HasProperties):
 
 class GlobalEM1DSurveyFD(GlobalEM1DSurvey, EM1DSurveyFD):
 
-    @property
-    def nD_vec(self):
-        if getattr(self, '_nD_vec', None) is None:
-            self._nD_vec = []
-            if self.switch_real_imag == "all":
-                nD_for_sounding = int(self.n_frequency * 2)
-            elif (
-                self.switch_real_imag == "imag" or self.switch_real_imag == "real"
-            ):
-                nD_for_sounding = int(self.n_frequency)
+    # @property
+    # def nD_vec(self):
+    #     if getattr(self, '_nD_vec', None) is None:
+    #         self._nD_vec = []
+    #         if self.switch_real_imag == "all":
+    #             nD_for_sounding = int(self.n_frequency * 2)
+    #         elif (
+    #             self.switch_real_imag == "imag" or self.switch_real_imag == "real"
+    #         ):
+    #             nD_for_sounding = int(self.n_frequency)
 
-            for ii in range(self.n_sounding):
-                self._nD_vec.append(nD_for_sounding)
-            self._nD_vec = np.array(self._nD_vec)
-        return self._nD_vec
+    #         for ii in range(self.n_sounding):
+    #             self._nD_vec.append(nD_for_sounding)
+    #         self._nD_vec = np.array(self._nD_vec)
+    #     return self._nD_vec
 
     # @property
     # def nD(self):
@@ -878,29 +878,29 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
                 (self.n_sounding), dtype=float
             )
 
-    @property
-    def nD_vec(self):
-        if getattr(self, '_nD_vec', None) is None:
-            self._nD_vec = []
+    # @property
+    # def nD_vec(self):
+    #     if getattr(self, '_nD_vec', None) is None:
+    #         self._nD_vec = []
 
-            for ii, moment_type in enumerate(self.moment_type):
-                if moment_type == 'single':
-                    self._nD_vec.append(self.time[ii].size)
-                elif moment_type == 'dual':
-                    self._nD_vec.append(
-                        self.time[ii].size+self.time_dual_moment[ii].size
-                    )
-                else:
-                    raise Exception("moment_type must be either signle or dual")
-            self._nD_vec = np.array(self._nD_vec)
-        return self._nD_vec
+    #         for ii, moment_type in enumerate(self.moment_type):
+    #             if moment_type == 'single':
+    #                 self._nD_vec.append(self.time[ii].size)
+    #             elif moment_type == 'dual':
+    #                 self._nD_vec.append(
+    #                     self.time[ii].size+self.time_dual_moment[ii].size
+    #                 )
+    #             else:
+    #                 raise Exception("moment_type must be either signle or dual")
+    #         self._nD_vec = np.array(self._nD_vec)
+    #     return self._nD_vec
 
     @property
     def data_index(self):
         # Need to generalize this for the dual moment data
         if getattr(self, '_data_index', None) is None:
             self._data_index = [
-                    np.arange(self.nD_vec[i_sounding])+np.sum(self.nD_vec[:i_sounding]) for i_sounding in range(self.n_sounding)
+                    np.arange(self.vnD[i_sounding])+np.sum(self.vnD[:i_sounding]) for i_sounding in range(self.n_sounding)
             ]
         return self._data_index
 
@@ -908,5 +908,5 @@ class GlobalEM1DSurveyTD(GlobalEM1DSurvey):
     def nD(self):
         # Need to generalize this for the dual moment data
         if getattr(self, '_nD', None) is None:
-            self._nD = self.nD_vec.sum()
+            self._nD = self.vnD.sum()
         return self._nD

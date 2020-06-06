@@ -53,6 +53,17 @@ class EM1DSurveyFD(BaseEM1DSurvey):
 
         return int(nD)
 
+    @property
+    def vnD_by_sounding(self):
+        if getattr(self, '_vnD_by_sounding', None) is None:
+            temp = []
+            for src in self.source_list:
+                temp.append(
+                    np.sum([len(rx.frequencies) for rx in src.receiver_list])
+                )
+            self._vnD_by_sounding = np.array(temp)
+        return self._vnD_by_sounding
+
     # @property
     # def hz_primary(self):
     #     # Assumes HCP only at the moment
@@ -90,6 +101,18 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                 nD += len(rx.times)
 
         return int(nD)
+
+
+    @property
+    def vnD_by_sounding(self):
+        if getattr(self, '_vnD_by_sounding', None) is None:
+            temp = []
+            for src in self.source_list:
+                temp.append(
+                    np.sum([len(rx.times) for rx in src.receiver_list])
+                )
+            self._vnD_by_sounding = np.array(temp)
+        return self._vnD_by_sounding
     
 
     @property

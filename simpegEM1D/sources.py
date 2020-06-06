@@ -49,6 +49,13 @@ class BaseSrc(survey.BaseSrc):
 # Harmonic Sources
 #############################################################################
 
+
+class BaseHarmonicSrc(BaseSrc):
+
+    def __init__(self, receiver_list=None, **kwargs):
+        super(BaseHarmonicSrc, self).__init__(receiver_list=receiver_list, **kwargs)
+
+
 class HarmonicMagneticDipoleSource(BaseSrc):
     
     orientation = properties.StringChoice(
@@ -321,6 +328,7 @@ class BaseTimeSrc(BaseSrc):
         """
             # of data
         """
+
         if self.moment_type == "single":
             return self.n_time
         else:

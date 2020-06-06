@@ -15,6 +15,7 @@ Forward Simulation of 1D Frequency-Domain Data
 
 import numpy as np
 import os
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from discretize import TensorMesh
@@ -35,7 +36,9 @@ save_file = True
 # -------------
 #
 #
+
 x = np.linspace(50,4950,50)
+#x = np.linspace(50,250,3)
 y = np.zeros_like(x)
 z = np.zeros_like(x)
 topo = np.c_[x, y, z].astype(float)
@@ -50,6 +53,7 @@ topo = np.c_[x, y, z].astype(float)
 #
 #
 x = np.linspace(50,5050,50)
+#x = np.linspace(50,250,3)
 n_sounding = len(x)
 
 source_locations = np.c_[x, np.ones((n_sounding, 2))]
@@ -117,16 +121,22 @@ def PolygonInd(mesh, pts):
 
 
 background_conductivity = 0.1
-slope_conductivity = 1
+overburden_conductivity = 0.025
+slope_conductivity = 0.4
 
 model = np.ones(mesh.nC) * background_conductivity
 
-x0 = np.r_[0., 10.]
-x1 = np.r_[dx*n_sounding, np.sum(hz)]
-x2 = np.r_[dx*n_sounding, 10.]
-pts = np.vstack((x0, x1, x2, x0))
+layer_ind = mesh.gridCC[:, -1] < 50.
+model[layer_ind] = overburden_conductivity
+
+
+x0 = np.r_[0., 50.]
+x1 = np.r_[dx*n_sounding, 50.]
+x2 = np.r_[dx*n_sounding, 150.]
+x3 = np.r_[0., 75.]
+pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh, pts)
-model[poly_inds] = 1./50
+model[poly_inds] = slope_conductivity
 
 mapping = maps.ExpMap(mesh)
 sounding_models = np.log(model.reshape(mesh.vnC, order='F').flatten())
@@ -135,13 +145,31 @@ chi = np.zeros_like(sounding_models)
 
 
 
-cb = plt.colorbar(
-    mesh.plotImage(model, grid=False, clim=(1e-2, 1e-1),pcolorOpts={"norm":LogNorm()})[0],
-    fraction=0.03, pad=0.04
-)
+fig = plt.figure(figsize=(9, 3))
+ax1 = fig.add_axes([0.1, 0.12, 0.73, 0.78])
+log_mod = np.log10(model)
 
-plt.ylim(mesh.vectorNy.max(), mesh.vectorNy.min())
-plt.gca().set_aspect(1)
+mesh.plotImage(
+    log_mod, ax=ax1, grid=False,
+    clim=(np.log10(overburden_conductivity), np.log10(slope_conductivity)),
+    pcolorOpts={"cmap": "viridis"},
+)
+ax1.set_ylim(mesh.vectorNy.max(), mesh.vectorNy.min())
+
+ax1.set_title("Conductivity Model")
+ax1.set_xlabel("x (m)")
+ax1.set_ylabel("z (m)")
+
+ax2 = fig.add_axes([0.85, 0.12, 0.05, 0.78])
+norm = mpl.colors.Normalize(
+    vmin=np.log10(overburden_conductivity), vmax=np.log10(slope_conductivity)
+)
+cbar = mpl.colorbar.ColorbarBase(
+    ax2, norm=norm, cmap=mpl.cm.viridis, orientation="vertical", format="$10^{%.1f}$"
+)
+cbar.set_label("Conductivity [S/m]", rotation=270, labelpad=15, size=12)
+
+
 
 #######################################################################
 # Define the Forward Simulation and Predic Data
@@ -192,7 +220,7 @@ ax.set_ylabel("|dBdt| (T/s)")
 
 if save_file == True:
 
-    noise = 0.05*np.abs(dpred)*np.random.rand(len(dpred))
+    noise = 0.1*np.abs(dpred)*np.random.rand(len(dpred))
     dpred += noise
     fname = os.path.dirname(em1d.__file__) + '\\..\\tutorials\\assets\\em1dtm_stitched_data.obs'
     
