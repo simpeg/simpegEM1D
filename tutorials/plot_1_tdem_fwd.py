@@ -36,7 +36,7 @@ source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = 6.
 
-receiver_location = np.array([10., 0., 20.])
+receiver_location = np.array([0., 0., 20.])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
 
@@ -52,19 +52,19 @@ receiver_list.append(
 )
 
 # Sources
-#source_list = [
-#    em1d.sources.TimeDomainHorizontalLoopSource(
-#        receiver_list=receiver_list, location=source_location,
-#        I=source_current, a=source_radius
-#    )
-#]
-
 source_list = [
-    em1d.sources.TimeDomainMagneticDipoleSource(
-        receiver_list=receiver_list, location=source_location, orientation="z",
-        I=source_current
+    em1d.sources.TimeDomainHorizontalLoopSource(
+        receiver_list=receiver_list, location=source_location,
+        I=source_current, a=source_radius
     )
 ]
+
+#source_list = [
+#    em1d.sources.TimeDomainMagneticDipoleSource(
+#        receiver_list=receiver_list, location=source_location, orientation="z",
+#        I=source_current
+#    )
+#]
 
 # Survey
 survey = em1d.survey.EM1DSurveyTD(source_list)

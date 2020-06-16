@@ -246,157 +246,99 @@ class BaseEM1DSimulation(BaseSimulation):
                 # Create globally, not for each receiver
                 sig = self.sigma_cole(rx.frequencies)
 
-                if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                    r = src.location[0:2] - rx.locations[0:2]
-                    r = np.sqrt(np.sum(r**2)) * np.ones(n_frequency)
-                else:
-                    # a is the radius of the loop
-                    r = src.a * np.ones(n_frequency)
-
-                # Use function from empymod
-                # size of lambd is (n_frequency x n_filter)
-                lambd = np.empty([n_frequency, n_filter], order='F')
-                lambd[:, :], _ = get_dlf_points(
-                    self.fhtfilt, r, self.hankel_pts_per_dec
-                )
-
                 # Compute receiver height
                 h = h_vector[ii]
                 z = h + src.location[2] - rx.locations[2]
-    
-                if output_type == 'response':
-                    # for forward simulation
-                    if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                        PJ = magnetic_dipole_kernel(
-                            self, lambd, f, n_layer, sig, chi, h, z, I, 
-                            src.orientation, rx.orientation, output_type=output_type
+
+                if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
+
+                    # Radial distance
+                    r = src.location[0:2] - rx.locations[0:2]
+                    r = np.sqrt(np.sum(r**2))
+                    
+                    if r > 0.01:
+
+                        r_vec = r * np.ones(n_frequency)
+
+                        # Use function from empymod
+                        # size of lambd is (n_frequency x n_filter)
+                        lambd = np.empty([n_frequency, n_filter], order='F')
+                        lambd[:, :], _ = get_dlf_points(
+                            self.fhtfilt, r_vec, self.hankel_pts_per_dec
                         )
 
-                        # kernels for each bessel function
-                        # (j0, j1, j2)
-                        if src.orientation == "z":
-                            if rx.orientation == "x":
-                                PJ[1] *= -rx.locations[0]/np.sqrt(np.sum(rx.locations[0:-1]))
-                            elif rx.orientation == "y":
-                                PJ[1] *= -rx.locations[1]/np.sqrt(np.sum(rx.locations[0:-1]))
-                            # "z" component doesn't need multplier
-                        elif src.orientation == "x":
-                            rho = np.sqrt(np.sum(rx.locations[0:-1]**2))
-                            if rx.orientation == "x":
-                                PJ[0] *= rx.locations[0]**2/rho**2
-                                PJ[1] *= (1/rho - 2*rx.locations[0]**2/rho**3)
-                            elif rx.orienation == "y":
-                                PJ[0] *= rx.locations[0]*rx.locations[1]/rho**2
-                                PJ[1] *= -2*rx.locations[0]*rx.locations[1]/rho**3
-                            elif rx.orientation == "z":
-                                PJ[1] *= rx.locations[0]/rho
-                        elif src.orientation == "y":
-                            rho = np.sqrt(np.sum(rx.locations[0:-1]**2))
-                            if rx.orientation == "x":
-                                PJ[0] *= -rx.locations[0]*rx.locations[1]/rho**2
-                                PJ[1] *= 2*rx.locations[0]*rx.locations[1]/rho**3
-                            elif rx.orientation == "y":
-                                PJ[0] *= rx.locations[1]**2/rho**2
-                                PJ[1] *= (1/rho - 2*rx.locations[1]**2/rho**3)
-                            elif rx.orientation == "z":
-                                PJ[1] *= rx.locations[1]/rho
+                        # Get kernel function at all lambda and frequencies
+                        PJ = magnetic_dipole_kernel(
+                            self, lambd, f, n_layer, sig, chi, I, h, z, r,
+                            src, rx, output_type
+                        )
 
                         PJ = tuple(PJ)
-                            
 
-                    elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
-                        hz = hz_kernel_circular_loop(
-                            self, lambd, f, n_layer,
-                            sig, chi, h, z, I, r,
-                            flag, output_type=output_type
+                        if output_type=="sensitivity_sigma":
+                            r_vec = np.tile(r_vec, (n_layer, 1))
+
+                        integral_output = dlf(
+                            PJ, lambd, r_vec, self.fhtfilt, self.hankel_pts_per_dec, ang_fact=None, ab=33
                         )
 
-                        # kernels for each bessel function
-                        # (j0, j1, j2)
-                        PJ = (None, hz, None)  # PJ1
+                    # elif src.orientation == "z":
 
-                    # TODO: This has not implemented yet!
-                    elif isinstance(src, HarmonicLineSource) | isinstance(src, TimeDomainLineSource):
-                        # Need to compute y
-                        hz = hz_kernel_horizontal_electric_dipole(
-                            self, lambd, f, n_layer,
-                            sig, chi, h, z, I, r,
-                            flag, output_type=output_type
-                        )
-                        # kernels for each bessel function
-                        # (j0, j1, j2)
-                        PJ = (None, hz, None)  # PJ1
+                    #     z_vec = -1j *z * np.ones(n_frequency)
 
-                    else:
-                        raise Exception("Src options are only VMD or CircularLoop!!")
+                    #     # Use function from empymod
+                    #     # size of lambd is (n_frequency x n_filter)
+                    #     lambd = np.empty([n_frequency, n_filter], order='F')
+                    #     lambd[:, :], _ = get_dlf_points(
+                    #         self.fhtfilt, z_vec, self.hankel_pts_per_dec
+                    #     )
 
-                elif output_type == 'sensitivity_sigma':
+                    #     PJ = magnetic_dipole_fourier(
+                    #         self, lambd, f, n_layer, sig, chi, I, h, z, r,
+                    #         src, rx, output_type
+                    #     )
 
-                    # for simulation
-                    if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                        hz = hz_kernel_vertical_magnetic_dipole(
-                            self, lambd, f, n_layer,
-                            sig, chi, h, z,
-                            flag, I, output_type=output_type
-                        )
+                    #     integral_output = fourier_dlf(
+                    #         PJ, lambd, z_vec, filters.key_201_2009(kind='sin'), self.hankel_pts_per_dec
+                    #     )
 
-                        PJ = (hz, None, None)  # PJ0
 
-                    elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
-                        
-                        hz = hz_kernel_circular_loop(
-                            self, lambd, f, n_layer,
-                            sig, chi, h, z, I, r,
-                            flag, output_type=output_type
-                        )
 
-                        PJ = (None, hz, None)  # PJ1
+                elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
+                    
+                    # radial distance and loop radius
+                    r = src.location[0:2] - rx.locations[0:2]
+                    r_vec = np.sqrt(np.sum(r**2)) * np.ones(n_frequency)
+                    a_vec = src.a * np.ones(n_frequency)
 
-                    else:
-                        raise Exception("Src options are only VMD or CircularLoop!!")
+                    # Use function from empymod
+                    # size of lambd is (n_frequency x n_filter)
+                    lambd = np.empty([n_frequency, n_filter], order='F')
+                    lambd[:, :], _ = get_dlf_points(
+                        self.fhtfilt, a_vec, self.hankel_pts_per_dec
+                    )
 
-                    r = np.tile(r, (n_layer, 1))
+                    hz = horizontal_loop_kernel(
+                        self, lambd, f, n_layer,
+                        sig, chi, I, a_vec, h, z, r,
+                        rx.orientation, output_type
+                    )
 
-                elif output_type == 'sensitivity_height':
+                    # kernels for each bessel function
+                    # (j0, j1, j2)
+                    PJ = (None, hz, None)  # PJ1
 
-                    # for simulation
-                    if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
-                        hz = hz_kernel_vertical_magnetic_dipole(
-                            self, lambd, f, n_layer,
-                            sig, chi, h, z,
-                            flag, I, output_type=output_type
-                        )
+                    if output_type=="sensitivity_sigma":
+                        a_vec = np.tile(a_vec, (n_layer, 1))
 
-                        PJ = (hz, None, None)  # PJ0
-
-                    elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
-                        
-                        hz = hz_kernel_circular_loop(
-                            self, lambd, f, n_layer,
-                            sig, chi, h, z, I, r,
-                            flag, output_type=output_type
-                        )
-
-                        PJ = (None, hz, None)  # PJ1
-
-                    else:
-                        raise Exception("Src options are only VMD or CircularLoop!!")
-
-                # Carry out Hankel DLF
-                # ab=66 => 33 (vertical magnetic src and rec)
-                # For response
-                # HzFHT size = (n_frequency,)
-                # For sensitivity
-                # HzFHT size = (n_layer, n_frequency)
-
-                HzFHT = dlf(
-                    PJ, lambd, r, self.fhtfilt, self.hankel_pts_per_dec, ang_fact=None, ab=33
-                )
+                    integral_output = dlf(
+                        PJ, lambd, a_vec, self.fhtfilt, self.hankel_pts_per_dec, ang_fact=None, ab=33
+                    )
 
                 if output_type == "sensitivity_sigma":
-                    fields_list.append(HzFHT.T)
+                    fields_list.append(integral_output.T)
                 else:
-                    fields_list.append(HzFHT)
+                    fields_list.append(integral_output)
 
         return fields_list
 

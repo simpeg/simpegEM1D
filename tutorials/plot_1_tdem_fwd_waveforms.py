@@ -33,7 +33,7 @@ source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = 10.
 
-receiver_location = np.array([0., 0., 0.])
+receiver_location = np.array([10., 0., 0.])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
 
@@ -52,9 +52,9 @@ source_list = []
 
 # Step off
 source_list.append(
-    em1d.sources.TimeDomainHorizontalLoopSource(
+    em1d.sources.TimeDomainMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location,
-        I=source_current, a=source_radius, wave_type="stepoff"
+        orientation=source_orientation, I=source_current, wave_type="stepoff"
     )
 )
 
@@ -62,10 +62,10 @@ source_list.append(
 time_input_currents = np.r_[-np.logspace(-2, -5, 31), 0.]
 input_currents = TriangleFun(time_input_currents+0.01, 5e-3, 0.01)
 source_list.append(
-    em1d.sources.TimeDomainHorizontalLoopSource(
+    em1d.sources.TimeDomainMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location,
         I=source_current,
-        a=source_radius,
+        orientation=source_orientation,
         wave_type="general",
         time_input_currents=time_input_currents,
         input_currents=input_currents,
@@ -80,10 +80,10 @@ source_list.append(
 time_input_currents_2 = np.r_[-np.logspace(-2, -5, 31), 0.]
 input_currents_2 = VTEMFun(time_input_currents+0.01, 8e-3, 0.01, 1)
 source_list.append(
-    em1d.sources.TimeDomainHorizontalLoopSource(
+    em1d.sources.TimeDomainMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location,
         I=source_current,
-        a=source_radius,
+        orientation=source_orientation, 
         wave_type="general",
         time_input_currents=time_input_currents_2,
         input_currents=input_currents_2,

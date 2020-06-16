@@ -287,13 +287,6 @@ class BaseTimeSrc(BaseSrc):
         super(BaseTimeSrc, self).__init__(receiver_list=receiver_list, **kwargs)
 
 
-
-
-
-
-
-    
-
     @property
     def period(self):
         return 1./self.base_frequency

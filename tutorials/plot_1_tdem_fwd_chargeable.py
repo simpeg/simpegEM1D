@@ -27,7 +27,7 @@ from simpegEM1D.analytics import ColeCole
 #
 #
 
-source_location = np.array([0., 0., 0.])  
+source_location = np.array([10., 0., 0.])  
 source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = 10.
@@ -55,9 +55,9 @@ receiver_list.append(
 
 # Sources
 source_list = [
-    em1d.sources.TimeDomainHorizontalLoopSource(
+    em1d.sources.TimeDomainMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location,
-        I=source_current, a=source_radius
+        I=source_current, orientation=source_orientation
     )
 ]
 

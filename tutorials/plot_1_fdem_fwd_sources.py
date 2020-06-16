@@ -18,7 +18,8 @@ from matplotlib import pyplot as plt
 
 from SimPEG import maps
 import simpegEM1D as em1d
-
+from empymod.transform import dlf, fourier_dlf, get_dlf_points
+from empymod import filters
 
 #####################################################################
 # Create Survey
@@ -34,8 +35,8 @@ source_radius = np.sqrt(1/np.pi)
 phi = (np.pi/4)*np.r_[1, 3, 5, 7, 1]
 node_locations = np.c_[np.cos(phi), np.sin(phi), np.zeros(len(phi))]
 
-receiver_location_1 = np.array([0., 0., 10.])
-receiver_location_2 = np.array([0., 0., 10.])
+receiver_location_1 = np.array([0.1, 0., 0.5])
+receiver_location_2 = np.array([0., 0., 0.5])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
 
@@ -45,28 +46,28 @@ frequencies = np.logspace(-1, 8, 51)
 receiver_list = []
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location_1, frequencies, orientation='x',
+        receiver_location_1, frequencies, orientation='z',
         field_type=field_type, component="real"
     )
 )
 
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location_1, frequencies, orientation='x',
+        receiver_location_1, frequencies, orientation='z',
         field_type=field_type, component="imag"
     )
 )
     
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location_2, frequencies, orientation='y',
+        receiver_location_2, frequencies, orientation='z',
         field_type=field_type, component="real"
     )
 )
 
 receiver_list.append(
     em1d.receivers.HarmonicPointReceiver(
-        receiver_location_2, frequencies, orientation='y',
+        receiver_location_2, frequencies, orientation='z',
         field_type=field_type, component="imag"
     )
 )
@@ -77,14 +78,14 @@ source_list = []
 source_list.append(
     em1d.sources.HarmonicMagneticDipoleSource(
         receiver_list=receiver_list[0:2], location=source_location,
-        orientation="x", I=source_current
+        orientation="z", I=source_current
     )
 )
     
 source_list.append(
     em1d.sources.HarmonicMagneticDipoleSource(
         receiver_list=receiver_list[2:], location=source_location,
-        orientation="y", I=source_current
+        orientation="z", I=source_current
     )
 )
     
