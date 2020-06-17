@@ -104,7 +104,7 @@ ax.set_ylabel("|dBdt| (T/s)")
 source_current = 1.
 source_radius = 5.
 
-receiver_locations = np.c_[source_locations[:, 0]+10., source_locations[:, 1:]]
+receiver_locations = np.c_[source_locations[:, 0], source_locations[:, 1:]]
 receiver_orientation = "z"  # "x", "y" or "z"
 
 source_list = []
@@ -122,19 +122,19 @@ for ii in range(0, n_sounding):
     ]
 
 #     Sources
-#    source_list = [
-#        em1d.sources.TimeDomainHorizontalLoopSource(
-#            receiver_list=receiver_list, location=source_location, a=source_radius,
-#            I=source_current
-#        )
-#    ]
-    
     source_list.append(
-        em1d.sources.TimeDomainMagneticDipoleSource(
-            receiver_list=receiver_list, location=source_location, orientation="z",
+        em1d.sources.TimeDomainHorizontalLoopSource(
+            receiver_list=receiver_list, location=source_location, a=source_radius,
             I=source_current
         )
     )
+    
+#    source_list.append(
+#        em1d.sources.TimeDomainMagneticDipoleSource(
+#            receiver_list=receiver_list, location=source_location, orientation="z",
+#            I=source_current
+#        )
+#    )
 
 # Survey
 survey = em1d.survey.EM1DSurveyTD(source_list)
@@ -168,7 +168,9 @@ data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
 #
 
 dx = 100.
-hz = get_vertical_discretization_time(times, sigma_background=0.1, n_layer=30)
+hz = get_vertical_discretization_time(
+    times, sigma_background=0.1, n_layer=30
+)
 hx = np.ones(n_sounding) * dx
 mesh = TensorMesh([hx, hz], x0='00')
 
@@ -248,8 +250,8 @@ mesh_reg = get_2d_mesh(n_sounding, hz)
 reg_map = maps.IdentityMap(mesh_reg)
 reg = LateralConstraint(
     mesh_reg, mapping=reg_map,
-    alpha_s = 0.001,
-    alpha_x = 0.001,
+    alpha_s = 0.1,
+    alpha_x = 0.0001,
     alpha_y = 1.,
 )
 xy = utils.ndgrid(np.arange(n_sounding), np.r_[0.])
@@ -261,9 +263,11 @@ reg = regularization.Sparse(
     mesh, mapping=reg_map,
 )
 
-ps, px, pz = 2, 2, 0
-reg.norms = np.c_[ps, px, pz, 0]
-#reg.mref = starting_model
+ps, px, py = 1, 1, 1
+reg.norms = np.c_[ps, px, py, 0]
+
+reg.mref = starting_model
+reg.mrefInSmooth = True
 
 # Define how the optimization problem is solved. Here we will use an inexact
 # Gauss-Newton approach that employs the conjugate gradient solver.
@@ -301,10 +305,10 @@ inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
 
 # Defining a starting value for the trade-off parameter (beta) between the data
 # misfit and the regularization.
-starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=1)
+starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=10)
 
 
-beta_schedule = directives.BetaSchedule(coolingFactor=2, coolingRate=1)
+beta_schedule = directives.BetaSchedule(coolingFactor=2, coolingRate=2)
 
 # Update the preconditionner
 update_Jacobi = directives.UpdatePreconditioner()
@@ -314,9 +318,9 @@ save_iteration = directives.SaveOutputEveryIteration(save_txt=False)
 
 
 update_IRLS = directives.Update_IRLS(
-    max_irls_iterations=30, minGNiter=1, 
+    max_irls_iterations=20, minGNiter=1, 
     fix_Jmatrix=True, 
-    f_min_change = 1e-4,
+    f_min_change = 1e-3,
     coolingRate=3
 )
 
@@ -382,23 +386,26 @@ slope_conductivity = 0.4
 
 true_model = np.ones(mesh.nC) * background_conductivity
 
-layer_ind = mesh.gridCC[:, -1] < 50.
+layer_ind = mesh.gridCC[:, -1] < 30.
 true_model[layer_ind] = overburden_conductivity
 
 
-x0 = np.r_[0., 50.]
-x1 = np.r_[dx*n_sounding, 50.]
-x2 = np.r_[dx*n_sounding, 150.]
-x3 = np.r_[0., 75.]
+x0 = np.r_[0., 30.]
+x1 = np.r_[dx*n_sounding, 30.]
+x2 = np.r_[dx*n_sounding, 130.]
+x3 = np.r_[0., 50.]
 pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh, pts)
 true_model[poly_inds] = slope_conductivity
 
 
-l2_model = np.exp(inv_prob.l2model)
+l2_model = inv_prob.l2model
+dpred_l2 = simulation.dpred(l2_model)
+l2_model = np.exp(l2_model)
 l2_model = l2_model.reshape((simulation.n_sounding, simulation.n_layer))
 l2_model = mkvc(l2_model)
 
+dpred = simulation.dpred(recovered_model)
 recovered_model = np.exp(recovered_model)
 recovered_model = recovered_model.reshape((simulation.n_sounding, simulation.n_layer))
 recovered_model = mkvc(recovered_model)
@@ -413,7 +420,7 @@ for ii, mod in enumerate(models_list):
     
     mesh.plotImage(
         log_mod, ax=ax1, grid=False,
-        clim=(np.log10(mod.min()), np.log10(mod.max())),
+        clim=(np.log10(true_model.min()), np.log10(true_model.max())),
 #        clim=(np.log10(0.1), np.log10(1)),
         pcolorOpts={"cmap": "viridis"},
     )
@@ -425,7 +432,7 @@ for ii, mod in enumerate(models_list):
     
     ax2 = fig.add_axes([0.85, 0.12, 0.05, 0.78])
     norm = mpl.colors.Normalize(
-        vmin=np.log10(mod.min()), vmax=np.log10(mod.max())
+        vmin=np.log10(true_model.min()), vmax=np.log10(true_model.max())
 #        vmin=np.log10(0.1), vmax=np.log10(1)
     )
     cbar = mpl.colorbar.ColorbarBase(
@@ -436,7 +443,7 @@ for ii, mod in enumerate(models_list):
     
 
 
-data_list = [dobs, simulation.dpred(l2_model), simulation.dpred(recovered_model)]
+data_list = [dobs, dpred_l2, dpred]
 color_list = ['k', 'b', 'r']
 
 fig, ax = plt.subplots(1,1, figsize = (7, 7))

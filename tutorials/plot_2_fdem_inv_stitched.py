@@ -180,7 +180,9 @@ data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
 #
 
 dx = 100.
-hz = get_vertical_discretization_frequency(frequencies, sigma_background=0.1, n_layer=30)
+hz = get_vertical_discretization_frequency(
+    frequencies, sigma_background=0.1, n_layer=30
+)
 hx = np.ones(n_sounding) * dx
 mesh = TensorMesh([hx, hz], x0='00')
 
@@ -204,8 +206,8 @@ starting_model = np.log(conductivity.reshape(mesh.vnC, order='F').flatten())
 
 # Simulate response for static conductivity
 simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationFD(
-    mesh, survey=survey, sigmaMap=mapping, hz=hz, topo=topo, parallel=False, n_cpu=2, verbose=True,
-    Solver=PardisoSolver
+    mesh, survey=survey, sigmaMap=mapping, hz=hz, topo=topo, parallel=False,
+    n_cpu=2, verbose=True, Solver=PardisoSolver
 )
 
 #simulation.model = starting_model
@@ -260,8 +262,8 @@ mesh_reg = get_2d_mesh(n_sounding, hz)
 reg_map = maps.IdentityMap(mesh_reg)
 reg = LateralConstraint(
     mesh_reg, mapping=reg_map,
-    alpha_s = 0.001,
-    alpha_x = 0.001,
+    alpha_s = 0.1,
+    alpha_x = 0.0001,
     alpha_y = 1.,
 )
 xy = utils.ndgrid(np.arange(n_sounding), np.r_[0.])
@@ -273,9 +275,11 @@ reg = regularization.Sparse(
     mesh, mapping=reg_map,
 )
 
-ps, px, pz = 2, 1, 0
-reg.norms = np.c_[ps, px, pz, 0]
-#reg.mref = starting_model
+ps, px, py = 1, 1, 1
+reg.norms = np.c_[ps, px, py, 0]
+
+reg.mref = starting_model
+reg.mrefInSmooth = True
 
 # Define how the optimization problem is solved. Here we will use an inexact
 # Gauss-Newton approach that employs the conjugate gradient solver.
@@ -326,9 +330,9 @@ save_iteration = directives.SaveOutputEveryIteration(save_txt=False)
 
 
 update_IRLS = directives.Update_IRLS(
-    max_irls_iterations=30, minGNiter=1, 
+    max_irls_iterations=20, minGNiter=1, 
     fix_Jmatrix=True, 
-    f_min_change = 1e-4,
+    f_min_change = 1e-3,
     coolingRate=3
 )
 
@@ -394,22 +398,25 @@ slope_conductivity = 0.4
 
 true_model = np.ones(mesh.nC) * background_conductivity
 
-layer_ind = mesh.gridCC[:, -1] < 50.
+layer_ind = mesh.gridCC[:, -1] < 30.
 true_model[layer_ind] = overburden_conductivity
 
 
-x0 = np.r_[0., 50.]
-x1 = np.r_[dx*n_sounding, 50.]
-x2 = np.r_[dx*n_sounding, 150.]
-x3 = np.r_[0., 75.]
+x0 = np.r_[0., 30.]
+x1 = np.r_[dx*n_sounding, 30.]
+x2 = np.r_[dx*n_sounding, 120.]
+x3 = np.r_[0., 50.]
 pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh, pts)
 true_model[poly_inds] = slope_conductivity
 
-l2_model = np.exp(inv_prob.l2model)
+l2_model = inv_prob.l2model
+dpred_l2 = simulation.dpred(l2_model)
+l2_model = np.exp(l2_model)
 l2_model = l2_model.reshape((simulation.n_sounding, simulation.n_layer))
 l2_model = mkvc(l2_model)
 
+dpred = simulation.dpred(recovered_model)
 recovered_model = np.exp(recovered_model)
 recovered_model = recovered_model.reshape((simulation.n_sounding, simulation.n_layer))
 recovered_model = mkvc(recovered_model)
@@ -424,7 +431,7 @@ for ii, mod in enumerate(models_list):
     
     mesh.plotImage(
         log_mod, ax=ax1, grid=False,
-        clim=(np.log10(mod.min()), np.log10(mod.max())),
+        clim=(np.log10(true_model.min()), np.log10(true_model.max())),
 #        clim=(np.log10(0.1), np.log10(1)),
         pcolorOpts={"cmap": "viridis"},
     )
@@ -436,7 +443,7 @@ for ii, mod in enumerate(models_list):
     
     ax2 = fig.add_axes([0.85, 0.12, 0.05, 0.78])
     norm = mpl.colors.Normalize(
-        vmin=np.log10(mod.min()), vmax=np.log10(mod.max())
+        vmin=np.log10(true_model.min()), vmax=np.log10(true_model.max())
 #        vmin=np.log10(0.1), vmax=np.log10(1)
     )
     cbar = mpl.colorbar.ColorbarBase(
@@ -448,65 +455,21 @@ for ii, mod in enumerate(models_list):
 
 
 
+data_list = [dobs, dpred_l2, dpred]
+color_list = ['k', 'b', 'r']
 
+fig = plt.figure(figsize = (12, 6))
+ax1 = fig.add_axes([0.05, 0.1, 0.4, 0.8])
+ax2 = fig.add_axes([0.55, 0.1, 0.4, 0.8])
 
-
-
-
-
-
-
-
-
-
-
-#######################################################################
-# Plotting Results
-# -------------------------------------------------
-#
-#
-
-
-#d = np.reshape(dpred, (n_sounding, 2*len(frequencies))).T
-#
-#fig, ax = plt.subplots(1,1, figsize = (7, 7))
-#
-#for ii in range(0, n_sounding):
-#    ax.loglog(frequencies, np.abs(d[0:len(frequencies), ii]), '-', lw=2)
-#    ax.loglog(frequencies, np.abs(d[len(frequencies):, ii]), '--', lw=2)
-#    
-#ax.set_xlabel("Frequency (Hz)")
-#ax.set_ylabel("|Hs/Hp| (ppm)")
-#ax.set_title("Magnetic Field as a Function of Frequency")
-#ax.legend(["real", "imaginary"])
-#
-##
-##d = np.reshape(dpred, (n_sounding, 2*len(frequencies)))
-##fig = plt.figure(figsize = (10, 5))
-##ax1 = fig.add_subplot(121)
-##ax2 = fig.add_subplot(122)
-##
-##for ii in range(0, n_sounding):
-##    ax1.semilogy(x, np.abs(d[:, 0:len(frequencies)]), 'k-', lw=2)
-##    ax2.semilogy(x, np.abs(d[:, len(frequencies):]), 'k--', lw=2)
-#
-#
-#
-#if save_file == True:
-#
-#    noise = 0.05*np.abs(dpred)*np.random.rand(len(dpred))
-#    dpred += noise
-#    fname = os.path.dirname(em1d.__file__) + '\\..\\tutorials\\assets\\em1dfm_stitched_data.obs'
-#    
-#    loc = np.repeat(source_locations, len(frequencies), axis=0)
-#    fvec = np.kron(np.ones(n_sounding), frequencies)
-#    dout = np.c_[dpred[0::2], dpred[1::2]]
-#    
-#    np.savetxt(
-#        fname,
-#        np.c_[loc, fvec, dout],
-#        fmt='%.4e'
-#    )
+for ii in range(0, len(data_list)):
+    d1 = np.reshape(data_list[ii][0::2], (n_sounding, len(frequencies)))
+    d2 = np.reshape(data_list[ii][1::2], (n_sounding, len(frequencies)))
+    ax1.semilogy(x, np.abs(d1), color_list[ii], lw=1)
+    ax2.semilogy(x, np.abs(d2), color_list[ii], lw=1)
+    
+ax.set_xlabel("Frequencies (s)")
+ax.set_ylabel("Re[H] (A/m)")
 
 
 

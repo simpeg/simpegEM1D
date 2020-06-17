@@ -134,14 +134,14 @@ slope_conductivity = 0.4
 
 model = np.ones(mesh.nC) * background_conductivity
 
-layer_ind = mesh.gridCC[:, -1] < 50.
+layer_ind = mesh.gridCC[:, -1] < 30.
 model[layer_ind] = overburden_conductivity
 
 
-x0 = np.r_[0., 50.]
-x1 = np.r_[dx*n_sounding, 50.]
-x2 = np.r_[dx*n_sounding, 150.]
-x3 = np.r_[0., 75.]
+x0 = np.r_[0., 30.]
+x1 = np.r_[dx*n_sounding, 30.]
+x2 = np.r_[dx*n_sounding, 130.]
+x3 = np.r_[0., 50.]
 pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh, pts)
 model[poly_inds] = slope_conductivity
@@ -161,7 +161,7 @@ ax1 = fig.add_axes([0.1, 0.12, 0.73, 0.78])
 log_mod = np.log10(model)
 
 mesh.plotImage(
-    log_mod, ax=ax1, grid=False,
+    log_mod, ax=ax1, grid=True,
     clim=(np.log10(overburden_conductivity), np.log10(slope_conductivity)),
     pcolorOpts={"cmap": "viridis"},
 )

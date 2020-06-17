@@ -56,11 +56,11 @@ x = np.linspace(50,5050,50)
 #x = np.linspace(50,250,3)
 n_sounding = len(x)
 
-source_locations = np.c_[x, np.ones((n_sounding, 2))]
+source_locations = np.c_[x, np.zeros(n_sounding), 30.*np.ones(n_sounding)]
 source_current = 1.
 source_radius = 5.
 
-receiver_locations = np.c_[x+10., np.ones((n_sounding, 2))]
+receiver_locations = np.c_[x, np.zeros(n_sounding), 30.*np.ones(n_sounding)]
 receiver_orientation = "z"  # "x", "y" or "z"
 
 times = np.logspace(-5, -2, 21)
@@ -80,19 +80,19 @@ for ii in range(0, n_sounding):
     ]
 
 #     Sources
-#    source_list = [
-#        em1d.sources.TimeDomainHorizontalLoopSource(
-#            receiver_list=receiver_list, location=source_location, a=source_radius,
-#            I=source_current
-#        )
-#    ]
-    
     source_list.append(
-        em1d.sources.TimeDomainMagneticDipoleSource(
-            receiver_list=receiver_list, location=source_location, orientation="z",
+        em1d.sources.TimeDomainHorizontalLoopSource(
+            receiver_list=receiver_list, location=source_location, a=source_radius,
             I=source_current
         )
     )
+    
+#    source_list.append(
+#        em1d.sources.TimeDomainMagneticDipoleSource(
+#            receiver_list=receiver_list, location=source_location, orientation="z",
+#            I=source_current
+#        )
+#    )
 
 # Survey
 survey = em1d.survey.EM1DSurveyTD(source_list)
@@ -126,14 +126,14 @@ slope_conductivity = 0.4
 
 model = np.ones(mesh.nC) * background_conductivity
 
-layer_ind = mesh.gridCC[:, -1] < 50.
+layer_ind = mesh.gridCC[:, -1] < 30.
 model[layer_ind] = overburden_conductivity
 
 
-x0 = np.r_[0., 50.]
-x1 = np.r_[dx*n_sounding, 50.]
-x2 = np.r_[dx*n_sounding, 150.]
-x3 = np.r_[0., 75.]
+x0 = np.r_[0., 30.]
+x1 = np.r_[dx*n_sounding, 30.]
+x2 = np.r_[dx*n_sounding, 130.]
+x3 = np.r_[0., 50.]
 pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh, pts)
 model[poly_inds] = slope_conductivity

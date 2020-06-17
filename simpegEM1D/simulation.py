@@ -328,7 +328,7 @@ class BaseEM1DSimulation(BaseSimulation):
                     # (j0, j1, j2)
                     PJ = (None, hz, None)  # PJ1
 
-                    if output_type=="sensitivity_sigma":
+                    if output_type == "sensitivity_sigma":
                         a_vec = np.tile(a_vec, (n_layer, 1))
 
                     integral_output = dlf(
