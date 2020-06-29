@@ -27,7 +27,7 @@ from empymod import filters
 #
 #
 
-source_location = np.array([0., 0., 5.])  
+source_location = np.array([0., 0., 2.])  
 source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = np.sqrt(1/np.pi)
@@ -35,8 +35,8 @@ source_radius = np.sqrt(1/np.pi)
 phi = (np.pi/4)*np.r_[1, 3, 5, 7, 1]
 node_locations = np.c_[np.cos(phi), np.sin(phi), np.zeros(len(phi))]
 
-receiver_location_1 = np.array([0.1, 0., 0.5])
-receiver_location_2 = np.array([0., 0., 0.5])
+receiver_location_1 = np.array([0., 0., 1.])
+receiver_location_2 = np.array([0., 0., 1.])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
 
@@ -82,19 +82,19 @@ source_list.append(
     )
 )
     
-source_list.append(
-    em1d.sources.HarmonicMagneticDipoleSource(
-        receiver_list=receiver_list[2:], location=source_location,
-        orientation="z", I=source_current
-    )
-)
-    
 #source_list.append(
-#    em1d.sources.HarmonicHorizontalLoopSource(
-#        receiver_list=receiver_list, location=source_location,
-#        a=source_radius, I=source_current
+#    em1d.sources.HarmonicMagneticDipoleSource(
+#        receiver_list=receiver_list[2:], location=source_location,
+#        orientation="z", I=source_current
 #    )
 #)
+    
+source_list.append(
+    em1d.sources.HarmonicHorizontalLoopSource(
+        receiver_list=receiver_list[2:], location=source_location,
+        a=source_radius, I=source_current
+    )
+)
 
 #source_list.append(
 #    em1d.sources.HarmonicLineSource(

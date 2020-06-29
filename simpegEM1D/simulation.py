@@ -256,31 +256,31 @@ class BaseEM1DSimulation(BaseSimulation):
                     r = src.location[0:2] - rx.locations[0:2]
                     r = np.sqrt(np.sum(r**2))
                     
-                    if r > 0.01:
+#                    if r > 0.01:
 
-                        r_vec = r * np.ones(n_frequency)
+                    r_vec = r * np.ones(n_frequency)
 
-                        # Use function from empymod
-                        # size of lambd is (n_frequency x n_filter)
-                        lambd = np.empty([n_frequency, n_filter], order='F')
-                        lambd[:, :], _ = get_dlf_points(
-                            self.fhtfilt, r_vec, self.hankel_pts_per_dec
-                        )
+                    # Use function from empymod
+                    # size of lambd is (n_frequency x n_filter)
+                    lambd = np.empty([n_frequency, n_filter], order='F')
+                    lambd[:, :], _ = get_dlf_points(
+                        self.fhtfilt, r_vec, self.hankel_pts_per_dec
+                    )
 
-                        # Get kernel function at all lambda and frequencies
-                        PJ = magnetic_dipole_kernel(
-                            self, lambd, f, n_layer, sig, chi, I, h, z, r,
-                            src, rx, output_type
-                        )
+                    # Get kernel function at all lambda and frequencies
+                    PJ = magnetic_dipole_kernel(
+                        self, lambd, f, n_layer, sig, chi, I, h, z, r,
+                        src, rx, output_type
+                    )
 
-                        PJ = tuple(PJ)
+                    PJ = tuple(PJ)
 
-                        if output_type=="sensitivity_sigma":
-                            r_vec = np.tile(r_vec, (n_layer, 1))
+                    if output_type=="sensitivity_sigma":
+                        r_vec = np.tile(r_vec, (n_layer, 1))
 
-                        integral_output = dlf(
-                            PJ, lambd, r_vec, self.fhtfilt, self.hankel_pts_per_dec, ang_fact=None, ab=33
-                        )
+                    integral_output = dlf(
+                        PJ, lambd, r_vec, self.fhtfilt, self.hankel_pts_per_dec, ang_fact=None, ab=33
+                    )
 
                     # elif src.orientation == "z":
 

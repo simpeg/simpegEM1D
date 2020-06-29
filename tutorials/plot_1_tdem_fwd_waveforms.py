@@ -150,21 +150,21 @@ model_mapping = maps.IdentityMap(nP=n_layer)
 
 # Compute and plot complex conductivity at all frequencies
 frequencies = np.logspace(-3, 6, 91)
-sigma_complex = ColeCole(frequencies, sigma, eta, tau, c)
-
-fig = plt.figure()
-ax = fig.add_subplot(111)
-ax.semilogx(frequencies, sigma*np.ones(len(frequencies)), "b", lw=2)
-ax.semilogx(frequencies, np.real(sigma_complex), "r", lw=2)
-ax.semilogx(frequencies, np.imag(sigma_complex), "r--", lw=2)
-ax.set_xlim(np.min(frequencies), np.max(frequencies))
-ax.set_ylim(0., 1.1*sigma)
-ax.set_xlabel("Frequency (Hz)")
-ax.set_ylabel("Conductivity")
-ax.legend(
-    ["$\sigma_{DC}$", "$Re[\sigma (\omega)]$", "$Im[\sigma (\omega)]$"],
-    loc="center right"
-)
+#sigma_complex = ColeCole(frequencies, sigma, eta, tau, c)
+#
+#fig = plt.figure()
+#ax = fig.add_subplot(111)
+#ax.semilogx(frequencies, sigma*np.ones(len(frequencies)), "b", lw=2)
+#ax.semilogx(frequencies, np.real(sigma_complex), "r", lw=2)
+#ax.semilogx(frequencies, np.imag(sigma_complex), "r--", lw=2)
+#ax.set_xlim(np.min(frequencies), np.max(frequencies))
+#ax.set_ylim(0., 1.1*sigma)
+#ax.set_xlabel("Frequency (Hz)")
+#ax.set_ylabel("Conductivity")
+#ax.legend(
+#    ["$\sigma_{DC}$", "$Re[\sigma (\omega)]$", "$Im[\sigma (\omega)]$"],
+#    loc="center right"
+#)
 
 #######################################################################
 # Define the Forward Simulation and Predict Data
