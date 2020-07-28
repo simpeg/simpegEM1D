@@ -223,7 +223,7 @@ class BaseEM1DSimulation(BaseSimulation):
             if self.topo is None:
                 h_vector = np.array([src.location[2] for src in self.survey.source_list])
             else:
-                h_vector = np.array([src.location[2]-self.topo[0] for src in self.survey.source_list])
+                h_vector = np.array([src.location[2]-self.topo[-1] for src in self.survey.source_list])
 
         n_filter = self.n_filter
 
@@ -627,7 +627,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                 if rx.component in ["b", "h"]:
                     factor *= 1./(2j*np.pi*rx.frequencies)
 
-                if rx.component in ["h", "dhdt"]:
+                if rx.component in ["b", "dbdt"]:
                     factor *= mu_0
 
                 if src.wave_type == 'stepoff':

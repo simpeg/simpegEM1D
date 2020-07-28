@@ -18,8 +18,7 @@ from .simulation_stitched1d import (
 # Other
 from .analytics import *
 from .waveforms import *
-from .Utils1D import *
-
+from . import utils
 from . import supporting_functions
 
 # from .sources import (
@@ -49,7 +48,7 @@ from .KnownSystems import(
 #     get_vertical_discretization_time,
 #     set_mesh_1d, run_simulation_FD, run_simulation_TD
 # )
-from .Regularization import (
+from .regularization import (
     LateralConstraint, get_2d_mesh
 )
 from .IO import ModelIO

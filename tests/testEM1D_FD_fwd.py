@@ -1,7 +1,10 @@
 import unittest
 from SimPEG import *
+from discretize import TensorMesh
 import matplotlib.pyplot as plt
-from simpegEM1D import EM1D, EM1DAnalytics, EM1DSurveyFD
+import simpegEM1D as em1d
+from simpegEM1D.analytics import *
+#from simpegEM1D import EM1D, EM1DAnalytics, EM1DSurveyFD
 import numpy as np
 from scipy.constants import mu_0
 
@@ -12,251 +15,250 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
 
         nearthick = np.logspace(-1, 1, 5)
         deepthick = np.logspace(1, 2, 10)
-        hx = np.r_[nearthick, deepthick]
-        mesh1D = Mesh.TensorMesh([hx], [0.])
-        depth = -mesh1D.gridN[:-1]
-        nlay = depth.size
+        thicknesses = np.r_[nearthick, deepthick]
         topo = np.r_[0., 0., 100.]
-
-        FDsurvey = EM1DSurveyFD(
-            rx_location=np.array([0., 0., 100.+1e-5]),
-            src_location=np.array([0., 0., 100.+1e-5]),
-            field_type='secondary',
-            depth=depth,
-            topo=topo,
-            frequency=np.logspace(1, 8, 61),
-            offset=10. * np.ones(61)
+        
+        src_location = np.array([0., 0., 100.+1e-5])  
+        rx_location = np.array([10., 0., 100.+1e-5])
+        receiver_orientation = "z"  # "x", "y" or "z"
+        field_type = "secondary"  # "secondary", "total" or "ppm"
+        frequencies = np.logspace(1, 8, 61)
+        
+        # Receiver list
+        receiver_list = []
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation=receiver_orientation,
+                field_type=field_type, component="real"
+            )
         )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation=receiver_orientation,
+                field_type=field_type, component="imag"
+            )
+        )
+            
+        source_list = [
+            em1d.sources.HarmonicMagneticDipoleSource(
+                receiver_list=receiver_list, location=src_location, orientation="z"
+            )
+        ]
 
-        sig_half = 1e-2
-        chi_half = 0.
-
-        expmap = Maps.ExpMap(mesh1D)
+        # Survey
+        survey = em1d.survey.EM1DSurveyFD(source_list)
+        
+        sigma = 1e-2
+        chi = 0.
         tau = 1e-3
         eta = 2e-1
         c = 1.
 
-        m_1D = np.log(np.ones(nlay)*sig_half)
-        FDsurvey.rx_type = 'Hz'
-
-        prob = EM1D(
-            mesh1D, sigmaMap=expmap
-        )
-        prob.pair(FDsurvey)
-        prob.chi = np.zeros(FDsurvey.n_layer)
-
-        self.survey = FDsurvey
-        self.prob = prob
-        self.mesh1D = mesh1D
+        self.topo = topo
+        self.survey = survey
         self.showIt = False
+        self.sigma = sigma
         self.tau = tau
         self.eta = eta
         self.c = c
+        self.chi = chi
+        self.offset = 10.
+        self.frequencies = frequencies
+        self.thicknesses = thicknesses
+        self.nlayers = len(thicknesses)+1
 
     def test_EM1DFDfwd_VMD_RealCond(self):
-        self.prob.survey.src_type = 'VMD'
-        self.prob.survey.offset = np.ones(self.prob.survey.n_frequency) * 10.
-        sig_half = 0.01
-        m_1D = np.log(np.ones(self.prob.survey.n_layer)*sig_half)
-        Hz = self.prob.forward(m_1D)
-        Hzanal = EM1DAnalytics.Hzanal(
-            sig_half, self.prob.survey.frequency,
-            self.prob.survey.offset, 'secondary'
+        
+        sigma_map = maps.ExpMap(nP=self.nlayers)
+        sim = em1d.simulation.EM1DFMSimulation(
+            survey=self.survey, thicknesses=self.thicknesses,
+            sigmaMap=sigma_map, topo=self.topo
         )
-
+        
+        m_1D = np.log(np.ones(self.nlayers)*self.sigma)
+        Hz = sim.dpred(m_1D)
+        
+        soln_anal = Hzanal(
+            self.sigma, self.frequencies, self.offset, 'secondary'
+        )
+        
         if self.showIt is True:
-
-            plt.loglog(self.prob.survey.frequency, abs(Hz.real), 'b')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.real), 'b*')
-            plt.loglog(self.prob.survey.frequency, abs(Hz.imag), 'r')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.imag), 'r*')
+            N=int(len(Hz)/2)
+            plt.loglog(self.frequencies, abs(Hz[0:N]), 'b')
+            plt.loglog(self.frequencies, abs(soln_anal.real), 'b*')
+            plt.loglog(self.frequencies, abs(Hz[N:]), 'r')
+            plt.loglog(self.frequencies, abs(soln_anal.imag), 'r*')
             plt.show()
+        
+        soln_anal = np.r_[np.real(soln_anal), np.imag(soln_anal)]
 
-        err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
+        err = np.linalg.norm(Hz-soln_anal)/np.linalg.norm(soln_anal)
         self.assertTrue(err < 1e-5)
         print ("EM1DFD-VMD for real conductivity works")
 
     def test_EM1DFDfwd_VMD_ComplexCond(self):
 
-        if self.prob.ispaired:
-            self.prob.unpair()
-        if self.survey.ispaired:
-            self.survey.unpair()
-
-        self.prob = EM1D(
-            self.mesh1D,
-            sigmaMap=Maps.IdentityMap(self.mesh1D),
-            chi=np.zeros(self.survey.n_layer),
-            eta=self.eta,
-            tau=self.tau,
-            c=self.c
+        sigma_map = maps.IdentityMap(nP=self.nlayers)
+        chi = np.zeros(self.nlayers)
+        tau = self.tau*np.ones(self.nlayers)
+        c = self.c*np.ones(self.nlayers)
+        eta = self.eta*np.ones(self.nlayers)
+        
+        sim = em1d.simulation.EM1DFMSimulation(
+            survey=self.survey, thicknesses=self.thicknesses, topo=self.topo,
+            sigmaMap=sigma_map, eta=eta, tau=tau, c=c, chi=chi
         )
-        self.prob.pair(self.survey)
-        self.prob.survey.src_type = 'VMD'
-        sig_half = 0.01
-        m_1D = np.ones(self.prob.survey.n_layer)*sig_half
-        Hz = self.prob.forward(m_1D)
-        sigCole = EM1DAnalytics.ColeCole(
-            self.survey.frequency, sig_half,
-            self.eta, self.tau, self.c
-            )
-        Hzanal = EM1DAnalytics.Hzanal(
-            sigCole, self.prob.survey.frequency,
-            self.prob.survey.offset, 'secondary'
+        
+        m_1D = self.sigma*np.ones(self.nlayers)
+        Hz = sim.dpred(m_1D)
+        
+        sigma_colecole = ColeCole(
+            self.frequencies, self.sigma, self.eta, self.tau, self.c
+        )
+        
+        soln_anal = Hzanal(
+            sigma_colecole, self.frequencies, self.offset, 'secondary'
         )
 
         if self.showIt is True:
-
-            plt.loglog(self.prob.survey.frequency, abs(Hz.real), 'b')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.real), 'b*')
-            plt.loglog(self.prob.survey.frequency, abs(Hz.imag), 'r')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.imag), 'r*')
+            N=int(len(Hz)/2)
+            plt.loglog(self.frequencies, abs(Hz[0:N]), 'b')
+            plt.loglog(self.frequencies, abs(soln_anal.real), 'b*')
+            plt.loglog(self.frequencies, abs(Hz[N:]), 'r')
+            plt.loglog(self.frequencies, abs(soln_anal.imag), 'r*')
             plt.show()
+        
+        soln_anal = np.r_[np.real(soln_anal), np.imag(soln_anal)]
 
-        err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
+        err = np.linalg.norm(Hz-soln_anal)/np.linalg.norm(soln_anal)
         self.assertTrue(err < 1e-5)
         print ("EM1DFD-VMD for complex conductivity works")
 
     def test_EM1DFDfwd_CircularLoop_RealCond(self):
-        self.prob.survey.src_type = 'CircularLoop'
-        I = 1e0
-        a = 1e1
-        self.prob.survey.I = I
-        self.prob.survey.a = a
-        sig_half = 0.01
-        m_1D = np.log(np.ones(self.prob.survey.n_layer)*sig_half)
-        Hz = self.prob.forward(m_1D)
-        Hzanal = EM1DAnalytics.HzanalCirc(
-            sig_half, self.prob.survey.frequency,
-            I, a, 'secondary'
+        
+        src_location = np.array([0., 0., 100.+1e-5])  
+        rx_location = np.array([0., 0., 100.+1e-5])
+        receiver_orientation = "z"  # "x", "y" or "z"
+        field_type = "secondary"  # "secondary", "total" or "ppm"
+        frequencies = np.logspace(1, 8, 61)
+        
+        # Receiver list
+        receiver_list = []
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation=receiver_orientation,
+                field_type=field_type, component="real"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation=receiver_orientation,
+                field_type=field_type, component="imag"
+            )
+        )
+            
+        source_list = [
+            em1d.sources.HarmonicHorizontalLoopSource(
+                receiver_list=receiver_list, location=src_location, a=5.
+            )
+        ]
+        
+        survey = em1d.survey.EM1DSurveyFD(source_list)
+        
+        sigma_map = maps.ExpMap(nP=self.nlayers)
+        sim = em1d.simulation.EM1DFMSimulation(
+            survey=survey, thicknesses=self.thicknesses,
+            sigmaMap=sigma_map, topo=self.topo
+        )
+        
+        m_1D = np.log(np.ones(self.nlayers)*self.sigma)
+        Hz = sim.dpred(m_1D)
+        
+        soln_anal = HzanalCirc(
+            self.sigma, self.frequencies, 1., 5., 'secondary'
         )
 
         if self.showIt is True:
-
-            plt.loglog(self.prob.survey.frequency, abs(Hz.real), 'b')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.real), 'b*')
-            plt.loglog(self.prob.survey.frequency, abs(Hz.imag), 'r')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.imag), 'r*')
+            N=int(len(Hz)/2)
+            plt.loglog(self.frequencies, abs(Hz[0:N]), 'b')
+            plt.loglog(self.frequencies, abs(soln_anal.real), 'b*')
+            plt.loglog(self.frequencies, abs(Hz[N:]), 'r')
+            plt.loglog(self.frequencies, abs(soln_anal.imag), 'r*')
             plt.show()
 
-        err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
+        soln_anal = np.r_[np.real(soln_anal), np.imag(soln_anal)]
+        
+        err = np.linalg.norm(Hz-soln_anal)/np.linalg.norm(soln_anal)
         self.assertTrue(err < 1e-5)
         print ("EM1DFD-CircularLoop for real conductivity works")
 
     def test_EM1DFDfwd_CircularLoop_ComplexCond(self):
 
-        if self.prob.ispaired:
-            self.prob.unpair()
-        if self.survey.ispaired:
-            self.survey.unpair()
-
-        self.prob = EM1D(
-            self.mesh1D,
-            sigmaMap=Maps.IdentityMap(self.mesh1D),
-            chi=np.zeros(self.survey.n_layer),
-            eta=self.eta,
-            tau=self.tau,
-            c=self.c
+        src_location = np.array([0., 0., 100.+1e-5])  
+        rx_location = np.array([0., 0., 100.+1e-5])
+        receiver_orientation = "z"  # "x", "y" or "z"
+        field_type = "secondary"  # "secondary", "total" or "ppm"
+        frequencies = np.logspace(1, 8, 61)
+        
+        # Receiver list
+        receiver_list = []
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation=receiver_orientation,
+                field_type=field_type, component="real"
+            )
         )
-
-        self.prob.pair(self.survey)
-        self.prob.survey.src_type = 'CircularLoop'
-        I = 1e0
-        a = 1e1
-        self.prob.survey.I = I
-        self.prob.survey.a = a
-
-        sig_half = 0.01
-        m_1D = np.ones(self.prob.survey.n_layer)*sig_half
-        Hz = self.prob.forward(m_1D)
-        sigCole = EM1DAnalytics.ColeCole(
-            self.survey.frequency, sig_half, self.eta, self.tau, self.c
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation=receiver_orientation,
+                field_type=field_type, component="imag"
+            )
         )
-        Hzanal = EM1DAnalytics.HzanalCirc(
-            sigCole, self.prob.survey.frequency, I, a, 'secondary'
+            
+        source_list = [
+            em1d.sources.HarmonicHorizontalLoopSource(
+                receiver_list=receiver_list, location=src_location, a=5.
+            )
+        ]
+
+        # Survey
+        survey = em1d.survey.EM1DSurveyFD(source_list)
+        
+        sigma_map = maps.IdentityMap(nP=self.nlayers)
+        chi = np.zeros(self.nlayers)
+        tau = self.tau*np.ones(self.nlayers)
+        c = self.c*np.ones(self.nlayers)
+        eta = self.eta*np.ones(self.nlayers)
+        
+        sim = em1d.simulation.EM1DFMSimulation(
+            survey=survey, thicknesses=self.thicknesses, topo=self.topo,
+            sigmaMap=sigma_map, eta=eta, tau=tau, c=c, chi=chi
+        )
+        
+        m_1D = self.sigma*np.ones(self.nlayers)
+        Hz = sim.dpred(m_1D)
+        
+        sigma_colecole = ColeCole(
+            self.frequencies, self.sigma, self.eta, self.tau, self.c
+        )
+        
+        soln_anal = HzanalCirc(
+            sigma_colecole, self.frequencies, 1., 5., 'secondary'
         )
 
         if self.showIt is True:
-
-            plt.loglog(self.prob.survey.frequency, abs(Hz.real), 'b')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.real), 'b*')
-            plt.loglog(self.prob.survey.frequency, abs(Hz.imag), 'r')
-            plt.loglog(self.prob.survey.frequency, abs(Hzanal.imag), 'r*')
+            N=int(len(Hz)/2)
+            plt.loglog(self.frequencies, abs(Hz[0:N]), 'b')
+            plt.loglog(self.frequencies, abs(soln_anal.real), 'b*')
+            plt.loglog(self.frequencies, abs(Hz[N:]), 'r')
+            plt.loglog(self.frequencies, abs(soln_anal.imag), 'r*')
             plt.show()
 
-        err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
+        soln_anal = np.r_[np.real(soln_anal), np.imag(soln_anal)]
+        
+        err = np.linalg.norm(Hz-soln_anal)/np.linalg.norm(soln_anal)
         self.assertTrue(err < 1e-5)
         print ("EM1DFD-CircularLoop for complex conductivity works")
-
-    # def test_EM1DFDfwd_VMD_EM1D_sigchi(self):
-
-    #     self.survey.rx_location = np.array([0., 0., 110.+1e-5])
-    #     self.survey.src_location = np.array([0., 0., 110.+1e-5])
-    #     self.survey.field_type = 'secondary'
-
-    #     hx = np.r_[np.ones(3)*10]
-    #     mesh1D = Mesh.TensorMesh([hx], [0.])
-    #     depth = -mesh1D.gridN[:-1]
-    #     nlay = depth.size
-    #     topo = np.r_[0., 0., 100.]
-
-    #     self.survey.depth = depth
-    #     self.survey.topo = topo
-
-    #     self.survey.frequency = np.logspace(-3, 5, 61)
-    #     self.prob.unpair()
-    #     mapping = Maps.ExpMap(mesh1D)
-    #     # 1. Verification for variable conductivity
-    #     chi = np.array([0., 0., 0.])
-    #     sig = np.array([0.01, 0.1, 0.01])
-
-    #     self.prob = EM1D(mesh1D, sigmaMap=mapping, chi=chi, jacSwitch=False)
-    #     self.prob.pair(self.survey)
-    #     self.prob.survey.src_type = 'VMD'
-    #     self.prob.survey.offset = 10. * np.ones(self.survey.n_frequency)
-
-    #     m_1D = np.log(sig)
-    #     Hz = self.prob.forward(m_1D)
-    #     from scipy import io
-    #     mat = io.loadmat('em1dfm/VMD_3lay.mat')
-    #     freq = mat['data'][:, 0]
-    #     Hzanal = mat['data'][:, 1] + 1j*mat['data'][:, 2]
-
-    #     if self.showIt is True:
-
-    #         plt.loglog(self.prob.survey.frequency, abs(Hz.real), 'b')
-    #         plt.loglog(self.prob.survey.frequency, abs(Hzanal.real), 'b*')
-    #         plt.loglog(self.prob.survey.frequency, abs(Hz.imag), 'r')
-    #         plt.loglog(self.prob.survey.frequency, abs(Hzanal.imag), 'r*')
-    #         plt.show()
-
-    #     err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
-    #     self.assertTrue(err < 0.08)
-
-    #     chi = np.array([0., 1., 0.], dtype=float)
-    #     sig = np.array([0.01, 0.01, 0.01], dtype=float)
-    #     self.prob.chi = chi
-
-    #     m_1D = np.log(sig)
-    #     Hz = self.prob.forward(m_1D)
-
-    #     # 2. Verification for variable susceptibility
-    #     mat = io.loadmat('em1dfm/VMD_3lay_chi.mat')
-    #     freq = mat['data'][:, 0]
-    #     Hzanal = mat['data'][:, 1] + 1j*mat['data'][:, 2]
-
-    #     if self.showIt is True:
-
-    #         plt.loglog(self.prob.survey.frequency, abs(Hz.real), 'b')
-    #         plt.loglog(self.prob.survey.frequency, abs(Hzanal.real), 'b*')
-    #         plt.loglog(self.prob.survey.frequency, abs(Hz.imag), 'r')
-    #         plt.loglog(self.prob.survey.frequency, abs(Hzanal.imag), 'r*')
-    #         plt.show()
-
-    #     err = np.linalg.norm(Hz-Hzanal)/np.linalg.norm(Hzanal)
-    #     self.assertTrue(err < 0.08)
-
-    #     print ("EM1DFD comprison of UBC code works")
 
 
 if __name__ == '__main__':

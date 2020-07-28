@@ -27,12 +27,10 @@ from SimPEG import (
     directives, inversion, utils
     )
 
-
 from SimPEG.utils import mkvc
 import simpegEM1D as em1d
 from simpegEM1D import get_2d_mesh, LateralConstraint
-from simpegEM1D.Utils1D import plotLayer
-from simpegEM1D.EM1DSimulation import * #get_vertical_discretization_frequency
+from simpegEM1D.utils import plotLayer, get_vertical_discretization_frequency
 
 save_file = True
 

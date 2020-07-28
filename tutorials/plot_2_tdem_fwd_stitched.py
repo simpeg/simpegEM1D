@@ -24,8 +24,7 @@ from pymatsolver import PardisoSolver
 from SimPEG import maps
 from SimPEG.utils import mkvc
 import simpegEM1D as em1d
-from simpegEM1D.Utils1D import plotLayer
-from simpegEM1D.EM1DSimulation import get_vertical_discretization_time
+from simpegEM1D.utils import plotLayer, get_vertical_discretization_time
 
 plt.rcParams.update({'font.size': 16})
 save_file = True

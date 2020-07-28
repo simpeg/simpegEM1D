@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
+from discretize import TensorMesh
+from SimPEG import maps, utils
+from ..analytics import skin_depth, diffusion_distance
+from ..simulation import EM1DFMSimulation, EM1DTMSimulation
+from ..survey import EM1DSurveyFD, EM1DSurveyTD
 
 def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kwargs):
     """
@@ -99,3 +104,45 @@ def write25Dinputformat(Rvals,Ivals, frequency, x, z, offset, fname='profile2D.i
                 fid.write("%5i\n" % (ist+1))
                 fid.write("%10.4f %10.4f %10.5e %10.5e \n" % (x[ist]+offset, z[ist], Rvals[ifreq, ist], Ivals[ifreq, ist]))
 
+
+def get_vertical_discretization_frequency(
+    frequency, sigma_background=0.01,
+    factor_fmax=4, factor_fmin=1., n_layer=19,
+    hz_min=None, z_max=None
+):
+    if hz_min is None:
+        hz_min = skin_depth(frequency.max(), sigma_background) / factor_fmax
+    if z_max is None:
+        z_max = skin_depth(frequency.min(), sigma_background) * factor_fmin
+    i = 4
+    hz = np.logspace(np.log10(hz_min), np.log10(hz_min*i), n_layer)
+    z_sum = hz.sum()
+
+    while z_sum < z_max:
+        i += 1
+        hz = np.logspace(np.log10(hz_min), np.log10(hz_min*i), n_layer)
+        z_sum = hz.sum()
+    return hz
+
+
+def get_vertical_discretization_time(
+    time, sigma_background=0.01,
+    factor_tmin=4, facter_tmax=1., n_layer=19,
+    hz_min=None, z_max=None
+):
+    if hz_min is None:
+        hz_min = diffusion_distance(time.min(), sigma_background) / factor_tmin
+    if z_max is None:
+        z_max = diffusion_distance(time.max(), sigma_background) * facter_tmax
+    i = 4
+    hz = np.logspace(np.log10(hz_min), np.log10(hz_min*i), n_layer)
+    z_sum = hz.sum()
+    while z_sum < z_max:
+        i += 1
+        hz = np.logspace(np.log10(hz_min), np.log10(hz_min*i), n_layer)
+        z_sum = hz.sum()
+    return hz
+
+
+def set_mesh_1d(hz):
+    return TensorMesh([hz], x0=[0])

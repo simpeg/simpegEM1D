@@ -13,13 +13,143 @@ from SimPEG import props, utils, maps, survey
 from SimPEG.simulation import BaseSimulation
 from SimPEG.survey import BaseSurvey
 from .survey import *
-from .EM1DSimulation import run_simulation_FD, run_simulation_TD
+from .simulation import *
 import properties
 import warnings
 
 
 def dot(args):
     return np.dot(args[0], args[1])
+
+
+def run_simulation_FD(args):
+    """
+        args
+
+        src: source object
+        topo: Topographic location (x, y, z)
+        hz: Thickeness of the vertical layers
+        sigma: conductivities
+        eta
+        tau
+        c
+        chi
+        h
+        jac_switch
+        invert_height
+        half_switch :
+    """
+
+    src, topo, hz, sigma, eta, tau, c, chi, h, jac_switch, invert_height, half_switch = args
+
+    local_survey = EM1DSurveyFD([src])
+    expmap = maps.ExpMap(nP=len(hz))
+    thicknesses = hz[0:-1]
+
+    if not invert_height:
+        # Use Exponential Map
+        # This is hard-wired at the moment
+        
+        sim = EM1DFMSimulation(
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
+        )
+        
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = sim.getJ_sigma(np.log(sigma))
+            return utils.mkvc(drespdsig * sim.sigmaDeriv)
+            # return utils.mkvc(drespdsig)
+        else:
+            resp = sim.dpred(np.log(sigma))
+            return resp
+    else:
+        
+        mesh1D = set_mesh_1d(hz)
+        wires = maps.Wires(('sigma', mesh1D.nC), ('h', 1))
+        sigmaMap = expmap * wires.sigma
+        
+        sim = EM1DFMSimulation(
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=sigmaMap, Map=wires.h,
+            chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
+        )
+        
+        m = np.r_[np.log(sigma), h]
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = sim.getJ_sigma(m)
+            return utils.mkvc(drespdsig * utils.sdiag(sigma))
+            # return utils.mkvc(drespdsig)
+        elif jac_switch == 'sensitivity_height':
+            drespdh = sim.getJ_height(m)
+            return utils.mkvc(drespdh)
+        else:
+            resp = sim.dpred(m)
+            return resp
+
+
+def run_simulation_TD(args):
+    """
+        args
+
+        src: source object
+        topo: Topographic location (x, y, z)
+        hz: Thickeness of the vertical layers
+        sigma: conductivities
+        eta
+        tau
+        c
+        chi
+        h
+        jac_switch
+        invert_height
+        half_switch :
+    """
+
+    src, topo, hz, sigma, eta, tau, c, chi, h, jac_switch, invert_height, half_switch = args
+
+    local_survey = EM1DSurveyTD([src])
+    expmap = maps.ExpMap(nP=len(hz))
+    thicknesses = hz[0:-1]
+
+    if not invert_height:
+        # Use Exponential Map
+        # This is hard-wired at the moment
+        sim = EM1DTMSimulation(
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
+        )
+        
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = sim.getJ_sigma(np.log(sigma))
+            return utils.mkvc(drespdsig * sim.sigmaDeriv)
+        else:
+            resp = sim.dpred(np.log(sigma))
+            return resp
+    else:
+        
+        mesh1D = set_mesh_1d(hz)
+        wires = maps.Wires(('sigma', mesh1D.nC), ('h', 1))
+        sigmaMap = expmap * wires.sigma
+        sim = EM1DTMSimulation(
+            survey=local_survey, thicknesses=thicknesses,
+            sigmaMap=sigmaMap, Map=wires.h,
+            chi=chi, eta=eta, tau=tau, c=c,
+            half_switch=half_switch, hankel_filter='key_101_2009'
+        )
+        
+        m = np.r_[np.log(sigma), h]
+        if jac_switch == 'sensitivity_sigma':
+            drespdsig = sim.getJ_sigma(m)
+            return utils.mkvc(drespdsig * utils.sdiag(sigma))
+        elif jac_switch == 'sensitivity_height':
+            drespdh = sim.getJ_height(m)
+            return utils.mkvc(drespdh)
+        else:
+            resp = sim.dpred(m)
+            return resp
 
 
 class GlobalEM1DSimulation(BaseSimulation):

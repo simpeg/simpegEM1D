@@ -20,7 +20,7 @@ from discretize import TensorMesh
 
 from SimPEG import maps
 import simpegEM1D as em1d
-from simpegEM1D.Utils1D import plotLayer
+from simpegEM1D.utils import plotLayer
 
 save_file = True
 plt.rcParams.update({'font.size': 16})

@@ -4,7 +4,7 @@ from scipy.spatial import cKDTree as kdtree
 import scipy.sparse as sp
 from SimPEG import utils
 from discretize import TensorMesh
-from .EM1DSimulation import set_mesh_1d
+from .utils import set_mesh_1d
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import warnings

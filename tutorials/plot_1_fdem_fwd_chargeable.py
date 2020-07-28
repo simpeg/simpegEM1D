@@ -114,8 +114,8 @@ ax.legend(
 )
 
 #######################################################################
-# Define the Forward Simulation and Predic Data
-# ----------------------------------------------
+# Define the Forward Simulation and Predict Data
+# -----------------------------------------------
 #
 
 
