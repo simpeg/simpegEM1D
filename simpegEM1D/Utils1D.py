@@ -10,7 +10,7 @@ def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kw
     # dz = LocSigZ[0]/2.
     # z = np.repeat(LocSigZ[1:], 2, axis=0)
     # z = np.r_[LocSigZ[0], z, LocSigZ[-1]] - dz
-    z_grid = -mesh.vectorNx
+    z_grid = mesh.vectorNx
     n_sig = sig.size
     sigma = np.repeat(sig, 2)
     z = []
@@ -43,7 +43,7 @@ def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kw
     else:
         ax.set_xscale(xscale)
         ax.set_xlim(sig_min, sig_max)
-        ax.set_ylim(z.min(), z.max())
+        ax.set_ylim(z.max(), z.min())
         ax.set_xlabel('Conductivity (S/m)', fontsize = 14)
         ax.set_ylabel('Depth (m)', fontsize = 14)
         if showlayers == True:

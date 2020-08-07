@@ -181,7 +181,9 @@ class ModelIO(properties.HasProperties):
         physical_property=None, clim=None,
         ax=None, cmap='viridis', ncontour=20, scale='log',
         show_colorbar=True, aspect=1, zlim=None, dx=20.,
-        contourOpts={}
+        alpha=0.7,
+        contourOpts={}, 
+        pcolorOpts={}
     ):
         ind_line = self.line == self.unique_line[i_line]
         if physical_property is not None:
@@ -245,8 +247,8 @@ class ModelIO(properties.HasProperties):
                 ]
                 out = ax.pcolormesh(
                     topo_temp, -self.mesh_1d.vectorCCx+self.topography[i, 2], physical_property_matrix[:, inds_temp],
-                    cmap=cmap, alpha=0.7,
-                    vmin=vmin, vmax=vmax, norm=norm
+                    cmap=cmap, alpha=alpha,
+                    vmin=vmin, vmax=vmax, norm=norm, **pcolorOpts
                 )
         if show_layer:
             ax.plot(
@@ -287,7 +289,7 @@ class ModelIO(properties.HasProperties):
         xmin, xmax = self.topography[:, 0].min(), self.topography[:, 0].max()
         ymin, ymax = self.topography[:, 1].min(), self.topography[:, 1].max()
         zmin, zmax = self.topography[:, 2].min(), self.topography[:, 2].max()
-        zmin -= self.mesh_1d.vectorCCx.max()
+        zmin -= self.mesh_1d.vectorNx.max()
 
         lx = xmax-xmin
         ly = ymax-ymin
