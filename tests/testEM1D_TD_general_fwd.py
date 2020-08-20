@@ -132,14 +132,14 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         )
         
         m_1D = np.log(np.ones(self.nlayers)*self.sigma)
-        f = sim.compute_integral(m_1D)
-        d = sim.dpred(m_1D, f=f)
+#        f = sim.compute_integral(m_1D)
+        d = sim.dpred(m_1D)
         bz = d[0:len(self.times)]
         dbdt = d[len(self.times):]
 
-        def step_func_Bzt(time):
+        def step_func_Bzt(times):
             return BzAnalCircT(
-                self.a, self.times, self.sigma
+                self.a, times, self.sigma
             )
 
         bz_analytic = piecewise_ramp(
@@ -158,13 +158,15 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             )
             plt.show()
 
+        print(np.c_[bz, bz_analytic])
+        
         err = np.linalg.norm(bz-bz_analytic)/np.linalg.norm(bz_analytic)
         print ('Bz error = ', err)
         self.assertTrue(err < 6e-2)
 
-        def step_func_dBzdt():
+        def step_func_dBzdt(times):
             return dBzdtAnalCircT(
-                self.a, self.times, self.sigma
+                self.a, times, self.sigma
             )
 
         dbdt_analytic = piecewise_ramp(
@@ -172,6 +174,8 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             sim.survey.source_list[0].time_input_currents,
             sim.survey.source_list[0].input_currents
         )
+        
+        print(np.c_[dbdt, dbdt_analytic])
         
         if self.showIt:
             plt.subplot(121)
