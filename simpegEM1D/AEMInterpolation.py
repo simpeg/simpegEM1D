@@ -5,6 +5,8 @@ import scipy.sparse as sp
 import numpy as np
 from scipy.interpolate import NearestNDInterpolator
 from multiprocess import Pool
+from SimPEG import Props, Utils
+
 
 class AEMInterpolation(BaseProblem):
 
@@ -99,23 +101,129 @@ class AEMInterpolation(BaseProblem):
         return self.modelMap.deriv(m).T*self.G.T.dot(v)
     
     def getJtJdiag(self, m, W=None):
-        if self._jtj_diag is not None:
-            return self._jtj_diag
-        else:
-            # Note: there is a memory peak
-            J_matrix = W*self.getJ(m)
-            I, J = J_matrix.nonzero()
-            values = J_matrix.data
-            J2 = sp.coo_matrix((values**2, (I, J)), shape=J_matrix.shape).tocsr()
-            self._jtj_diag = J2.T * np.ones(J2.shape[0])
-            threshold = np.percentile(self._jtj_diag[self._jtj_diag>0.], 5)
-            self._jtj_diag += threshold
-            return self._jtj_diag
+        # Note: there is a memory peak
+        J_matrix = W*self.getJ(m)
+        I, J = J_matrix.nonzero()
+        values = J_matrix.data
+        J2 = sp.coo_matrix((values**2, (I, J)), shape=J_matrix.shape).tocsr()
+        self._jtj_diag = J2.T * np.ones(J2.shape[0])
+        threshold = np.percentile(self._jtj_diag[self._jtj_diag>0.], 5)
+        self._jtj_diag += threshold
+        return self._jtj_diag
         
     def get_nearest_interpolation_3d(self, sigma_1d):
         f_int = NearestNDInterpolator(self.xyz, sigma_1d)
         return f_int(self.mesh.gridCC)
+
+class TDSProblem(AEMInterpolation):
+
+    fc, fcMap, fcDeriv = Props.Invertible(
+        "clay fraction", 
+        default=0.2
+    )
+    
+    TDS, TDSMap, TDSDeriv = Props.Invertible(
+        "TDS (mg/L)"
+    )    
+
+    Fc = Props.PhysicalProperty(
+        "Formation factor clay",
+        default=5.
         
+    )
+    
+    Fs = Props.PhysicalProperty(
+        "Formation factor sand",
+        default=2.
+        
+    )    
+    
+    bc = Props.PhysicalProperty(
+        "B*Qv for clay (fine-dominated)",
+        default=0.37
+        
+    )    
+
+    bs = Props.PhysicalProperty(
+        "B*Qv for sand (coarse-dominated)",
+        default=0.10
+        
+    )    
+
+    k = Props.PhysicalProperty(
+        "Calibration  for TDS",
+        default=0.61
+        
+    )    
+    _jtj_diag = None
+    
+    locations = properties.Array(
+        "(x,y,z) locations where AEM soundings are defined",
+        required=True,
+        shape=('*', 3),  
+        dtype=float  # data are floats
+    )
+
+    hz_aem = properties.Array(
+        "(x,y,z) locations where AEM soundings are defined",
+        required=True,
+        shape=('*',),  
+        dtype=float  # data are floats
+    )
+    
+    n_cpu = properties.Integer(
+        "Number of CPU",
+        default=2,
+        required=True
+    )
+    
+    def __init__(self, mesh, **kwargs):
+        BaseProblem.__init__(self, mesh, **kwargs)
+
+    @property
+    def sigma(self):
+        return self.get_sigma()
+
+    def get_sigma(self):
+        sigma_f = 1./self.k * self.TDS / 1e4
+        sigma_c = 1./self.Fc * (sigma_f + self.bc)
+        sigma_s = 1./self.Fs * (sigma_f + self.bs)
+        sigma = sigma_c * self.fc + sigma_s * (1-self.fc)
+        return sigma
+    
+    def sigmaTDSDeriv(self, v, adjoint=False):
+        if v.ndim == 1:
+            v = np.array(v, dtype=float)        
+        dsigma_c_dTDS = self.fc
+        dsigma_s_dTDS = 1-self.fc
+        dsigma_dsigma_c = 1./self.Fc * 1./self.k / 1e4
+        dsigma_dsigma_s = 1./self.Fs * 1./self.k / 1e4
+        dsigma_dTDS = dsigma_c_dTDS * dsigma_dsigma_c + dsigma_s_dTDS * dsigma_dsigma_s
+        if adjoint:
+            if v.ndim == 1:
+                return self.TDSDeriv.T * (dsigma_dTDS * v)
+            else:
+                return self.TDSDeriv.T * (Utils.sdiag(dsigma_dTDS) * v)
+        else:
+            return dsigma_dTDS * (self.TDSDeriv * v)            
+    
+    def fields(self, m):
+        self.model = m
+        return self.G * self.sigma
+
+    def getJ(self, m, f=None):
+        """
+            Sensitivity matrix
+        """
+        self.model = m
+        return self.sigmaTDSDeriv(self.G.T, adjoint=True).T 
+
+    def Jvec(self, m, v, f=None):
+        return self.G.dot(self.sigmaTDSDeriv(v))
+
+    def Jtvec(self, m, v, f=None):
+        return self.sigmaTDSDeriv(self.G.T.dot(v), adjoint=True)
+
 def get_projection_matrix(args):
     import numpy as np
     import scipy.sparse as sp
