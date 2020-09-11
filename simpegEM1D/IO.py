@@ -180,7 +180,7 @@ class ModelIO(properties.HasProperties):
         plot_type="contour",
         physical_property=None, clim=None,
         ax=None, cmap='viridis', ncontour=20, scale='log',
-        show_colorbar=True, aspect=1, zlim=None, dx=20.,
+        show_colorbar=True, aspect=1, zlim=None, dx=20.
         contourOpts={}
     ):
         ind_line = self.line == self.unique_line[i_line]
