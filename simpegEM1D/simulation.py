@@ -689,7 +689,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                     else:
                         if src.moment_type == "single":
                             resp = np.zeros(
-                                (rx.n_time, self.survey.n_layer), dtype=np.float64, order='F'
+                                (rx.n_time, self.n_layer), dtype=np.float64, order='F'
                             )
                         else:
                             # For dual moment

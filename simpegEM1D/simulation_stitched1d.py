@@ -14,6 +14,7 @@ from SimPEG.simulation import BaseSimulation
 from SimPEG.survey import BaseSurvey
 from .survey import *
 from .simulation import *
+from simpegEM1D.utils.utils1D import set_mesh_1d
 import properties
 import warnings
 
@@ -71,7 +72,7 @@ def run_simulation_FD(args):
         
         sim = EM1DFMSimulation(
             survey=local_survey, thicknesses=thicknesses,
-            sigmaMap=sigmaMap, Map=wires.h,
+            sigmaMap=sigmaMap, hMap=wires.h,
             chi=chi, eta=eta, tau=tau, c=c,
             half_switch=half_switch, hankel_filter='key_101_2009'
         )
@@ -135,7 +136,7 @@ def run_simulation_TD(args):
         sigmaMap = expmap * wires.sigma
         sim = EM1DTMSimulation(
             survey=local_survey, thicknesses=thicknesses,
-            sigmaMap=sigmaMap, Map=wires.h,
+            sigmaMap=sigmaMap, hMap=wires.h,
             chi=chi, eta=eta, tau=tau, c=c,
             half_switch=half_switch, hankel_filter='key_101_2009'
         )

@@ -22,17 +22,26 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         a = 20.
         
         src_location = np.array([0., 0., 100.+1e-5])  
-        rx_location = np.array([10., 0., 100.+1e-5])
+        rx_location = np.array([0., 0., 100.+1e-5])
         receiver_orientation = "z"  # "x", "y" or "z"
         times = np.logspace(-5, -2, 31)
         
         # Receiver list
-        receiver_list = [
+        receiver_list = []
+        
+        receiver_list.append(
+            em1d.receivers.TimeDomainPointReceiver(
+                rx_location, times, orientation=receiver_orientation,
+                component="b"
+            )
+        )
+        
+        receiver_list.append(
             em1d.receivers.TimeDomainPointReceiver(
                 rx_location, times, orientation=receiver_orientation,
                 component="dbdt"
             )
-        ]
+        )
         
         time_input_currents = np.r_[-np.logspace(-2, -5, 31), 0.]
         input_currents = TriangleFun(time_input_currents+0.01, 5e-3, 0.01)
@@ -65,63 +74,6 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.nlayers = len(thicknesses)+1
         self.a = a
         
-        
-        
-        
-        
-        
-        
-        
-
-#        nearthick = np.logspace(-1, 1, 5)
-#        deepthick = np.logspace(1, 2, 10)
-#        hx = np.r_[nearthick, deepthick]
-#        mesh1D = Mesh.TensorMesh([hx], [0.])
-#        depth = -mesh1D.gridN[:-1]
-#        LocSigZ = -mesh1D.gridCC
-#
-#        # Triangular waveform
-#        time_input_currents = np.r_[0., 5.5*1e-4, 1.1*1e-3]
-#        input_currents = np.r_[0., 1., 0.]
-#
-#        TDsurvey = EM1DSurveyTD(
-#            rx_location=np.array([0., 0., 100.+1e-5]),
-#            src_location=np.array([0., 0., 100.+1e-5]),
-#            topo=np.r_[0., 0., 100.],
-#            depth=depth,
-#            field_type='secondary',
-#            rx_type='Bz',
-#            wave_type='general',
-#            time_input_currents=time_input_currents,
-#            input_currents=input_currents,
-#            n_pulse=2,
-#            base_frequency=25.,
-#            time=np.logspace(-5, -2, 31),
-#            src_type='CircularLoop',
-#            I=1e0,
-#            a=2e1
-#        )
-#
-#        sig_half = 1e-4
-#        chi_half = 0.
-#
-#        expmap = Maps.ExpMap(mesh1D)
-#        m_1D = np.log(np.ones(TDsurvey.n_layer)*sig_half)
-#        chi = np.zeros(TDsurvey.n_layer)
-#
-#        prob = EM1D(
-#            mesh1D, sigmaMap=expmap, chi=chi
-#        )
-#        prob.pair(TDsurvey)
-#
-#        self.survey = TDsurvey
-#        self.prob = prob
-#        self.mesh1D = mesh1D
-#        self.showIt = True
-#        self.chi = chi
-#        self.m_1D = m_1D
-#        self.sig_half = sig_half
-#        self.expmap = expmap
 
     def test_em1dtd_circular_loop_single_pulse(self):
         
@@ -157,8 +109,6 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
                 self.times, abs((bz-bz_analytic)/bz_analytic), 'r:'
             )
             plt.show()
-
-        print(np.c_[bz, bz_analytic])
         
         err = np.linalg.norm(bz-bz_analytic)/np.linalg.norm(bz_analytic)
         print ('Bz error = ', err)
@@ -174,8 +124,6 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             sim.survey.source_list[0].time_input_currents,
             sim.survey.source_list[0].input_currents
         )
-        
-        print(np.c_[dbdt, dbdt_analytic])
         
         if self.showIt:
             plt.subplot(121)
