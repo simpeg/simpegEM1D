@@ -66,12 +66,16 @@ class HarmonicMagneticDipoleSource(BaseSrc):
         super(HarmonicMagneticDipoleSource, self).__init__(receiver_list=receiver_list, **kwargs)
 
 
-    def PrimaryField(self, xyz):
+    def PrimaryField(self, xyz, is_offset=False):
 
-        # Could be generalizable in future
+        # xyz is np.array(N, 3) with receiver locations
+        # is_offet defines whether rx positions or absolute of source-receiver offset
 
         I = self.I
-        r0 = self.location
+        if is_offset:
+            r0 = np.zeros(3)
+        else:
+            r0 = self.location
 
         if self.orientation == "x":
             m = np.r_[1., 0., 0.]
@@ -98,13 +102,17 @@ class HarmonicHorizontalLoopSource(BaseSrc):
         super(HarmonicHorizontalLoopSource, self).__init__(receiver_list=receiver_list, **kwargs)
 
 
-    def PrimaryField(self, xyz):
+    def PrimaryField(self, is_offset=False):
 
-        # Could be generalizable in the future
+        # xyz is np.array(N, 3) with receiver locations
+        # is_offet defines whether rx positions or absolute of source-receiver offset
 
-        r0 = self.location
         a = self.a
         I = self.I
+        if is_offset:
+            r0 = np.zeros(3)
+        else:
+            r0 = self.location
 
         theta = 0.  # Azimuthal
         alpha = 0.  # Declination

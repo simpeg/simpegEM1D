@@ -30,7 +30,13 @@ class HarmonicPointReceiver(BaseRx):
         }
     )
 
-    def __init__(self, locations=None, frequencies=None, orientation=None, field_type=None, component=None, **kwargs):
+    use_source_receiver_offset = properties.Bool(
+        "Use source-receiver offset",
+        default=False
+    )
+
+
+    def __init__(self, locations=None, frequencies=None, orientation=None, field_type=None, component=None, use_source_receiver_offset=None, **kwargs):
 
         super(HarmonicPointReceiver, self).__init__(locations, **kwargs)
         if frequencies is not None:
@@ -41,6 +47,8 @@ class HarmonicPointReceiver(BaseRx):
             self.component = component
         if field_type is not None:
             self.field_type = field_type
+        if use_source_receiver_offset is not None:
+            self.use_source_receiver_offset = use_source_receiver_offset
 
         
 
@@ -70,9 +78,14 @@ class TimeDomainPointReceiver(BaseTimeRx):
         "Full time interval", dtype=float, shape=("*",)
     )
 
+    use_source_receiver_offset = properties.Bool(
+        "Use source-receiver offset",
+        default=False
+    )
 
 
-    def __init__(self, locations=None, times=None, orientation=None, component=None, **kwargs):
+
+    def __init__(self, locations=None, times=None, orientation=None, component=None, use_source_receiver_offset=None, **kwargs):
 
         super(TimeDomainPointReceiver, self).__init__(locations, times, **kwargs)
 
@@ -80,6 +93,8 @@ class TimeDomainPointReceiver(BaseTimeRx):
             self.orientation = orientation
         if component is not None:
             self.component = component
+        if use_source_receiver_offset is not None:
+            self.use_source_receiver_offset = use_source_receiver_offset
 
         # Required static property
         self.field_type = "secondary"

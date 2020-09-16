@@ -28,13 +28,13 @@ from . import supporting_functions
 # from .receivers import HarmonicPointReceiver, TimeDomainPointReceiver
 # from .RTEfun import rTEfunfwd, rTEfunjac
 
-from .KnownWaveforms import (
+from .known_waveforms import (
     skytem_HM_2015, skytem_LM_2015,
     butter_lowpass_filter, butterworth_type_filter,
     piecewise_pulse, get_geotem_wave, get_nanotem_wave,
     get_flight_direction_from_fiducial, get_rx_locations_from_flight_direction
 )
-from .KnownSystems import(
+from .known_systems import(
     vtem_plus,
     skytem_hm,
     skytem_lm,

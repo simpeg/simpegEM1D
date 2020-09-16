@@ -14,7 +14,7 @@ from empymod import filters
 from empymod.transform import dlf, fourier_dlf, get_dlf_points
 from empymod.utils import check_hankel
 
-from .KnownWaveforms import (
+from .known_waveforms import (
     piecewise_pulse_fast,
     butterworth_type_filter, butter_lowpass_filter
 )
@@ -216,7 +216,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
         n_layer = self.n_layer
 
-        # Source heights
+        # Source height above topography
         if self.hMap is not None:
             h_vector = self.h
         else:
@@ -248,16 +248,21 @@ class BaseEM1DSimulation(BaseSimulation):
 
                 # Compute receiver height
                 h = h_vector[ii]
-                z = h + src.location[2] - rx.locations[2]
+                if rx.use_source_receiver_offset:
+                    z = h + rx.locations[2]
+                else:
+                    z = h + rx.locations[2] - src.location[2]
+
 
                 if isinstance(src, HarmonicMagneticDipoleSource) | isinstance(src, TimeDomainMagneticDipoleSource):
 
                     # Radial distance
-                    r = src.location[0:2] - rx.locations[0:2]
-                    r = np.sqrt(np.sum(r**2))
-                    
-#                    if r > 0.01:
+                    if rx.use_source_receiver_offset:
+                        r = rx.locations[0:2]
+                    else:
+                        r = rx.locations[0:2] - src.location[0:2]
 
+                    r = np.sqrt(np.sum(r**2))
                     r_vec = r * np.ones(n_frequency)
 
                     # Use function from empymod
@@ -307,7 +312,11 @@ class BaseEM1DSimulation(BaseSimulation):
                 elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
                     
                     # radial distance and loop radius
-                    r = src.location[0:2] - rx.locations[0:2]
+                    if rx.use_source_receiver_offset:
+                        r = rx.locations[0:2]
+                    else:
+                        r = rx.locations[0:2] - src.location[0:2]
+
                     r_vec = np.sqrt(np.sum(r**2)) * np.ones(n_frequency)
                     a_vec = src.a * np.ones(n_frequency)
 
@@ -511,7 +520,7 @@ class EM1DFMSimulation(BaseEM1DSimulation):
 
                 if rx.field_type != "secondary":
 
-                    u_primary = src.PrimaryField(rx.locations)
+                    u_primary = src.PrimaryField(rx.locations, rx.use_source_receiver_offset)
 
                     if rx.field_type == "ppm":
                         k = [comp == rx.orientation for comp in ["x", "y", "z"]]

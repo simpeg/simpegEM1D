@@ -14,7 +14,7 @@ import properties
 from empymod import filters
 from empymod.utils import check_time
 from empymod.transform import fourier_dlf
-from .KnownWaveforms import (
+from .known_waveforms import (
     piecewise_pulse_fast,
     butterworth_type_filter, butter_lowpass_filter
 )
