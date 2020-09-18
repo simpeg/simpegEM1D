@@ -45,6 +45,7 @@ def run_simulation_FD(args):
 
     local_survey = EM1DSurveyFD([src])
     expmap = maps.ExpMap(nP=len(hz))
+    
     thicknesses = hz[0:-1]
 
     if not invert_height:
@@ -53,7 +54,7 @@ def run_simulation_FD(args):
         
         sim = EM1DFMSimulation(
             survey=local_survey, thicknesses=thicknesses,
-            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c,
+            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c, topo=topo,
             half_switch=half_switch, hankel_filter='key_101_2009'
         )
         
@@ -72,7 +73,7 @@ def run_simulation_FD(args):
         
         sim = EM1DFMSimulation(
             survey=local_survey, thicknesses=thicknesses,
-            sigmaMap=sigmaMap, hMap=wires.h,
+            sigmaMap=sigmaMap, hMap=wires.h, topo=topo,
             chi=chi, eta=eta, tau=tau, c=c,
             half_switch=half_switch, hankel_filter='key_101_2009'
         )
@@ -206,6 +207,9 @@ class GlobalEM1DSimulation(BaseSimulation):
     def __init__(self, mesh, **kwargs):
         utils.setKwargs(self, **kwargs)
         self.mesh = mesh
+        if self.n_layer == 1:
+            self.half_switch = True
+        
         if PARALLEL:
             if self.parallel:
                 print(">> Use multiprocessing for parallelization")
@@ -224,6 +228,13 @@ class GlobalEM1DSimulation(BaseSimulation):
             self.invert_height = True
 
     # ------------- For survey ------------- #
+    @property
+    def dz(self):
+        if self.mesh.dim==2:
+            return self.mesh.dy
+        elif self.mesh.dim==3:
+            return self.mesh.dz
+   
     @property
     def n_layer(self):
         return self.hz.size
@@ -308,12 +319,6 @@ class GlobalEM1DSimulation(BaseSimulation):
         else:
             return self.h
 
-    @property
-    def Sigma(self):
-        if getattr(self, '_Sigma', None) is None:
-            # Ordering: first z then x
-            self._Sigma = self.sigma.reshape((self.n_sounding, self.n_layer))
-        return self._Sigma
 
     # ------------- Etcetra .... ------------- #
     @property
@@ -372,6 +377,10 @@ class GlobalEM1DSimulation(BaseSimulation):
         if self.verbose:
             print(">> Compute response")
 
+        # Set flat topo at zero
+        if self.topo is None:
+            self.set_null_topography()
+
         if self.survey.__class__ == EM1DSurveyFD:
             print("Correct Run Simulation")
             run_simulation = run_simulation_FD
@@ -394,6 +403,13 @@ class GlobalEM1DSimulation(BaseSimulation):
                 run_simulation(self.input_args(i, jac_switch='forward')) for i in range(self.n_sounding)
             ]
         return np.hstack(result)
+
+
+    def set_null_topography(self):
+        self.topo = np.vstack(
+            [np.c_[src.location[0], src.location[1], 0.] for i, src in enumerate(self.survey.source_list)]
+        )
+
 
     def set_ij_n_layer(self, n_layer=None):
         """

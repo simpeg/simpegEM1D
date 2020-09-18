@@ -615,40 +615,45 @@ def magnetic_dipole_kernel(
             temp *= -2*lamda
 
     # COMPUTE KERNEL FUNCTIONS FOR HANKEL TRANSFORM
+    if rx.use_source_receiver_offset:
+        v_dist = rx.locations
+    else:
+        v_dist = rx.locations - src.location
+
     if src.orientation == "z":
         if rx.orientation == "z":
             kernels = [C * lamda**2 * temp, None, None]
         elif rx.orientation == "x":
-            C *= -rx.locations[0]/np.sqrt(np.sum(rx.locations[0:-1]))
+            C *= -v_dist[0]/np.sqrt(np.sum(v_dist[0:-1]**2))
             kernels = [None, C * lamda**2 * temp, None]
         elif rx.orientation == "y":
-            C *= -rx.locations[1]/np.sqrt(np.sum(rx.locations[0:-1]))
+            C *= -v_dist[1]/np.sqrt(np.sum(v_dist[0:-1]**2))
             kernels = [None, C * lamda**2 * temp, None]
     elif src.orientation == "x":
-        rho = np.sqrt(np.sum(rx.locations[0:-1]**2))
+        rho = np.sqrt(np.sum(v_dist[0:-1]**2))
         if rx.orientation == "z":
-            C *= rx.locations[0]/rho
+            C *= v_dist[0]/rho
             kernels = [None, C * lamda**2 * temp, None]
         elif rx.orientation == "x":
-            C0 = C * rx.locations[0]**2/rho**2
-            C1 = C * (1/rho - 2*rx.locations[0]**2/rho**3)
+            C0 = C * v_dist[0]**2/rho**2
+            C1 = C * (1/rho - 2*v_dist[0]**2/rho**3)
             kernels = [C0 * lamda**2 * temp, C1 * lamda *temp, None]
         elif rx.orientation == "y":
-            C0 = C * rx.locations[0]*rx.locations[1]/rho**2
-            C1 = C * -2*rx.locations[0]*rx.locations[1]/rho**3
+            C0 = C * v_dist[0]*v_dist[1]/rho**2
+            C1 = C * -2*v_dist[0]*v_dist[1]/rho**3
             kernels = [C0 * lamda**2 * temp, C1 * lamda *temp, None]
-    elif src.orientation == "z":
-        rho = np.sqrt(np.sum(rx.locations[0:-1]**2))
+    elif src.orientation == "y":
+        rho = np.sqrt(np.sum(v_dist[0:-1]**2))
         if rx.orientation == "z":
-            C *= rx.locations[1]/rho
+            C *= v_dist[1]/rho
             kernels = [None, C * lamda**2 * temp, None]
         elif rx.orientation == "x":
-            C0 = C * -rx.locations[0]*rx.locations[1]/rho**2
-            C1 = C * 2*rx.locations[0]*rx.locations[1]/rho**3
+            C0 = C * -v_dist[0]*v_dist[1]/rho**2
+            C1 = C * 2*v_dist[0]*v_dist[1]/rho**3
             kernels = [C0 * lamda**2 * temp, C1 * lamda *temp, None]
         elif rx.orientation == "y":
-            C0 = C * rx.locations[1]**2/rho**2
-            C1 = C * (1/rho - 2*rx.locations[1]**2/rho**3)
+            C0 = C * v_dist[1]**2/rho**2
+            C1 = C * (1/rho - 2*v_dist[1]**2/rho**3)
             kernels = [C0 * lamda**2 * temp, C1 * lamda *temp, None]
 
 

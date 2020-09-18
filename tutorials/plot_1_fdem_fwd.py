@@ -105,7 +105,7 @@ plotting_mesh = TensorMesh([np.r_[thicknesses, 40.]])
 plotLayer(model, plotting_mesh, showlayers=False)
 
 #######################################################################
-# Define the Forward Simulation and Predic Data
+# Define the Forward Simulation and Predict Data
 # ----------------------------------------------
 #
 

@@ -1,7 +1,7 @@
 import numpy as np
 from SimPEG import utils
 from scipy.constants import mu_0, pi
-from scipy.special import erf
+import scipy.special as spec
 import matplotlib.pyplot as plt
 from .supporting_functions.digital_filter import transFiltImpulse, transFilt, setFrequency
 
@@ -36,6 +36,43 @@ def Hzanal(sig, f, r, flag):
         Hzp = -1/(4*np.pi*r**3)
         Hz = Hz-Hzp
     return Hz
+
+
+def Hranal(sig, f, r):
+
+    """
+
+        Hz component of analytic solution for half-space (VMD source)
+        Src and Rx are on the surface
+
+        .. math::
+
+            H_z  = \\frac{-mk^2}{4\pi \\rho} \
+            \\Bigg [ I_1 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg ) K_1 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg )
+            - I_2 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg ) K_2 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg ) \\Bigg ]
+
+        * r: Src-Rx offset
+        * m: magnetic dipole moment
+        * k: propagation constant
+        * :math:`I_n`: modified Bessel function of the 1st kind of order *n*
+        * :math:`K_n`: modified Bessel function of the 2nd kind of order *n*
+
+        .. math::
+
+            k = \omega^2\epsilon\mu - \imath\omega\mu\sigma \\
+
+
+    """
+    mu0 = 4*np.pi*1e-7
+    w = 2*np.pi*f
+    k = np.sqrt(-1j*w*mu0*sig)
+    alpha = 1j*k*r/2.
+
+    IK1 = spec.iv(1, alpha)*spec.kv(1, alpha)
+    IK2 = spec.iv(2, alpha)*spec.kv(2, alpha)
+
+    Hr = (-k**2/(4*np.pi*r))*(IK1 - IK2)
+    return Hr
 
 
 def HzanalCirc(sig, f, I, a, flag):
@@ -117,7 +154,7 @@ def BzAnalT(r, t, sigma):
 
     theta = np.sqrt((sigma*mu_0)/(4*t))
     tr = theta*r
-    etr = erf(tr)
+    etr = spec.erf(tr)
     t1 = (9/(2*tr**2) - 1)*etr
     t2 = (1/np.sqrt(pi))*(9/tr + 4*tr)*np.exp(-tr**2)
     hz = (t1 - t2)/(4*pi*r**3)
@@ -143,7 +180,7 @@ def BzAnalCircT(a, t, sigma):
 
     theta = np.sqrt((sigma*mu_0)/(4*t))
     ta = theta*a
-    eta = erf(ta)
+    eta = spec.erf(ta)
     t1 = (3/(np.sqrt(pi)*ta))*np.exp(-ta**2)
     t2 = (1 - (3/(2*ta**2)))*eta
     hz = (t1 + t2)/(2*a)
@@ -168,7 +205,7 @@ def dBzdtAnalCircT(a, t, sigma):
     theta = np.sqrt((sigma*mu_0)/(4*t))
     const = -1/(mu_0*sigma*a**3)
     ta = theta*a
-    eta = erf(ta)
+    eta = spec.erf(ta)
     t1 = 3*eta
     t2 = -2/(np.pi**0.5)*ta*(3+2*ta**2)*np.exp(-ta**2)
     dhzdt = const*(t1+t2)

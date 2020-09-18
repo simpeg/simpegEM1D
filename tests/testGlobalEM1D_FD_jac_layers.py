@@ -157,11 +157,16 @@ class GlobalEM1DFD_Height(unittest.TestCase):
         x = mesh.vectorCCx
         y = np.zeros_like(x)
         z = np.ones_like(x) * 30.
-        receiver_locations = np.c_[x+8., y, z]
         source_locations = np.c_[x, y, z]
-        topo = np.c_[x, y, z-30.].astype(float)
+        receiver_offsets = np.c_[
+            np.zeros(n_sounding)+8.,
+            np.zeros(n_sounding),
+            np.zeros(n_sounding)
+        ]
+        
+        # topo = np.c_[x, y, z-30.].astype(float)
 
-        wires = maps.Wires(('sigma', n_sounding),('h', n_sounding))
+        wires = maps.Wires(('sigma', n_sounding),('height', n_sounding))
         expmap = maps.ExpMap(nP=n_sounding)
         sigma_map = expmap * wires.sigma
         
@@ -170,20 +175,22 @@ class GlobalEM1DFD_Height(unittest.TestCase):
         for ii in range(0, n_sounding):
             
             source_location = mkvc(source_locations[ii, :])
-            receiver_location = mkvc(receiver_locations[ii, :])
+            receiver_offset = receiver_offsets[ii, :]
             
             receiver_list = []
             
             receiver_list.append(
                 em1d.receivers.HarmonicPointReceiver(
-                    receiver_location, frequencies, orientation="z",
-                    field_type="secondary", component="real"
+                    receiver_offset, frequencies, orientation="z",
+                    field_type="secondary", component="real",
+                    use_source_receiver_offset=True
                 )
             )
             receiver_list.append(
                 em1d.receivers.HarmonicPointReceiver(
-                    receiver_location, frequencies, orientation="z",
-                    field_type="secondary", component="imag"
+                    receiver_offset, frequencies, orientation="z",
+                    field_type="secondary", component="imag",
+                    use_source_receiver_offset=True
                 )
             )
             
@@ -197,7 +204,7 @@ class GlobalEM1DFD_Height(unittest.TestCase):
         survey = em1d.survey.EM1DSurveyFD(source_list)
         
         simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationFD(
-            mesh, survey=survey, sigmaMap=sigma_map, hz=hz, hMap=wires.h, topo=topo,
+            mesh, survey=survey, sigmaMap=sigma_map, hz=hz, hMap=wires.height,
             parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
         )
         
@@ -211,8 +218,11 @@ class GlobalEM1DFD_Height(unittest.TestCase):
         dmis = data_misfit.L2DataMisfit(simulation=simulation, data=data_object)
         dmis.W = 1./uncertainties
         
-        reg_mesh = TensorMesh([int(n_sounding * 2)])
-        reg = regularization.Tikhonov(reg_mesh)
+        reg_mesh = TensorMesh([int(n_sounding)])
+        reg_sigma = regularization.Tikhonov(reg_mesh, mapping=wires.sigma)
+        reg_height = regularization.Tikhonov(reg_mesh, mapping=wires.height)
+        
+        reg = reg_sigma + reg_height
         
         opt = optimization.InexactGaussNewton(
             maxIterLS=20, maxIter=10, tolF=1e-6,
@@ -324,7 +334,7 @@ class GlobalEM1DFD_Height(unittest.TestCase):
     def test_adjoint(self):
         # Adjoint Test
         # u = np.random.rand(self.mesh.nC * self.survey.nSrc)
-        v = np.random.rand(self.mesh.nC)
+        v = np.random.rand(2*self.mesh.nC)
         w = np.random.rand(self.data.dobs.shape[0])
         wtJv = w.dot(self.sim.Jvec(self.m0, v))
         vtJtw = v.dot(self.sim.Jtvec(self.m0, w))

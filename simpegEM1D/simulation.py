@@ -78,12 +78,13 @@ class BaseEM1DSimulation(BaseSimulation):
 
     topo = properties.Array("Topography (x, y, z)", dtype=float)
 
-    half_switch = properties.Bool("Switch for half-space", default=False)
+    half_switch = properties.Bool("Switch for half-space")
 
     # depth = properties.Array("Depth of the layers", dtype=float, required=True)
     # Add layer thickness as invertible property
     thicknesses, thicknessesMap, thicknessesDeriv = props.Invertible(
-        "thicknesses of the layers"
+        "thicknesses of the layers",
+        default=np.array([])
     )
 
     def __init__(self, **kwargs):
@@ -200,6 +201,12 @@ class BaseEM1DSimulation(BaseSimulation):
             
         """
 
+        # Assign flag if halfspace
+        if self.half_switch is None:
+            if len(self.thicknesses)==0:
+                self.half_switch=True
+            else:
+                self.half_switch=False
         
         # Set evaluation frequencies for time domain
         if isinstance(self.survey, EM1DSurveyTD):
@@ -218,7 +225,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
         # Source height above topography
         if self.hMap is not None:
-            h_vector = self.h
+            h_vector = np.array(self.h)
         else:
             if self.topo is None:
                 h_vector = np.array([src.location[2] for src in self.survey.source_list])
