@@ -7,9 +7,6 @@ Here we assumed that the earth conductivity struture is layered. Each of layers 
 [![Build Status](https://travis-ci.org/simpeg/simpegEM1D.svg?branch=master)](https://travis-ci.org/simpeg/simpegEM1D)
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/simpeg/simpegEM1D/master?filepath=notebooks)
 
-Documentation:
-[http://simpegem1d.readthedocs.org/](http://simpegem1d.readthedocs.org/)
-
 Code:
 [https://github.com/simpeg/simpegem1d](https://github.com/simpeg/simpegem1d)
 
