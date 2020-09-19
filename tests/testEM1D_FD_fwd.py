@@ -194,6 +194,65 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         self.assertTrue(err < 1e-5)
         print ("EM1DFD-VMD for complex conductivity works")
 
+    def test_EM1DFDfwd_HMD_RealCond(self):
+        
+        src_location = np.array([0., 0., 100.+1e-5])  
+        rx_location = np.array([self.offset, 0., 100.+1e-5])
+        receiver_orientation = "z"  # "x", "y" or "z"
+        field_type = "secondary"  # "secondary", "total" or "ppm"
+        frequencies = np.logspace(-1, 5, 61)
+        
+        # Receiver list
+        receiver_list = []
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="z",
+                field_type=field_type, component="real"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="z",
+                field_type=field_type, component="imag"
+            )
+        )
+            
+        source_list = [
+            em1d.sources.HarmonicMagneticDipoleSource(
+                receiver_list=receiver_list, location=src_location, orientation="x"
+            )
+        ]
+        
+        survey = em1d.survey.EM1DSurveyFD(source_list)
+        
+        sigma_map = maps.ExpMap(nP=self.nlayers)
+        sim = em1d.simulation.EM1DFMSimulation(
+            survey=survey, thicknesses=self.thicknesses,
+            sigmaMap=sigma_map, topo=self.topo
+        )
+        
+        m_1D = np.log(np.ones(self.nlayers)*self.sigma)
+        Hz = sim.dpred(m_1D)
+        
+        soln_anal = Hzanal_hmd(
+            self.sigma, self.frequencies, self.offset, self.offset
+        )
+
+        if self.showIt is True:
+            N=int(len(Hz)/2)
+            plt.loglog(self.frequencies, abs(Hz[0:N]), 'b')
+            plt.loglog(self.frequencies, abs(soln_anal.real), 'b*')
+            plt.loglog(self.frequencies, abs(Hz[N:]), 'r')
+            plt.loglog(self.frequencies, abs(soln_anal.imag), 'r*')
+            plt.show()
+
+        soln_anal = np.r_[np.real(soln_anal), np.imag(soln_anal)]
+        
+        err = np.linalg.norm(Hz-soln_anal)/np.linalg.norm(soln_anal)
+        self.assertTrue(err < 1e-5)
+        print ("EM1DFD-HMD for complex conductivity works")    
+
+
     def test_EM1DFDfwd_CircularLoop_RealCond(self):
         
         src_location = np.array([0., 0., 100.+1e-5])  

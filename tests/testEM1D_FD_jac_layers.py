@@ -17,7 +17,6 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         
         src_location = np.array([0., 0., 100.+1e-5])  
         rx_location = np.array([10., 0., 100.+1e-5])
-        receiver_orientation = "z"  # "x", "y" or "z"
         field_type = "secondary"  # "secondary", "total" or "ppm"
         frequencies = np.logspace(1, 8, 61)
         
@@ -25,13 +24,37 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         receiver_list = []
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
-                rx_location, frequencies, orientation=receiver_orientation,
+                rx_location, frequencies, orientation="x",
                 field_type=field_type, component="real"
             )
         )
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
-                rx_location, frequencies, orientation=receiver_orientation,
+                rx_location, frequencies, orientation="x",
+                field_type=field_type, component="imag"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="y",
+                field_type=field_type, component="real"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="y",
+                field_type=field_type, component="imag"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="z",
+                field_type=field_type, component="real"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="z",
                 field_type=field_type, component="imag"
             )
         )

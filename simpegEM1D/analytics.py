@@ -75,6 +75,49 @@ def Hranal(sig, f, r):
     return Hr
 
 
+
+
+def Hzanal_hmd(sig, f, r, x):
+
+    """
+
+        Hz component of analytic solution for half-space (HMD source)
+        Src and Rx are on the surface
+
+        .. math::
+
+            H_z  = \\frac{mxk^2}{4\pi \\rho^2} \
+            \\Bigg [ I_1 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg ) K_1 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg )
+            - I_2 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg ) K_2 \\Bigg ( \\frac{\i k \\rho }{2} \\Bigg ) \\Bigg ]
+
+        * x: Src-Rx x offset
+        * r: Src-Rx offset
+        * m: magnetic dipole moment
+        * k: propagation constant
+        * :math:`I_n`: modified Bessel function of the 1st kind of order *n*
+        * :math:`K_n`: modified Bessel function of the 2nd kind of order *n*
+
+        .. math::
+
+            k = \omega^2\epsilon\mu - \imath\omega\mu\sigma \\
+
+
+    """
+    mu0 = 4*np.pi*1e-7
+    w = 2*np.pi*f
+    k = np.sqrt(-1j*w*mu0*sig)
+    alpha = 1j*k*r/2.
+
+    IK1 = spec.iv(1, alpha)*spec.kv(1, alpha)
+    IK2 = spec.iv(2, alpha)*spec.kv(2, alpha)
+
+    Hr = (x*k**2/(4*np.pi*r**2))*(IK1 - IK2)
+    return Hr
+
+
+
+
+
 def HzanalCirc(sig, f, I, a, flag):
 
     """
