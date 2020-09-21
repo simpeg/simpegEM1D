@@ -76,7 +76,7 @@ dobs = np.loadtxt(str(data_filename))
 
 
 source_locations = np.unique(dobs[:, 0:3], axis=0)
-times = np.unique(dobs[:, 3])
+times = mkvc(np.unique(dobs[:, 3]))
 dobs = mkvc(dobs[:, -1])
 
 n_sounding = np.shape(source_locations)[0]
@@ -119,7 +119,7 @@ for ii in range(0, n_sounding):
         )
     ]
 
-#     Sources
+    # Sources
     source_list.append(
         em1d.sources.TimeDomainHorizontalLoopSource(
             receiver_list=receiver_list, location=source_location, a=source_radius,
@@ -127,12 +127,14 @@ for ii in range(0, n_sounding):
         )
     )
     
-#    source_list.append(
-#        em1d.sources.TimeDomainMagneticDipoleSource(
-#            receiver_list=receiver_list, location=source_location, orientation="z",
-#            I=source_current
-#        )
-#    )
+    # source_list.append(
+    #     em1d.sources.TimeDomainMagneticDipoleSource(
+    #         receiver_list=receiver_list, location=source_location, orientation="z",
+    #         I=source_current
+    #     )
+    # )
+    
+
 
 # Survey
 survey = em1d.survey.EM1DSurveyTD(source_list)
@@ -167,7 +169,7 @@ data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
 
 dx = 100.
 hz = get_vertical_discretization_time(
-    times, sigma_background=0.1, n_layer=30
+    times, sigma_background=0.1, n_layer=25
 )
 hx = np.ones(n_sounding) * dx
 mesh = TensorMesh([hx, hz], x0='00')
@@ -245,15 +247,15 @@ dmis.W = 1./uncertainties
 
 # Define the regularization (model objective function)
 mesh_reg = get_2d_mesh(n_sounding, hz)
-reg_map = maps.IdentityMap(mesh_reg)
-reg = LateralConstraint(
-    mesh_reg, mapping=reg_map,
-    alpha_s = 0.1,
-    alpha_x = 0.0001,
-    alpha_y = 1.,
-)
-xy = utils.ndgrid(np.arange(n_sounding), np.r_[0.])
-reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
+# reg_map = maps.IdentityMap(mesh_reg)
+# reg = LateralConstraint(
+#     mesh_reg, mapping=reg_map,
+#     alpha_s = 0.1,
+#     alpha_x = 0.0001,
+#     alpha_y = 1.,
+# )
+# xy = utils.ndgrid(np.arange(n_sounding), np.r_[0.])
+# reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
 
 
 reg_map = maps.IdentityMap(nP=mesh.nC)
@@ -390,7 +392,7 @@ true_model[layer_ind] = overburden_conductivity
 
 x0 = np.r_[0., 30.]
 x1 = np.r_[dx*n_sounding, 30.]
-x2 = np.r_[dx*n_sounding, 130.]
+x2 = np.r_[dx*n_sounding, 150.]
 x3 = np.r_[0., 50.]
 pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh, pts)
@@ -400,15 +402,15 @@ true_model[poly_inds] = slope_conductivity
 l2_model = inv_prob.l2model
 dpred_l2 = simulation.dpred(l2_model)
 l2_model = np.exp(l2_model)
-l2_model = l2_model.reshape((simulation.n_sounding, simulation.n_layer))
-l2_model = mkvc(l2_model)
+# l2_model = l2_model.reshape((simulation.n_sounding, simulation.n_layer))
+# l2_model = mkvc(l2_model)
 
 dpred = simulation.dpred(recovered_model)
 recovered_model = np.exp(recovered_model)
-recovered_model = recovered_model.reshape((simulation.n_sounding, simulation.n_layer))
-recovered_model = mkvc(recovered_model)
+# recovered_model = recovered_model.reshape((simulation.n_sounding, simulation.n_layer))
+# recovered_model = mkvc(recovered_model)
 
-models_list = [true_model, l2_model, simulation.Sigma]
+models_list = [true_model, l2_model, recovered_model]
 
 for ii, mod in enumerate(models_list):
     

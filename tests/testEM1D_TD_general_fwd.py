@@ -3,7 +3,7 @@ from SimPEG import maps
 from SimPEG.utils import mkvc
 import matplotlib.pyplot as plt
 import simpegEM1D as em1d
-from simpegEM1D.KnownWaveforms import piecewise_ramp
+from simpegEM1D.known_waveforms import piecewise_ramp
 from simpegEM1D.analytics import *
 from simpegEM1D.waveforms import TriangleFun
 import numpy as np

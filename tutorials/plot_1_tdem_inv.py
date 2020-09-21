@@ -76,7 +76,7 @@ source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = 6.
 
-receiver_location = np.array([10., 0., 20.])
+receiver_location = np.array([0., 0., 20.])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
 
@@ -92,19 +92,19 @@ receiver_list.append(
 )
 
 # Sources
-#source_list = [
-#    em1d.sources.TimeDomainHorizontalLoopSource(
-#        receiver_list=receiver_list, location=source_location,
-#        I=source_current, a=source_radius
-#    )
-#]
-
 source_list = [
-    em1d.sources.TimeDomainMagneticDipoleSource(
-        receiver_list=receiver_list, location=source_location, orientation="z",
-        I=source_current
+    em1d.sources.TimeDomainHorizontalLoopSource(
+        receiver_list=receiver_list, location=source_location,
+        I=source_current, a=source_radius
     )
 ]
+
+# source_list = [
+#     em1d.sources.TimeDomainMagneticDipoleSource(
+#         receiver_list=receiver_list, location=source_location, orientation="z",
+#         I=source_current
+#     )
+# ]
 
 # Survey
 survey = em1d.survey.EM1DSurveyTD(source_list)
@@ -149,8 +149,6 @@ inv_thicknesses = np.logspace(0,1.5,25)
 
 # Define a mesh for plotting and regularization.
 mesh = TensorMesh([(np.r_[inv_thicknesses, inv_thicknesses[-1]])], '0')
-
-print(mesh)
 
 
 ########################################################
@@ -325,6 +323,7 @@ true_layers = TensorMesh([hz])
 
 # Extract Least-Squares model
 l2_model = inv_prob.l2model
+print(np.shape(l2_model))
 
 # Plot true model and recovered model
 fig = plt.figure(figsize=(8, 9))

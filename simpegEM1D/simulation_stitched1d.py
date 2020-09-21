@@ -45,7 +45,6 @@ def run_simulation_FD(args):
 
     local_survey = EM1DSurveyFD([src])
     expmap = maps.ExpMap(nP=len(hz))
-    
     thicknesses = hz[0:-1]
 
     if not invert_height:
@@ -61,7 +60,6 @@ def run_simulation_FD(args):
         if jac_switch == 'sensitivity_sigma':
             drespdsig = sim.getJ_sigma(np.log(sigma))
             return utils.mkvc(drespdsig * sim.sigmaDeriv)
-            # return utils.mkvc(drespdsig)
         else:
             resp = sim.dpred(np.log(sigma))
             return resp
@@ -120,7 +118,7 @@ def run_simulation_TD(args):
         # This is hard-wired at the moment
         sim = EM1DTMSimulation(
             survey=local_survey, thicknesses=thicknesses,
-            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c,
+            sigmaMap=expmap, chi=chi, eta=eta, tau=tau, c=c, topo=topo,
             half_switch=half_switch, hankel_filter='key_101_2009'
         )
         
@@ -137,7 +135,7 @@ def run_simulation_TD(args):
         sigmaMap = expmap * wires.sigma
         sim = EM1DTMSimulation(
             survey=local_survey, thicknesses=thicknesses,
-            sigmaMap=sigmaMap, hMap=wires.h,
+            sigmaMap=sigmaMap, hMap=wires.h, topo=topo,
             chi=chi, eta=eta, tau=tau, c=c,
             half_switch=half_switch, hankel_filter='key_101_2009'
         )

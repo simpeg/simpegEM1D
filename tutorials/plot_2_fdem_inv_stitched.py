@@ -257,15 +257,15 @@ dmis.W = 1./uncertainties
 
 # Define the regularization (model objective function)
 mesh_reg = get_2d_mesh(n_sounding, hz)
-reg_map = maps.IdentityMap(mesh_reg)
-reg = LateralConstraint(
-    mesh_reg, mapping=reg_map,
-    alpha_s = 0.1,
-    alpha_x = 0.0001,
-    alpha_y = 1.,
-)
-xy = utils.ndgrid(np.arange(n_sounding), np.r_[0.])
-reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
+# reg_map = maps.IdentityMap(mesh_reg)
+# reg = LateralConstraint(
+#     mesh_reg, mapping=reg_map,
+#     alpha_s = 0.1,
+#     alpha_x = 0.0001,
+#     alpha_y = 1.,
+# )
+# xy = utils.ndgrid(np.arange(n_sounding), np.r_[0.])
+# reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
 
 
 reg_map = maps.IdentityMap(nP=mesh.nC)
@@ -411,15 +411,11 @@ true_model[poly_inds] = slope_conductivity
 l2_model = inv_prob.l2model
 dpred_l2 = simulation.dpred(l2_model)
 l2_model = np.exp(l2_model)
-l2_model = l2_model.reshape((simulation.n_sounding, simulation.n_layer))
-l2_model = mkvc(l2_model)
 
 dpred = simulation.dpred(recovered_model)
 recovered_model = np.exp(recovered_model)
-recovered_model = recovered_model.reshape((simulation.n_sounding, simulation.n_layer))
-recovered_model = mkvc(recovered_model)
 
-models_list = [true_model, l2_model, simulation.Sigma]
+models_list = [true_model, l2_model, recovered_model]
 
 for ii, mod in enumerate(models_list):
     
