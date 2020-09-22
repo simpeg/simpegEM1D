@@ -1,6 +1,5 @@
 # Surveys
 from .survey import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
-# from .survey_original import BaseEM1DSurvey, EM1DSurveyFD, EM1DSurveyTD
 
 # Sources and receivers
 from . import sources
@@ -8,11 +7,8 @@ from . import receivers
 
 # Simulations
 from .simulation import (
-	BaseEM1DSimulation, EM1DFMSimulation, EM1DTMSimulation
-)
-from .simulation_stitched1d import (
-    GlobalEM1DSimulation, GlobalEM1DSimulationFD, GlobalEM1DSimulationTD,
-    GlobalEM1DSurvey, GlobalEM1DSurveyFD, GlobalEM1DSurveyTD
+	BaseEM1DSimulation, EM1DFMSimulation, EM1DTMSimulation,
+    BaseStitchedEM1DSimulation, StitchedEM1DFMSimulation, StitchedEM1DTMSimulation
 )
 
 # Other

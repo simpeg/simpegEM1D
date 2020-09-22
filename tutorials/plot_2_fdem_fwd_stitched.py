@@ -110,12 +110,18 @@ survey = em1d.survey.EM1DSurveyFD(source_list)
 # ----------------------
 #
 
-hz = get_vertical_discretization_frequency(frequencies, sigma_background=0.1, n_layer=30)
+n_layer = 30
+thicknesses = get_vertical_discretization_frequency(
+    frequencies, sigma_background=0.1, n_layer=n_layer-1
+)
 
 dx = 100.
 hx = np.ones(n_sounding) * dx
+hz = np.r_[thicknesses, thicknesses[-1]]
 mesh2D = TensorMesh([hx, np.flipud(hz)], x0='0N')
 mesh_soundings = TensorMesh([hz, hx], x0='00')
+
+n_param = n_layer*n_sounding
 
 ###############################################
 # Defining a Model
@@ -133,7 +139,7 @@ background_conductivity = 0.1
 overburden_conductivity = 0.025
 slope_conductivity = 0.4
 
-model = np.ones(mesh2D.nC) * background_conductivity
+model = np.ones(n_param) * background_conductivity
 
 layer_ind = mesh2D.gridCC[:, -1] > -30.
 model[layer_ind] = overburden_conductivity
@@ -147,7 +153,7 @@ pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh2D, pts)
 model[poly_inds] = slope_conductivity
 
-mapping = maps.ExpMap(mesh2D)
+mapping = maps.ExpMap(nP=n_param)
 
 # MODEL TO SOUNDING MODELS METHOD 1
 # sounding_models = model.reshape(mesh2D.vnC, order='F')
@@ -228,9 +234,9 @@ cbar.set_label("Conductivity [S/m]", rotation=270, labelpad=15, size=12)
 
 
 # Simulate response for static conductivity
-simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationFD(
-    mesh_soundings, survey=survey, sigmaMap=mapping, chi=chi, hz=hz, topo=topo, parallel=False, n_cpu=2, verbose=True,
-    Solver=PardisoSolver
+simulation = em1d.simulation.StitchedEM1DFMSimulation(
+    survey=survey, thicknesses=thicknesses, sigmaMap=mapping, chi=chi,
+    topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
 )
 
 #simulation.model = sounding_models

@@ -177,13 +177,19 @@ data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
 # ---------------
 #
 
-dx = 100.
-hz = get_vertical_discretization_frequency(
-    frequencies, sigma_background=0.1, n_layer=30
+n_layer = 30
+thicknesses = get_vertical_discretization_frequency(
+    frequencies, sigma_background=0.1, n_layer=n_layer-1
 )
+
+dx = 100.
 hx = np.ones(n_sounding) * dx
+hz = np.r_[thicknesses, thicknesses[-1]]
 mesh2D = TensorMesh([hx, np.flipud(hz)], x0='0N')
 mesh_soundings = TensorMesh([hz, hx], x0='00')
+
+n_param = n_layer*n_sounding
+
 
 
 ###############################################
@@ -191,9 +197,9 @@ mesh_soundings = TensorMesh([hz, hx], x0='00')
 # ----------------------
 #
 
-conductivity = np.ones(mesh_soundings.nC) * 0.1
+conductivity = np.ones(n_param) * 0.1
 
-mapping = maps.ExpMap(mesh_soundings)
+mapping = maps.ExpMap(nP=n_param)
 starting_model = np.log(conductivity)
 
 #######################################################################
@@ -204,35 +210,10 @@ starting_model = np.log(conductivity)
 
 
 # Simulate response for static conductivity
-simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationFD(
-    mesh_soundings, survey=survey, sigmaMap=mapping, hz=hz, topo=topo, parallel=False,
-    n_cpu=2, verbose=True, Solver=PardisoSolver
+simulation = em1d.simulation.StitchedEM1DFMSimulation(
+    survey=survey, thicknesses=thicknesses, sigmaMap=mapping, topo=topo,
+    parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
 )
-
-#simulation.model = starting_model
-#
-#simulation.set_ij_n_layer()
-#
-#simulation._Jmatrix_sigma = [
-#    run_simulation_FD(simulation.input_args(i, jac_switch='sensitivity_sigma')) for i in range(simulation.n_sounding)
-#]
-#print("J_sigma matrix shape")
-#simulation._Jmatrix_sigma = np.hstack(simulation._Jmatrix_sigma)
-#print(simulation._Jmatrix_sigma.shape)
-#print("IJLayers shapes")
-#for x in simulation.IJLayers:
-#    print(x.shape)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -269,7 +250,7 @@ mesh_reg = get_2d_mesh(n_sounding, hz)
 # reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
 
 
-reg_map = maps.IdentityMap(nP=mesh_soundings.nC)
+reg_map = maps.IdentityMap(nP=n_param)
 reg = regularization.Sparse(
     mesh_reg, mapping=reg_map,
 )
@@ -395,7 +376,7 @@ background_conductivity = 0.1
 overburden_conductivity = 0.025
 slope_conductivity = 0.4
 
-true_model = np.ones(mesh2D.nC) * background_conductivity
+true_model = np.ones(n_param) * background_conductivity
 
 layer_ind = mesh2D.gridCC[:, -1] > -30.
 true_model[layer_ind] = overburden_conductivity

@@ -14,14 +14,16 @@ class GlobalEM1DFD(unittest.TestCase):
 
     def setUp(self, parallel=True):
         
+        n_layer = 20
         frequencies = np.array([900, 7200, 56000], dtype=float)
-        hz = get_vertical_discretization_frequency(
-            frequencies, sigma_background=0.1
+        thicknesses = get_vertical_discretization_frequency(
+            frequencies, sigma_background=0.1, n_layer=n_layer-1
         )
         
         n_sounding = 10
         dx = 20.
         hx = np.ones(n_sounding) * dx
+        hz = np.r_[thicknesses, thicknesses[-1]]
         
         mesh = TensorMesh([hx, hz], x0='00')
         inds = mesh.gridCC[:, 1] < 25
@@ -72,12 +74,10 @@ class GlobalEM1DFD(unittest.TestCase):
         
         survey = em1d.survey.EM1DSurveyFD(source_list)
         
-        simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationFD(
-            mesh, survey=survey, sigmaMap=sigma_map, hz=hz, topo=topo,
-            parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
+        simulation = em1d.simulation.StitchedEM1DFMSimulation(
+            survey=survey, thicknesses=thicknesses, sigmaMap=sigma_map,
+            topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
         )
-        
-        
         
         
         dpred = simulation.dpred(mSynth)
@@ -203,8 +203,8 @@ class GlobalEM1DFD_Height(unittest.TestCase):
         
         survey = em1d.survey.EM1DSurveyFD(source_list)
         
-        simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationFD(
-            mesh, survey=survey, sigmaMap=sigma_map, hz=hz, hMap=wires.height,
+        simulation = em1d.simulation.StitchedEM1DFMSimulation(
+            survey=survey, sigmaMap=sigma_map, hMap=wires.height,
             parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
         )
         

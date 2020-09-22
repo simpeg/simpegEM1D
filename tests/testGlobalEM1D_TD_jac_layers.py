@@ -17,13 +17,15 @@ class GlobalEM1DTD(unittest.TestCase):
     def setUp(self, parallel=True):
         
         times = np.logspace(-5, -2, 31)
-        hz = get_vertical_discretization_time(
-            times, facter_tmax=0.5, factor_tmin=10.
+        n_layer = 20
+        thicknesses = get_vertical_discretization_time(
+            times, facter_tmax=0.5, factor_tmin=10., n_layer=n_layer-1
         )
         
         n_sounding = 5
         dx = 20.
         hx = np.ones(n_sounding) * dx
+        hz = np.r_[thicknesses, thicknesses[-1]]
         mesh = TensorMesh([hx, hz], x0='00')
         inds = mesh.gridCC[:, 1] < 25
         inds_1 = mesh.gridCC[:, 1] < 50
@@ -85,9 +87,9 @@ class GlobalEM1DTD(unittest.TestCase):
         
         survey = em1d.survey.EM1DSurveyTD(source_list)
         
-        simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationTD(
-            mesh, survey=survey, sigmaMap=sigma_map, hz=hz, topo=topo, parallel=False,
-            n_cpu=2, verbose=True, Solver=PardisoSolver
+        simulation = em1d.simulation.StitchedEM1DTMSimulation(
+            survey=survey, thicknesses=thicknesses, sigmaMap=sigma_map,
+            topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
         )
 
         dpred = simulation.dpred(mSynth)

@@ -167,13 +167,18 @@ data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
 # ----------------------
 #
 
-dx = 100.
-hz = get_vertical_discretization_time(
-    times, sigma_background=0.1, n_layer=25
+n_layer = 25
+thicknesses = get_vertical_discretization_time(
+    times, sigma_background=0.1, n_layer=n_layer-1
 )
+
+dx = 100.
 hx = np.ones(n_sounding) * dx
+hz = np.r_[thicknesses, thicknesses[-1]]
 mesh2D = TensorMesh([hx, np.flipud(hz)], x0='0N')
 mesh_soundings = TensorMesh([hz, hx], x0='00')
+
+n_param = n_layer*n_sounding
 
 
 ###############################################
@@ -181,9 +186,9 @@ mesh_soundings = TensorMesh([hz, hx], x0='00')
 # ----------------------
 #
 
-conductivity = np.ones(mesh_soundings.nC) * 0.1
+conductivity = np.ones(n_param) * 0.1
 
-mapping = maps.ExpMap(mesh_soundings)
+mapping = maps.ExpMap(nP=n_param)
 starting_model = np.log(conductivity)
 
 #######################################################################
@@ -194,9 +199,9 @@ starting_model = np.log(conductivity)
 
 
 # Simulate response for static conductivity
-simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationTD(
-    mesh_soundings, survey=survey, sigmaMap=mapping, hz=hz, topo=topo, parallel=False,
-    n_cpu=2, verbose=True, Solver=PardisoSolver
+simulation = em1d.simulation.StitchedEM1DTMSimulation(
+    survey=survey, thicknesses=thicknesses, sigmaMap=mapping,
+    topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
 )
 
 #simulation.model = starting_model
