@@ -172,7 +172,8 @@ hz = get_vertical_discretization_time(
     times, sigma_background=0.1, n_layer=25
 )
 hx = np.ones(n_sounding) * dx
-mesh = TensorMesh([hx, hz], x0='00')
+mesh2D = TensorMesh([hx, np.flipud(hz)], x0='0N')
+mesh_soundings = TensorMesh([hz, hx], x0='00')
 
 
 ###############################################
@@ -180,10 +181,10 @@ mesh = TensorMesh([hx, hz], x0='00')
 # ----------------------
 #
 
-conductivity = np.ones(mesh.nC) * 0.1
+conductivity = np.ones(mesh_soundings.nC) * 0.1
 
-mapping = maps.ExpMap(mesh)
-starting_model = np.log(conductivity.reshape(mesh.vnC, order='F').flatten())
+mapping = maps.ExpMap(mesh_soundings)
+starting_model = np.log(conductivity)
 
 #######################################################################
 # Define the Forward Simulation and Predic Data
@@ -194,7 +195,7 @@ starting_model = np.log(conductivity.reshape(mesh.vnC, order='F').flatten())
 
 # Simulate response for static conductivity
 simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationTD(
-    mesh, survey=survey, sigmaMap=mapping, hz=hz, topo=topo, parallel=False,
+    mesh_soundings, survey=survey, sigmaMap=mapping, hz=hz, topo=topo, parallel=False,
     n_cpu=2, verbose=True, Solver=PardisoSolver
 )
 
@@ -258,9 +259,9 @@ mesh_reg = get_2d_mesh(n_sounding, hz)
 # reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
 
 
-reg_map = maps.IdentityMap(nP=mesh.nC)
+reg_map = maps.IdentityMap(nP=mesh_soundings.nC)
 reg = regularization.Sparse(
-    mesh, mapping=reg_map,
+    mesh_reg, mapping=reg_map,
 )
 
 ps, px, py = 1, 1, 1
@@ -384,19 +385,23 @@ background_conductivity = 0.1
 overburden_conductivity = 0.025
 slope_conductivity = 0.4
 
-true_model = np.ones(mesh.nC) * background_conductivity
+true_model = np.ones(mesh2D.nC) * background_conductivity
 
-layer_ind = mesh.gridCC[:, -1] < 30.
+layer_ind = mesh2D.gridCC[:, -1] > -30.
 true_model[layer_ind] = overburden_conductivity
 
 
-x0 = np.r_[0., 30.]
-x1 = np.r_[dx*n_sounding, 30.]
-x2 = np.r_[dx*n_sounding, 150.]
-x3 = np.r_[0., 50.]
+x0 = np.r_[0., -30.]
+x1 = np.r_[dx*n_sounding, -30.]
+x2 = np.r_[dx*n_sounding, -130.]
+x3 = np.r_[0., -50.]
 pts = np.vstack((x0, x1, x2, x3, x0))
-poly_inds = PolygonInd(mesh, pts)
+poly_inds = PolygonInd(mesh2D, pts)
 true_model[poly_inds] = slope_conductivity
+
+true_model = true_model.reshape(mesh_soundings.vnC, order='C')
+true_model = np.flipud(true_model)
+true_model = mkvc(true_model)
 
 
 l2_model = inv_prob.l2model
@@ -418,13 +423,13 @@ for ii, mod in enumerate(models_list):
     ax1 = fig.add_axes([0.1, 0.12, 0.73, 0.78])
     log_mod = np.log10(mod)
     
-    mesh.plotImage(
+    mesh_soundings.plotImage(
         log_mod, ax=ax1, grid=False,
         clim=(np.log10(true_model.min()), np.log10(true_model.max())),
 #        clim=(np.log10(0.1), np.log10(1)),
         pcolorOpts={"cmap": "viridis"},
     )
-    ax1.set_ylim(mesh.vectorNy.max(), mesh.vectorNy.min())
+    ax1.set_ylim(mesh_soundings.vectorNy.max(), mesh_soundings.vectorNy.min())
     
     ax1.set_title("Conductivity Model")
     ax1.set_xlabel("x (m)")

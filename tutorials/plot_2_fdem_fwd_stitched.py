@@ -50,7 +50,7 @@ topo = np.c_[x, y, z].astype(float)
 # -------------
 #
 #
-x = np.linspace(50,5050,50)
+x = np.linspace(50,4950,50)
 #x = np.linspace(50,250,3)
 n_sounding = len(x)
 
@@ -110,10 +110,12 @@ survey = em1d.survey.EM1DSurveyFD(source_list)
 # ----------------------
 #
 
-dx = 100.
 hz = get_vertical_discretization_frequency(frequencies, sigma_background=0.1, n_layer=30)
+
+dx = 100.
 hx = np.ones(n_sounding) * dx
-mesh = TensorMesh([hx, hz], x0='00')
+mesh2D = TensorMesh([hx, np.flipud(hz)], x0='0N')
+mesh_soundings = TensorMesh([hz, hx], x0='00')
 
 ###############################################
 # Defining a Model
@@ -131,22 +133,31 @@ background_conductivity = 0.1
 overburden_conductivity = 0.025
 slope_conductivity = 0.4
 
-model = np.ones(mesh.nC) * background_conductivity
+model = np.ones(mesh2D.nC) * background_conductivity
 
-layer_ind = mesh.gridCC[:, -1] < 30.
+layer_ind = mesh2D.gridCC[:, -1] > -30.
 model[layer_ind] = overburden_conductivity
 
 
-x0 = np.r_[0., 30.]
-x1 = np.r_[dx*n_sounding, 30.]
-x2 = np.r_[dx*n_sounding, 130.]
-x3 = np.r_[0., 50.]
+x0 = np.r_[0., -30.]
+x1 = np.r_[dx*n_sounding, -30.]
+x2 = np.r_[dx*n_sounding, -130.]
+x3 = np.r_[0., -50.]
 pts = np.vstack((x0, x1, x2, x3, x0))
-poly_inds = PolygonInd(mesh, pts)
+poly_inds = PolygonInd(mesh2D, pts)
 model[poly_inds] = slope_conductivity
 
-mapping = maps.ExpMap(mesh)
-sounding_models = np.log(model.reshape(mesh.vnC, order='F').flatten())
+mapping = maps.ExpMap(mesh2D)
+
+# MODEL TO SOUNDING MODELS METHOD 1
+# sounding_models = model.reshape(mesh2D.vnC, order='F')
+# sounding_models = np.fliplr(sounding_models)
+# sounding_models = mkvc(sounding_models.T)
+
+# MODEL TO SOUNDING MODELS METHOD 2
+sounding_models = model.reshape(mesh_soundings.vnC, order='C')
+sounding_models = np.flipud(sounding_models)
+sounding_models = mkvc(sounding_models)
 
 chi = np.zeros_like(sounding_models)
 
@@ -159,12 +170,12 @@ fig = plt.figure(figsize=(9, 3))
 ax1 = fig.add_axes([0.1, 0.12, 0.73, 0.78])
 log_mod = np.log10(model)
 
-mesh.plotImage(
+mesh2D.plotImage(
     log_mod, ax=ax1, grid=True,
     clim=(np.log10(overburden_conductivity), np.log10(slope_conductivity)),
     pcolorOpts={"cmap": "viridis"},
 )
-ax1.set_ylim(mesh.vectorNy.max(), mesh.vectorNy.min())
+ax1.set_ylim(mesh2D.vectorNy.min(), mesh2D.vectorNy.max())
 
 ax1.set_title("Conductivity Model")
 ax1.set_xlabel("x (m)")
@@ -179,6 +190,36 @@ cbar = mpl.colorbar.ColorbarBase(
 )
 cbar.set_label("Conductivity [S/m]", rotation=270, labelpad=15, size=12)
 
+
+
+
+fig = plt.figure(figsize=(4, 8))
+ax1 = fig.add_axes([0.1, 0.12, 0.73, 0.78])
+log_mod_sounding = np.log10(sounding_models)
+sounding_models = np.log(sounding_models)
+
+mesh_soundings.plotImage(
+    log_mod_sounding, ax=ax1, grid=True,
+    clim=(np.log10(overburden_conductivity), np.log10(slope_conductivity)),
+    pcolorOpts={"cmap": "viridis"},
+)
+ax1.set_ylim(mesh_soundings.vectorNy.min(), mesh_soundings.vectorNy.max())
+
+ax1.set_title("Ordered Sounding Models")
+ax1.set_xlabel("hz (m)")
+ax1.set_ylabel("Profile Distance (m)")
+
+ax2 = fig.add_axes([0.85, 0.12, 0.05, 0.78])
+norm = mpl.colors.Normalize(
+    vmin=np.log10(overburden_conductivity), vmax=np.log10(slope_conductivity)
+)
+cbar = mpl.colorbar.ColorbarBase(
+    ax2, norm=norm, cmap=mpl.cm.viridis, orientation="vertical", format="$10^{%.1f}$"
+)
+cbar.set_label("Conductivity [S/m]", rotation=270, labelpad=15, size=12)
+
+
+
 #######################################################################
 # Define the Forward Simulation and Predic Data
 # ----------------------------------------------
@@ -188,7 +229,7 @@ cbar.set_label("Conductivity [S/m]", rotation=270, labelpad=15, size=12)
 
 # Simulate response for static conductivity
 simulation = em1d.simulation_stitched1d.GlobalEM1DSimulationFD(
-    mesh, survey=survey, sigmaMap=mapping, chi=chi, hz=hz, topo=topo, parallel=False, n_cpu=2, verbose=True,
+    mesh_soundings, survey=survey, sigmaMap=mapping, chi=chi, hz=hz, topo=topo, parallel=False, n_cpu=2, verbose=True,
     Solver=PardisoSolver
 )
 
