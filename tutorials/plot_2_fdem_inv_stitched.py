@@ -239,27 +239,31 @@ dmis.W = 1./uncertainties
 
 # Define the regularization (model objective function)
 mesh_reg = get_2d_mesh(n_sounding, hz)
-# reg_map = maps.IdentityMap(mesh_reg)
-# reg = LateralConstraint(
-#     mesh_reg, mapping=reg_map,
-#     alpha_s = 0.1,
-#     alpha_x = 0.0001,
-#     alpha_y = 1.,
-# )
-# xy = utils.ndgrid(np.arange(n_sounding), np.r_[0.])
-# reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
-
-
 reg_map = maps.IdentityMap(nP=n_param)
-reg = regularization.Sparse(
+reg = LateralConstraint(
     mesh_reg, mapping=reg_map,
+    alpha_s = 0.01,
+    alpha_x = 1.,
+    alpha_y = 1.,
 )
+xy = utils.ndgrid(x, np.r_[0.])
+reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
+
+
+# reg_map = maps.IdentityMap(nP=n_param)
+# reg = regularization.Sparse(
+#     mesh_reg, mapping=reg_map,
+# )
 
 ps, px, py = 1, 1, 1
 reg.norms = np.c_[ps, px, py, 0]
 
 reg.mref = starting_model
 reg.mrefInSmooth = True
+
+# reg.eps_p = 1e-6
+# reg.eps_q = 1e-6
+
 
 # Define how the optimization problem is solved. Here we will use an inexact
 # Gauss-Newton approach that employs the conjugate gradient solver.
@@ -297,7 +301,7 @@ inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
 
 # Defining a starting value for the trade-off parameter (beta) between the data
 # misfit and the regularization.
-starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=10)
+starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=100)
 
 
 beta_schedule = directives.BetaSchedule(coolingFactor=2, coolingRate=2)
@@ -312,7 +316,7 @@ save_iteration = directives.SaveOutputEveryIteration(save_txt=False)
 update_IRLS = directives.Update_IRLS(
     max_irls_iterations=20, minGNiter=1, 
     fix_Jmatrix=True, 
-    f_min_change = 1e-3,
+    f_min_change = 1e-4,
     coolingRate=3
 )
 
@@ -320,7 +324,7 @@ update_IRLS = directives.Update_IRLS(
 update_jacobi = directives.UpdatePreconditioner()
 
 # Setting a stopping criteria for the inversion.
-#target_misfit = directives.TargetMisfit(chifact=1)
+target_misfit = directives.TargetMisfit(chifact=1)
 
 # Add sensitivity weights
 sensitivity_weights = directives.UpdateSensitivityWeights()
@@ -333,13 +337,14 @@ directives_list = [
     starting_beta,
     beta_schedule,
     save_iteration,
+    target_misfit,
     update_IRLS,
     update_jacobi,
 ]
 
 
-opt.LSshorten = 0.5
-opt.remember('xc')
+# opt.LSshorten = 0.5
+# opt.remember('xc')
 
 #####################################################################
 # Running the Inversion
@@ -390,12 +395,6 @@ pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh2D, pts)
 true_model[poly_inds] = slope_conductivity
 
-true_model = true_model.reshape(mesh_soundings.vnC, order='C')
-true_model = np.flipud(true_model)
-true_model = mkvc(true_model)
-
-
-
 
 l2_model = inv_prob.l2model
 dpred_l2 = simulation.dpred(l2_model)
@@ -404,7 +403,15 @@ l2_model = np.exp(l2_model)
 dpred = simulation.dpred(recovered_model)
 recovered_model = np.exp(recovered_model)
 
+mesh_plotting = TensorMesh([hx, np.flipud(hz)], x0='0N')
+l2_model = l2_model.reshape(mesh_plotting.vnC, order='C')
+l2_model = mkvc(np.fliplr(l2_model))
+recovered_model = recovered_model.reshape(mesh_plotting.vnC, order='C')
+recovered_model = mkvc(np.fliplr(recovered_model))
+
+
 models_list = [true_model, l2_model, recovered_model]
+
 
 for ii, mod in enumerate(models_list):
     
@@ -412,19 +419,17 @@ for ii, mod in enumerate(models_list):
     ax1 = fig.add_axes([0.1, 0.12, 0.73, 0.78])
     log_mod = np.log10(mod)
     
-    mesh_soundings.plotImage(
+    mesh_plotting.plotImage(
         log_mod, ax=ax1, grid=False,
         clim=(np.log10(true_model.min()), np.log10(true_model.max())),
 #        clim=(np.log10(0.1), np.log10(1)),
         pcolorOpts={"cmap": "viridis"},
     )
-    ax1.set_ylim(mesh_soundings.vectorNy.max(), mesh_soundings.vectorNy.min())
+    ax1.set_ylim(mesh_plotting.vectorNy.min(), mesh_plotting.vectorNy.max())
     
     ax1.set_title("Conductivity Model")
-    # ax1.set_xlabel("x (m)")
-    # ax1.set_ylabel("depth (m)")
-    ax1.set_xlabel("depth (m)")
-    ax1.set_ylabel("Sounding Distance (m)")
+    ax1.set_xlabel("x (m)")
+    ax1.set_ylabel("depth (m)")
     
     ax2 = fig.add_axes([0.85, 0.12, 0.05, 0.78])
     norm = mpl.colors.Normalize(
@@ -435,7 +440,6 @@ for ii, mod in enumerate(models_list):
         ax2, norm=norm, cmap=mpl.cm.viridis, orientation="vertical", format="$10^{%.1f}$"
     )
     cbar.set_label("Conductivity [S/m]", rotation=270, labelpad=15, size=12)
-    
     
 
 

@@ -160,6 +160,11 @@ sounding_models = model.reshape(mesh_soundings.vnC, order='C')
 sounding_models = np.flipud(sounding_models)
 sounding_models = mkvc(sounding_models)
 
+# FROM SOUNDING MODEL TO REGULAR
+# temp_model = sounding_models.reshape(mesh2D.vnC, order='C')
+# temp_model = np.fliplr(temp_model)
+# temp_model = mkvc(temp_model)
+
 chi = np.zeros_like(sounding_models)
 
 
@@ -167,6 +172,7 @@ chi = np.zeros_like(sounding_models)
 fig = plt.figure(figsize=(9, 3))
 ax1 = fig.add_axes([0.1, 0.12, 0.73, 0.78])
 log_mod = np.log10(model)
+# log_mod = np.log10(temp_model)
 
 mesh2D.plotImage(
     log_mod, ax=ax1, grid=True,
