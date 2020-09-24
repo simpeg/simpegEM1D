@@ -5,73 +5,40 @@ from scipy import special as spec
 
 
 
-
-###############################################################################
-#                                                                             #
-#                                    Sources                                  #
-#                                                                             #
-###############################################################################
-
-class BaseSrc(survey.BaseSrc):
-    """
-        Base source class for EM1D
-
-    """
-
-    _offset_list = properties.List("List containing offsets") # Contains the list of xyz offsets for each source-receiver pair
-
-    I = properties.Float("Source loop current", default=1.)
-
-    def __init__(self, receiver_list=None, **kwargs):
-        super(BaseSrc, self).__init__(receiver_list=receiver_list, **kwargs)
-
-    @property
-    def offset_list(self):
-        
-        if self._offset_list is not None:
-            return self._offset_list
-
-        else:
-            if self.receiver_list is not None:
-                temp = len(self.receiver_list)*[None]
-                src_loc = np.reshape(self.location, (1, 3))
-                for ii, rx in enumerate(self.receiver_list):
-                    temp[ii] = rx.locations - np.repeat(src_loc, rx.nD, axis=0)
-
-                self._offset_list = temp
-                return self._offset_list
-
-            else:
-                return
-
-
 #############################################################################
 # Harmonic Sources
 #############################################################################
 
 
-class BaseHarmonicSrc(BaseSrc):
+class HarmonicMagneticDipoleSource(survey.BaseSrc):
+    """
+    Harmonic magnetic dipole source. 
 
-    def __init__(self, receiver_list=None, **kwargs):
-        super(BaseHarmonicSrc, self).__init__(receiver_list=receiver_list, **kwargs)
-
-
-class HarmonicMagneticDipoleSource(BaseSrc):
+    :param numpy.array location: source location (x,y,z)
+    :param string orientation: dipole orientation 'x', 'y' or 'z'
+    :param float moment_amplitude: magnitude of the dipole moment |m|
+    """
     
     orientation = properties.StringChoice(
-        "Dipole Orientation", default="z", choices=["x", "y", "z"]
+        "Magnetic dipole orientation", default="z", choices=["x", "y", "z"]
     )
+
+    moment_amplitude = properties.Float("Magnitude of the dipole moment", default=1.)
 
     def __init__(self, receiver_list=None, **kwargs):
         super(HarmonicMagneticDipoleSource, self).__init__(receiver_list=receiver_list, **kwargs)
 
 
     def PrimaryField(self, xyz, is_offset=False):
+        """
+        Computes primary magnetic field (H) in units A/m
 
-        # xyz is np.array(N, 3) with receiver locations
-        # is_offet defines whether rx positions or absolute of source-receiver offset
+        :param numpy.ndarray xyz: np.array(N, 3) containing observation locations
+        :param bool is_offset: true receiver locations (False) or source-receier offset (True)
+        :rtype: numpy.ndarray: np.array(N, 3) array containing [Hx,Hy,Hz] values
+        :return: x,y,z components of the primary magnetic field
+        """
 
-        I = self.I
         if is_offset:
             r0 = np.zeros(3)
         else:
@@ -91,10 +58,19 @@ class HarmonicMagneticDipoleSource(BaseSrc):
         hy0 = (1/(4*np.pi))*(3*(xyz[1]-r0[1])*mdotr/r**5 - m[1]/r**3)
         hz0 = (1/(4*np.pi))*(3*(xyz[2]-r0[2])*mdotr/r**5 - m[2]/r**3)
 
-        return I*np.c_[hx0, hy0, hz0]
+        return self.moment_amplitude*np.c_[hx0, hy0, hz0]
 
 
-class HarmonicHorizontalLoopSource(BaseSrc):
+class HarmonicHorizontalLoopSource(survey.BaseSrc):
+    """
+    Harmonic horizontal loop source. 
+
+    :param numpy.array locations: source location (x,y,z)
+    :param float I: current amplitude [A]
+    :param float a: loop radius [m]
+    """
+
+    I = properties.Float("Source loop current", default=1.)
     
     a = properties.Float("Source loop radius", default=1.)
 
@@ -102,10 +78,15 @@ class HarmonicHorizontalLoopSource(BaseSrc):
         super(HarmonicHorizontalLoopSource, self).__init__(receiver_list=receiver_list, **kwargs)
 
 
-    def PrimaryField(self, is_offset=False):
+    def PrimaryField(self, xyz, is_offset=False):
+        """
+        Computes primary magnetic field (H) in units A/m
 
-        # xyz is np.array(N, 3) with receiver locations
-        # is_offet defines whether rx positions or absolute of source-receiver offset
+        :param numpy.ndarray xyz: np.array(N, 3) containing observation locations
+        :param bool is_offset: true receiver locations (False) or source-receier offset (True)
+        :rtype: numpy.ndarray: np.array(N, 3) array containing [Hx,Hy,Hz] values
+        :return: x,y,z components of the primary magnetic field
+        """
 
         a = self.a
         I = self.I
@@ -152,16 +133,35 @@ class HarmonicHorizontalLoopSource(BaseSrc):
         return np.c_[hx0, hy0, hz0]
 
 
-class HarmonicLineSource(BaseSrc):
+class HarmonicCurrentLineSource(survey.BaseSrc):
+    """
+    Harmonic current line source. 
+
+    :param numpy.ndarray node_locations: np.array(N+1, 3) of node locations defining N line segments 
+    :param float I: current amplitude [A]
+    """
     
     node_locations = properties.Array(
-        "Source path (xi, yi, zi), i=0,...N",
+        "Source path (xi, yi, zi), i=0,...,N",
         dtype=float
     )
 
-    def PrimaryField(self, xyz):
+    I = properties.Float("Source current", default=1.)
 
-        # This could be more efficient given online on rx loc right now
+
+    def __init__(self, receiver_list=None, **kwargs):
+        super(HarmonicLineSource, self).__init__(receiver_list=receiver_list, **kwargs)
+
+
+    def PrimaryField(self, xyz):
+        """
+        Computes primary magnetic field (H) in units A/m
+
+        :param numpy.ndarray xyz: np.array(N, 3) containing observation locations
+        :param bool is_offset: true receiver locations (False) or source-receier offset (True)
+        :rtype: numpy.ndarray: np.array(N, 3) array containing [Hx,Hy,Hz] values
+        :return: x,y,z components of the primary magnetic field
+        """
 
         I = self.I
         tx_nodes = self.node_locations
@@ -223,16 +223,19 @@ class HarmonicLineSource(BaseSrc):
         return np.c_[hx0, hy0, hz0]
 
 
-    def __init__(self, receiver_list=None, **kwargs):
-        super(HarmonicLineSource, self).__init__(receiver_list=receiver_list, **kwargs)
-
-
 #############################################################################
 # Time Sources
 #############################################################################
 
 
-class BaseTimeSrc(BaseSrc):
+class BaseTimeSrc(survey.BaseSrc):
+    """
+    Base class for EM1D time-domain sources. 
+
+    :param numpy.array location: source location (x,y,z)
+    :param string orientation: dipole orientation 'x', 'y' or 'z'
+    :param float moment_amplitude: magnitude of the dipole moment |m|
+    """
 
     wave_type = properties.StringChoice(
         "Waveform",
@@ -337,6 +340,15 @@ class BaseTimeSrc(BaseSrc):
 
 
 class TimeDomainMagneticDipoleSource(BaseTimeSrc):
+    """
+    Time-domain magnetic dipole source. 
+
+    :param numpy.array location: source location (x,y,z)
+    :param string orientation: dipole orientation 'z'
+    :param float moment_amplitude: magnitude of the dipole moment |m|
+    """
+
+    moment_amplitude = properties.Float("Magnitude of the dipole moment", default=1.)
 
     orientation = properties.StringChoice(
         "Dipole Orientation", default="z", choices=["z"]
@@ -347,6 +359,15 @@ class TimeDomainMagneticDipoleSource(BaseTimeSrc):
 
 
 class TimeDomainHorizontalLoopSource(BaseTimeSrc):
+    """
+    Time-domain horizontal loop source. 
+
+    :param numpy.array location: source location (x,y,z)
+    :param float I: source current amplitude [A]
+    :param float a: loop radius [m]
+    """
+
+    I = properties.Float("Source loop current", default=1.)
 
     a = properties.Float("Source loop radius", default=1.)
 
@@ -355,8 +376,16 @@ class TimeDomainHorizontalLoopSource(BaseTimeSrc):
 
 
 class TimeDomainLineSource(BaseTimeSrc):
+    """
+    Time-domain current line source. 
+
+    :param numpy.ndarray node_locations: np.array(N+1, 3) of node locations defining N line segments 
+    :param float I: current amplitude [A]
+    """
+
+    I = properties.Float("Source loop current", default=1.)
     
-    src_path = properties.Array(
+    node_locations = properties.Array(
         "Source path (xi, yi, zi), i=0,...N",
         dtype=float
     )

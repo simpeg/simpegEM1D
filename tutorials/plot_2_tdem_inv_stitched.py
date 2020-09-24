@@ -256,7 +256,7 @@ mesh_reg = get_2d_mesh(n_sounding, hz)
 reg_map = maps.IdentityMap(mesh_reg)
 reg = LateralConstraint(
     mesh_reg, mapping=reg_map,
-    alpha_s = 0.01,
+    alpha_s = 0.1,
     alpha_x = 1.,
     alpha_y = 1.,
 )
@@ -273,7 +273,7 @@ ps, px, py = 1, 1, 1
 reg.norms = np.c_[ps, px, py, 0]
 
 reg.mref = starting_model
-reg.mrefInSmooth = True
+reg.mrefInSmooth = False
 
 # Define how the optimization problem is solved. Here we will use an inexact
 # Gauss-Newton approach that employs the conjugate gradient solver.
@@ -343,13 +343,13 @@ target = directives.TargetMisfit()
 
 # The directives are defined as a list.
 directives_list = [
-    sensitivity_weights,
+    # sensitivity_weights,
     starting_beta,
     beta_schedule,
     save_iteration,
-    target_misfit,
+    # target_misfit,
     update_IRLS,
-    update_jacobi,
+    # update_jacobi,
 ]
 
 #####################################################################

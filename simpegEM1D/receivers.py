@@ -4,9 +4,19 @@ from SimPEG.survey import BaseRx, BaseTimeRx
         
 
 class HarmonicPointReceiver(BaseRx):
+    """
+    Receiver class for simulating the harmonic magnetic field at a point.
+
+    :param numpy.ndarray locations: receiver locations (ie. :code:`np.r_[x,y,z]`)
+    :param numpy.array frequencies: frequencies [Hz]
+    :param string orientation: receiver orientation 'x', 'y' or 'z'
+    :param string component: real or imaginary component 'real' or 'imag'
+    :param string field_type: field type 'secondary', 'total' or 'ppm'
+    :param bool use_source_receiver_offset: actual receiver location (False). Source-receiver offset (True)
+    """
 
     locations = properties.Array(
-        "Receiver Location", dtype=float, shape=("*",), required=True
+        "Receiver Locations", dtype=float, shape=("*",), required=True
     )
 
     frequencies = properties.Array(
@@ -17,12 +27,6 @@ class HarmonicPointReceiver(BaseRx):
         "Field orientation", default="z", choices=["x", "y", "z"]
     )
 
-    field_type = properties.StringChoice(
-        "Data type",
-        default="secondary",
-        choices=["total", "secondary", "ppm"]
-    )
-
     component = properties.StringChoice(
         "component of the field (real or imag)", {
             "real": ["re", "in-phase", "in phase"],
@@ -30,11 +34,16 @@ class HarmonicPointReceiver(BaseRx):
         }
     )
 
+    field_type = properties.StringChoice(
+        "Data type",
+        default="secondary",
+        choices=["total", "secondary", "ppm"]
+    )
+
     use_source_receiver_offset = properties.Bool(
         "Use source-receiver offset",
         default=False
     )
-
 
     def __init__(self, locations=None, frequencies=None, orientation=None, field_type=None, component=None, use_source_receiver_offset=None, **kwargs):
 
@@ -53,12 +62,25 @@ class HarmonicPointReceiver(BaseRx):
         
 
 class TimeDomainPointReceiver(BaseTimeRx):
+    """
+    Receiver class for simulating the time-domain magnetic response at a point.
+
+    :param numpy.ndarray locations: receiver locations (ie. :code:`np.r_[x,y,z]`)
+    :param numpy.array times: time channels [s]
+    :param string orientation: receiver orientation 'x', 'y' or 'z'
+    :param string component: data component 'h', 'b', 'dhdt' or 'dbdt'
+    :param numpy.array frequencies: frequencies used to compute harmonic response
+    :param numpy.array time_interval: on-times [s]
+    :param bool use_source_receiver_offset: actual receiver location (False). Source-receiver offset (True)
+    """
 
     ftarg = None
 
     locations = properties.Array(
         "Receiver Location", dtype=float, shape=("*",), required=True
     )
+
+    # times property is inherited from BaseTimeRx class
 
     orientation = properties.StringChoice(
         "Field orientation", default="z", choices=["z"]
@@ -84,7 +106,6 @@ class TimeDomainPointReceiver(BaseTimeRx):
     )
 
 
-
     def __init__(self, locations=None, times=None, orientation=None, component=None, use_source_receiver_offset=None, **kwargs):
 
         super(TimeDomainPointReceiver, self).__init__(locations, times, **kwargs)
@@ -100,17 +121,18 @@ class TimeDomainPointReceiver(BaseTimeRx):
         self.field_type = "secondary"
 
 
-
     @property
     def n_time(self):
+        """
+            Number of time channels
+        """
         return int(self.times.size)
 
     @property
     def n_frequency(self):
         """
-            # of frequency
+            Number of frequencies
         """
 
         return int(self.frequencies.size)
-
 

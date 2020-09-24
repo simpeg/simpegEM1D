@@ -251,8 +251,6 @@ class BaseEM1DSimulation(BaseSimulation):
         
         for ii, src in enumerate(self.survey.source_list):
 
-            I = src.I
-
             for jj, rx in enumerate(src.receiver_list):
 
                 n_frequency = len(rx.frequencies)
@@ -294,7 +292,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
                     # Get kernel function at all lambda and frequencies
                     PJ = magnetic_dipole_kernel(
-                        self, lambd, f, n_layer, sig, chi, I, h, z, r,
+                        self, lambd, f, n_layer, sig, chi, h, z, r,
                         src, rx, output_type
                     )
 
@@ -330,7 +328,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
 
                 elif isinstance(src, HarmonicHorizontalLoopSource) | isinstance(src, TimeDomainHorizontalLoopSource):
-                    
+
                     # radial distance and loop radius
                     if rx.use_source_receiver_offset:
                         r = rx.locations[0:2]
@@ -348,9 +346,8 @@ class BaseEM1DSimulation(BaseSimulation):
                     )
 
                     hz = horizontal_loop_kernel(
-                        self, lambd, f, n_layer,
-                        sig, chi, I, a_vec, h, z, r,
-                        rx.orientation, output_type
+                        self, lambd, f, n_layer, sig, chi, a_vec, h, z, r,
+                        src, rx, output_type
                     )
 
                     # kernels for each bessel function

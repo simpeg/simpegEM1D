@@ -35,7 +35,7 @@ source_radius = np.sqrt(1/np.pi)
 phi = (np.pi/4)*np.r_[1, 3, 5, 7, 1]
 node_locations = np.c_[np.cos(phi), np.sin(phi), np.zeros(len(phi))]
 
-receiver_location_1 = np.array([0., 0., 1.])
+receiver_location_1 = np.array([10., 0., 1.])
 receiver_location_2 = np.array([0., 0., 1.])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
@@ -78,7 +78,7 @@ source_list = []
 source_list.append(
     em1d.sources.HarmonicMagneticDipoleSource(
         receiver_list=receiver_list[0:2], location=source_location,
-        orientation="z", I=source_current
+        orientation="z", moment_amplitude=1.
     )
 )
     

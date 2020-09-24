@@ -519,7 +519,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
 
 
 def magnetic_dipole_kernel(
-    simulation, lamda, f, n_layer, sig, chi, I, h, z, r,
+    simulation, lamda, f, n_layer, sig, chi, h, z, r,
     src, rx, output_type='response'
 ):
 
@@ -570,7 +570,7 @@ def magnetic_dipole_kernel(
     """
 
     # coefficient_wavenumber = 1/(4*np.pi)*lamda**2
-    C = I/(4*np.pi)
+    C = src.moment_amplitude/(4*np.pi)
 
     n_frequency = len(f)
     n_filter = simulation.n_filter
@@ -758,10 +758,12 @@ def magnetic_dipole_fourier(
     # COMPUTE KERNEL FUNCTIONS FOR FOURIER TRANSFORM
     return C * lamda**2 * rTE
 
+
+
 # TODO: make this to take a vector rather than a single frequency
 def horizontal_loop_kernel(
-    simulation, lamda, f, n_layer, sig, chi, I, a, h, z, r,
-    rx_orientation="z", output_type='response'
+    simulation, lamda, f, n_layer, sig, chi, a, h, z, r,
+    src, rx, output_type='response'
 ):
 
     """
@@ -794,7 +796,7 @@ def horizontal_loop_kernel(
     radius = np.empty([n_frequency, n_filter], order='F')
     radius[:, :] = np.tile(a.reshape([-1, 1]), (1, n_filter))
 
-    coefficient_wavenumber = I*radius*0.5*lamda**2/u0
+    coefficient_wavenumber = src.I*radius*0.5*lamda**2/u0
 
     if output_type == 'sensitivity_sigma':
         drTE = np.empty(

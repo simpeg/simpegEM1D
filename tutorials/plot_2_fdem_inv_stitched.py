@@ -168,7 +168,7 @@ uncertainties = 0.1*np.abs(dobs)*np.ones(np.shape(dobs))
 # the survey, the observation values and the uncertainties.
 #
 
-data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
+data_object = data.Data(survey, dobs=dobs, standard_deviation=uncertainties)
 
 
 
@@ -242,7 +242,7 @@ mesh_reg = get_2d_mesh(n_sounding, hz)
 reg_map = maps.IdentityMap(nP=n_param)
 reg = LateralConstraint(
     mesh_reg, mapping=reg_map,
-    alpha_s = 0.01,
+    alpha_s = 0.1,
     alpha_x = 1.,
     alpha_y = 1.,
 )
@@ -259,7 +259,7 @@ ps, px, py = 1, 1, 1
 reg.norms = np.c_[ps, px, py, 0]
 
 reg.mref = starting_model
-reg.mrefInSmooth = True
+reg.mrefInSmooth = False
 
 # reg.eps_p = 1e-6
 # reg.eps_q = 1e-6
@@ -301,7 +301,7 @@ inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
 
 # Defining a starting value for the trade-off parameter (beta) between the data
 # misfit and the regularization.
-starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=100)
+starting_beta = directives.BetaEstimate_ByEig(beta0_ratio=10)
 
 
 beta_schedule = directives.BetaSchedule(coolingFactor=2, coolingRate=2)
@@ -316,9 +316,11 @@ save_iteration = directives.SaveOutputEveryIteration(save_txt=False)
 update_IRLS = directives.Update_IRLS(
     max_irls_iterations=20, minGNiter=1, 
     fix_Jmatrix=True, 
-    f_min_change = 1e-4,
+    f_min_change = 1e-3,
     coolingRate=3
 )
+
+
 
 # Updating the preconditionner if it is model dependent.
 update_jacobi = directives.UpdatePreconditioner()
@@ -333,13 +335,10 @@ target = directives.TargetMisfit()
 
 # The directives are defined as a list.
 directives_list = [
-    sensitivity_weights,
     starting_beta,
     beta_schedule,
     save_iteration,
-    target_misfit,
     update_IRLS,
-    update_jacobi,
 ]
 
 

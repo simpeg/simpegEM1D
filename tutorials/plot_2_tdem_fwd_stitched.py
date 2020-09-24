@@ -27,7 +27,7 @@ import simpegEM1D as em1d
 from simpegEM1D.utils import plotLayer, get_vertical_discretization_time
 
 plt.rcParams.update({'font.size': 16})
-save_file = True
+save_file = False
 
 
 #####################################################################
