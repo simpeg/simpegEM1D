@@ -60,8 +60,8 @@ def rTEfunfwd(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
     const = np.zeros((n_frequency, n_filter), dtype=complex)
 
     utemp0 = lamda
-    utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0, :, :])
-    const = mu_0*utemp1/(mu_0*(1+chi[0])*utemp0)
+    utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0, :, :])*sig[0, :, :])
+    const = mu_0*utemp1/(mu_0*(1+chi[0, :, :])*utemp0)
 
     Mtemp00 = 0.5*(1+const)
     Mtemp10 = 0.5*(1-const)
@@ -94,9 +94,9 @@ def rTEfunfwd(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
     else:
 
         for j in range(n_layer-1):
-            utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j])*sig[j, :, :])
-            utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j+1])*sig[j+1, :, :])
-            const = mu_0*(1+chi[j])*utemp1/(mu_0*(1+chi[j+1])*utemp0)
+            utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j, :, :])*sig[j, :, :])
+            utemp1 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[j+1, :, :])*sig[j+1, :, :])
+            const = mu_0*(1+chi[j, :, :])*utemp1/(mu_0*(1+chi[j+1, :, :])*utemp0)
 
             h0 = thick[j]
 
@@ -151,7 +151,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
             Frequency (Hz); size = (n_frequency x n_finlter)
         lamda : complex, ndarray
             Frequency (Hz); size = (n_frequency x n_finlter)
-        sig: compelx, ndarray
+        sig: complex, ndarray
             Conductivity (S/m); size = (n_layer x 1)
         chi: compelx, ndarray
             Susceptibility (SI); size = (n_layer x 1)
@@ -660,103 +660,103 @@ def magnetic_dipole_kernel(
     return kernels
 
 
-def magnetic_dipole_fourier(
-    simulation, lamda, f, n_layer, sig, chi, I, h, z, r,
-    src, rx, output_type='response'
-):
+# def magnetic_dipole_fourier(
+#     simulation, lamda, f, n_layer, sig, chi, I, h, z, r,
+#     src, rx, output_type='response'
+# ):
 
-    """
-    Kernel for vertical (Hz) and radial (Hrho) magnetic component due to
-    vertical magnetic diopole (VMD) source in (kx,ky) domain.
+#     """
+#     Kernel for vertical (Hz) and radial (Hrho) magnetic component due to
+#     vertical magnetic diopole (VMD) source in (kx,ky) domain.
     
-    For vertical magnetic dipole:
+#     For vertical magnetic dipole:
 
-    .. math::
+#     .. math::
 
-        H_z = \\frac{m}{4\\pi}
-        \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
-        \\lambda^2 J_0(\\lambda r) d \\lambda
+#         H_z = \\frac{m}{4\\pi}
+#         \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+#         \\lambda^2 J_0(\\lambda r) d \\lambda
 
-    .. math::
+#     .. math::
 
-        H_{\\rho} = - \\frac{m}{4\\pi}
-        \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
-        \\lambda^2 J_1(\\lambda r) d \\lambda
+#         H_{\\rho} = - \\frac{m}{4\\pi}
+#         \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+#         \\lambda^2 J_1(\\lambda r) d \\lambda
 
-    For horizontal magnetic dipole:
+#     For horizontal magnetic dipole:
 
-    .. math::
+#     .. math::
 
-        H_x = \\frac{m}{4\\pi} \\Bigg \\frac{1}{\\rho} -\\frac{2x^2}{\\rho^3} \\Bigg )
-        \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
-        \\lambda J_1(\\lambda r) d \\lambda
-        + \\frac{m}{4\\pi} \\frac{x^2}{\\rho^2}
-        \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
-        \\lambda^2 J_0(\\lambda r) d \\lambda
+#         H_x = \\frac{m}{4\\pi} \\Bigg \\frac{1}{\\rho} -\\frac{2x^2}{\\rho^3} \\Bigg )
+#         \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+#         \\lambda J_1(\\lambda r) d \\lambda
+#         + \\frac{m}{4\\pi} \\frac{x^2}{\\rho^2}
+#         \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+#         \\lambda^2 J_0(\\lambda r) d \\lambda
 
-    .. math::
+#     .. math::
 
-        H_y = - \\frac{m}{4\\pi} \\frac{2xy}{\\rho^3}
-        \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
-        \\lambda J_1(\\lambda r) d \\lambda
-        + \\frac{m}{4\\pi} \\frac{xy}{\\rho^2}
-        \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
-        \\lambda^2 J_0(\\lambda r) d \\lambda
+#         H_y = - \\frac{m}{4\\pi} \\frac{2xy}{\\rho^3}
+#         \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+#         \\lambda J_1(\\lambda r) d \\lambda
+#         + \\frac{m}{4\\pi} \\frac{xy}{\\rho^2}
+#         \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+#         \\lambda^2 J_0(\\lambda r) d \\lambda
 
-    .. math::
+#     .. math::
 
-        H_z = \\frac{m}{4\\pi} \\frac{x}{\\rho}
-        \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
-        \\lambda^2 J_1(\\lambda r) d \\lambda
+#         H_z = \\frac{m}{4\\pi} \\frac{x}{\\rho}
+#         \\int_0^{\\infty} \\r_{TE} e^{u_0|z-h|}
+#         \\lambda^2 J_1(\\lambda r) d \\lambda
 
-    """
+#     """
 
-    # coefficient_wavenumber = 1/(4*np.pi)*lamda**2
-    C = I/(4*np.pi)
+#     # coefficient_wavenumber = 1/(4*np.pi)*lamda**2
+#     C = I/(4*np.pi)
 
-    n_frequency = len(f)
-    n_filter = simulation.n_filter
+#     n_frequency = len(f)
+#     n_filter = simulation.n_filter
 
-    # COMPUTE TE-MODE REFLECTION COEFFICIENT
-    if output_type == 'sensitivity_sigma':
-        drTE = np.zeros(
-            [n_layer, n_frequency, n_filter],
-            dtype=np.complex128, order='F'
-        )
-        if rte_fortran is None:
-            thick = simulation.thicknesses
-            drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
-            )
-        else:
-            depth = simulation.depth
-            rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.half_switch, drTE,
-                n_layer, n_frequency, n_filter
-                )
+#     # COMPUTE TE-MODE REFLECTION COEFFICIENT
+#     if output_type == 'sensitivity_sigma':
+#         drTE = np.zeros(
+#             [n_layer, n_frequency, n_filter],
+#             dtype=np.complex128, order='F'
+#         )
+#         if rte_fortran is None:
+#             thick = simulation.thicknesses
+#             drTE = rTEfunjac(
+#                 n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+#             )
+#         else:
+#             depth = simulation.depth
+#             rte_fortran.rte_sensitivity(
+#                 f, lamda, sig, chi, depth, simulation.half_switch, drTE,
+#                 n_layer, n_frequency, n_filter
+#                 )
 
-        temp = drTE * np.exp(-lamda*(z+h))
-    else:
-        rTE = np.empty(
-            [n_frequency, n_filter], dtype=np.complex128, order='F'
-        )
-        if rte_fortran is None:
-            thick = simulation.thicknesses
-            rTE = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
-            )
-        else:
-            depth = simulation.depth
-            rte_fortran.rte_forward(
-                f, lamda, sig, chi, depth, simulation.half_switch,
-                rTE, n_layer, n_frequency, n_filter
-            )
+#         temp = drTE * np.exp(-lamda*(z+h))
+#     else:
+#         rTE = np.empty(
+#             [n_frequency, n_filter], dtype=np.complex128, order='F'
+#         )
+#         if rte_fortran is None:
+#             thick = simulation.thicknesses
+#             rTE = rTEfunfwd(
+#                 n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+#             )
+#         else:
+#             depth = simulation.depth
+#             rte_fortran.rte_forward(
+#                 f, lamda, sig, chi, depth, simulation.half_switch,
+#                 rTE, n_layer, n_frequency, n_filter
+#             )
 
-        if output_type == 'sensitivity_height':
-            rTE *= -2*lamda
+#         if output_type == 'sensitivity_height':
+#             rTE *= -2*lamda
 
-    # COMPUTE KERNEL FUNCTIONS FOR FOURIER TRANSFORM
-    return C * lamda**2 * rTE
+#     # COMPUTE KERNEL FUNCTIONS FOR FOURIER TRANSFORM
+#     return C * lamda**2 * rTE
 
 
 

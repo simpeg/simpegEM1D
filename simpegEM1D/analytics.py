@@ -193,6 +193,30 @@ def ColeCole(f, sig_inf=1e-2, eta=0.1, tau=0.1, c=1):
     return sigma
 
 
+def LogUniform(f, chi_inf=0.05, del_chi=0.05, tau1=1e-5, tau2=1e-2):
+    """
+        Computing Cole-Cole model in frequency domain
+
+        .. math::
+
+            \sigma (\omega) = \sigma_{\infty} -
+            \\frac{\sigma_{\infty}\eta}{1+(1-\eta)(\imath\omega\\tau)^c}
+
+
+
+        where \\\\(\\\\\sigma_{\\\\infty}\\\\) is conductivity at infinte frequency,
+        \\\\(\\\\\eta\\\\) is chargeability,
+        \\\\(\\\\\\tau\\\\) is chargeability,
+        \\\\(\\\\ c\\\\) is chargeability.
+
+    """
+
+    w = 2*np.pi*f
+    return chi_inf + del_chi*(1 - np.log((1 + 1j*w*tau2)/(1 + 1j*w*tau1))/np.log(tau2/tau1))
+
+
+
+
 def BzAnalT(r, t, sigma):
 
     theta = np.sqrt((sigma*mu_0)/(4*t))

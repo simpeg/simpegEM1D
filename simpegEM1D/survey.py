@@ -22,8 +22,7 @@ from .known_waveforms import (
 
 class BaseEM1DSurvey(BaseSurvey, properties.HasProperties):
     """
-        Base EM1D Survey
-
+    Base EM1D survey class
     """
 
     def __init__(self, source_list=None, **kwargs):
@@ -32,7 +31,8 @@ class BaseEM1DSurvey(BaseSurvey, properties.HasProperties):
 
 class EM1DSurveyFD(BaseEM1DSurvey):
     """
-        Freqency-domain EM1D survey
+    Survey class for frequency domain surveys. Used for 1D simulation
+    as well as stitched 1D simulation.
     """
 
     def __init__(self, source_list=None, **kwargs):
@@ -41,8 +41,7 @@ class EM1DSurveyFD(BaseEM1DSurvey):
     @property
     def nD(self):
         """
-            # of data
-
+        Returns number of data.
         """
 
         nD = 0
@@ -64,22 +63,14 @@ class EM1DSurveyFD(BaseEM1DSurvey):
             self._vnD_by_sounding = np.array(temp)
         return self._vnD_by_sounding
 
-    # @property
-    # def hz_primary(self):
-    #     # Assumes HCP only at the moment
-    #     if self.src_type == 'VMD':
-    #         return -1./(4*np.pi*self.offset**3)
-    #     elif self.src_type == 'CircularLoop':
-    #         return self.I/(2*self.a) * np.ones_like(self.frequency)
-    #     else:
-    #         raise NotImplementedError()
-
 
 class EM1DSurveyTD(BaseEM1DSurvey):
-    """docstring for EM1DSurveyTD"""
+    """
+    Survey class for time-domain surveys. Used for 1D simulation
+    as well as stitched 1D simulation.
+    """
 
     
-
     def __init__(self, source_list=None, **kwargs):
         BaseEM1DSurvey.__init__(self, source_list, **kwargs)
 
@@ -90,8 +81,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     @property
     def nD(self):
         """
-            # of data
-
+        Returns the number of data.
         """
 
         nD = 0

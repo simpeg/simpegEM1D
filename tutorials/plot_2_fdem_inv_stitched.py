@@ -102,8 +102,7 @@ ax.legend(["real", "imaginary"])
 #
 
 
-source_current = 1.
-source_radius = 5.
+moment_amplitude = 1.
 
 receiver_locations = np.c_[source_locations[:, 0]+10., source_locations[:, 1:]]
 receiver_orientation = "z"  # "x", "y" or "z"
@@ -142,7 +141,7 @@ for ii in range(0, n_sounding):
     source_list.append(
         em1d.sources.HarmonicMagneticDipoleSource(
             receiver_list=receiver_list, location=source_location, orientation="z",
-            I=source_current
+            moment_amplitude=moment_amplitude
         )
     )
 

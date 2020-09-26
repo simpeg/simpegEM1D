@@ -37,13 +37,18 @@ else:
 
 class BaseEM1DSimulation(BaseSimulation):
     """
-    Pseudo analytic solutions for frequency and time domain EM problems
-    assumingLayered earth (1D).
+    Base simulation class for simulating the EM response over a 1D layered Earth.
+    The simulation computes the fields by solving the Hankel transform solutions
+    from Electromagnetic Theory for Geophysical Applications: Chapter 4 
+    (Ward and Hohmann, 1988).
     """
+
+
     surveyPair = BaseEM1DSurvey
     mapPair = maps.IdentityMap
     chi = None
     hankel_filter = 'key_101_2009'  # Default: Hankel filter
+    # hankel_filter = 'anderson_801_1982'  # Default: Hankel filter
     hankel_pts_per_dec = None       # Default: Standard DLF
     verbose = False
     fix_Jmatrix = False
@@ -65,11 +70,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
     props.Reciprocal(sigma, rho)
 
-    chi = props.PhysicalProperty(
-        "Magnetic susceptibility",
-        default=0.
-    )
-
+    # Induced polarization
     eta, etaMap, etaDeriv = props.Invertible(
         "Electrical chargeability (V/V), 0 <= eta < 1",
         default=0.
@@ -85,6 +86,27 @@ class BaseEM1DSimulation(BaseSimulation):
         default=0.5
     )
 
+    # Viscous remanent magnetization
+    chi, chiMap, chiDeriv = props.Invertible(
+        "Magnetic susceptibility [SI]. In the case of VRM, it is the infinite-frequency susceptibility",
+        default=0.
+    )
+
+    dchi, dchiMap, dchiDeriv = props.Invertible(
+        "DC magnetic susceptibility for viscous remanent magnetization contribution [SI]",
+        default=0.
+    )
+
+    tau1, tau1Map, tau1Deriv = props.Invertible(
+        "Lower bound for log-uniform distribution of time-relaxation constants for VRM",
+        default=1e-10
+    )
+
+    tau2, tau2Map, tau2Deriv = props.Invertible(
+        "Upper bound for log-uniform distribution of time-relaxation constants for VRM",
+        default=10.
+    )
+
     survey = properties.Instance(
         "a survey object", BaseEM1DSurvey, required=True
     )
@@ -93,8 +115,6 @@ class BaseEM1DSimulation(BaseSimulation):
 
     half_switch = properties.Bool("Switch for half-space")
 
-    # depth = properties.Array("Depth of the layers", dtype=float, required=True)
-    # Add layer thickness as invertible property
     thicknesses, thicknessesMap, thicknessesDeriv = props.Invertible(
         "thicknesses of the layers",
         default=np.array([])
@@ -105,7 +125,6 @@ class BaseEM1DSimulation(BaseSimulation):
 
         # Check input arguments. If self.hankel_filter is not a valid filter,
         # it will set it to the default (key_201_2009).
-
         ht, htarg = check_hankel(
             'dlf',
             {
@@ -121,18 +140,6 @@ class BaseEM1DSimulation(BaseSimulation):
             print(">> Use "+self.hankel_filter+" filter for Hankel Transform")
 
 
-    # @property
-    # def h(self):
-    #     """
-    #         Source height
-    #     """
-
-    #     if getattr(self, '_h', None) is None:
-    #         self._h = np.array([src.location[2] for src in self.survey.source_list])
-
-    #     return self._h
-
-
     @property
     def n_layer(self):
         """
@@ -143,10 +150,20 @@ class BaseEM1DSimulation(BaseSimulation):
         elif self.half_switch is True:
             return int(1)
 
+
+    @property
+    def n_filter(self):
+        """ Length of filter """
+        return self.fhtfilt.base.size
+
+    def depth(self):
+        if self.thicknesses is not None:
+            return np.r_[0., -np.cumsum(self.thicknesses)]
+
+
     def sigma_cole(self, frequencies):
         """
-        Computes Pelton's Cole-Cole conductivity model
-        in frequency domain.
+        Computes Pelton's Cole-Cole conductivity model in the frequency domain.
 
         Parameter
         ---------
@@ -168,45 +185,130 @@ class BaseEM1DSimulation(BaseSimulation):
         n_filter = self.n_filter
 
         sigma = np.tile(self.sigma.reshape([-1, 1]), (1, n_frequency))
-        if np.isscalar(self.eta):
-            eta = self.eta
-            tau = self.tau
-            c = self.c
+        
+        # No IP effect
+        if np.all(self.eta) == 0.:
+
+            sigma_tensor = np.empty(
+                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
+            sigma_tensor[:, :, :] = np.tile(sigma.reshape(
+                (n_layer, n_frequency, 1)), (1, 1, n_filter)
+            )
+
+            return sigma_tensor
+
+        # IP effect
         else:
-            eta = np.tile(self.eta.reshape([-1, 1]), (1, n_frequency))
-            tau = np.tile(self.tau.reshape([-1, 1]), (1, n_frequency))
-            c = np.tile(self.c.reshape([-1, 1]), (1, n_frequency))
 
-        w = np.tile(
-            2*np.pi*frequencies,
-            (n_layer, 1)
-        )
+            if np.isscalar(self.eta):
+                eta = self.eta
+                tau = self.tau
+                c = self.c
+            else:
+                eta = np.tile(self.eta.reshape([-1, 1]), (1, n_frequency))
+                tau = np.tile(self.tau.reshape([-1, 1]), (1, n_frequency))
+                c = np.tile(self.c.reshape([-1, 1]), (1, n_frequency))
 
-        sigma_complex = np.empty(
-            [n_layer, n_frequency], dtype=np.complex128, order='F'
-        )
-        sigma_complex[:, :] = (
-            sigma -
-            sigma*eta/(1+(1-eta)*(1j*w*tau)**c)
-        )
+            w = np.tile(
+                2*np.pi*frequencies,
+                (n_layer, 1)
+            )
 
-        sigma_complex_tensor = np.empty(
-            [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
-        )
-        sigma_complex_tensor[:, :, :] = np.tile(sigma_complex.reshape(
-            (n_layer, n_frequency, 1)), (1, 1, n_filter)
-        )
+            sigma_complex = np.empty(
+                [n_layer, n_frequency], dtype=np.complex128, order='F'
+            )
+            sigma_complex[:, :] = (
+                sigma -
+                sigma*eta/(1+(1-eta)*(1j*w*tau)**c)
+            )
 
-        return sigma_complex_tensor
+            sigma_complex_tensor = np.empty(
+                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
+            sigma_complex_tensor[:, :, :] = np.tile(sigma_complex.reshape(
+                (n_layer, n_frequency, 1)), (1, 1, n_filter)
+            )
 
-    @property
-    def n_filter(self):
-        """ Length of filter """
-        return self.fhtfilt.base.size
+            return sigma_complex_tensor
 
-    def depth(self):
-        if self.thicknesses is not None:
-            return np.r_[0., -np.cumsum(self.thicknesses)]
+
+    def chi_log_uniform(self, frequencies):
+        """
+        Computes the complex magnetic susceptibility in the frequency domain
+        in the case of viscous remanent magnetization.
+
+        Parameter
+        ---------
+
+        n_filter: int
+            the number of filter values
+        f: ndarray
+            frequency (Hz)
+
+        Return
+        ------
+
+        sigma_complex: ndarray (n_layer x n_frequency x n_filter)
+            Cole-Cole conductivity values at given frequencies
+
+        """
+
+        if np.isscalar(self.chi):
+            chi = np.ones_like(self.sigma) * self.chi
+        else:
+            chi = self.chi
+
+        n_layer = self.n_layer
+        n_frequency = len(frequencies)
+        n_filter = self.n_filter
+
+        chi = np.tile(chi.reshape([-1, 1]), (1, n_frequency))
+        
+        # No VRM effect
+        if np.all(self.dchi) == 0.:
+
+            chi_tensor = np.empty(
+                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
+            chi_tensor[:, :, :] = np.tile(chi.reshape(
+                (n_layer, n_frequency, 1)), (1, 1, n_filter)
+            )
+
+            return chi_tensor
+
+        # VRM effects
+        else:
+
+            if np.isscalar(self.dchi):
+                dchi = self.dchi
+                tau1 = self.tau1
+                tau2 = self.tau2
+            else:
+                dchi = np.tile(self.dchi.reshape([-1, 1]), (1, n_frequency))
+                tau1 = np.tile(self.tau1.reshape([-1, 1]), (1, n_frequency))
+                tau2 = np.tile(self.tau2.reshape([-1, 1]), (1, n_frequency))
+
+            w = np.tile(
+                2*np.pi*frequencies,
+                (n_layer, 1)
+            )
+
+            chi_complex = np.empty(
+                [n_layer, n_frequency], dtype=np.complex128, order='F'
+            )
+            chi_complex[:, :] = chi + dchi*(
+                1 - np.log((1 + 1j+w*tau2)/(1 + 1j*w*tau1))/np.log(tau2/tau1)
+            )
+
+            chi_complex_tensor = np.empty(
+                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
+            )
+            chi_complex_tensor[:, :, :] = np.tile(chi_complex.reshape(
+                (n_layer, n_frequency, 1)), (1, 1, n_filter)
+            )
+
+            return chi_complex_tensor
     
 
     def compute_integral(self, m, output_type='response'):
@@ -229,10 +331,6 @@ class BaseEM1DSimulation(BaseSimulation):
 
         # Physical Properties
         self.model = m
-
-        chi = self.chi
-        if np.isscalar(self.chi):
-            chi = np.ones_like(self.sigma) * self.chi
 
         n_layer = self.n_layer
 
@@ -261,8 +359,9 @@ class BaseEM1DSimulation(BaseSimulation):
                     rx.frequencies.reshape([-1, 1]), (1, n_filter)
                 )
 
-                # Create globally, not for each receiver
+                # Create globally, not for each receiver in the future
                 sig = self.sigma_cole(rx.frequencies)
+                chi = self.chi_log_uniform(rx.frequencies)
 
                 # Compute receiver height
                 h = h_vector[ii]
@@ -561,7 +660,9 @@ class EM1DTMSimulation(BaseEM1DSimulation):
     def __init__(self, **kwargs):
         BaseEM1DSimulation.__init__(self, **kwargs)
 
-        self.fftfilt = filters.key_81_CosSin_2009()
+        # self.fftfilt = filters.key_81_CosSin_2009()
+        # self.fftfilt = filters.key_101_CosSin_2012()
+        self.fftfilt = filters.key_601_CosSin_2009()
 
 
     def set_time_intervals(self):
@@ -764,7 +865,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
 
 
 #######################################################################
-#               STITCHED 1D SIMULATION CLASS
+#       STITCHED 1D SIMULATION CLASS AND GLOBAL FUNCTIONS
 #######################################################################
 
 def dot(args):
