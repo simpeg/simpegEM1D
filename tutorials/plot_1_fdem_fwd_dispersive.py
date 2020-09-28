@@ -1,6 +1,6 @@
 """
-Forward Simulation over a Chargeable Earth
-==========================================
+Forward Simulation for Dispersive Physical Properties
+=====================================================
 
 
 

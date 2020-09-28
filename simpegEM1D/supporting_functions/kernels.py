@@ -11,7 +11,7 @@ except ImportError as e:
 
 
 
-def rTEfunfwd(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
+def rTEfunfwd(n_layer, f, lamda, sig, chi, thick, halfspace_switch):
     """
         Compute reflection coefficients for Transverse Electric (TE) mode.
         Only one for loop for multiple layers.
@@ -30,7 +30,7 @@ def rTEfunfwd(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
             Susceptibility (SI); size = (n_layer,)
         depth: float, ndarray
             Top boundary of the layers; size = (n_ayer,)
-        HalfSwitch: bool
+        halfspace_switch: bool
             Switch for halfspace
 
         Returns
@@ -79,7 +79,7 @@ def rTEfunfwd(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
     M0sum01 = Mtemp01
     M0sum11 = Mtemp11
 
-    if HalfSwitch:
+    if halfspace_switch:
 
         M1sum00 = np.zeros((n_frequency, n_filter), dtype=complex)
         M1sum10 = np.zeros((n_frequency, n_filter), dtype=complex)
@@ -138,7 +138,7 @@ def matmul(a00, a10, a01, a11, b00, b10, b01, b11):
 
 
 # TODO: make this to take a vector rather than a single frequency
-def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
+def rTEfunjac(n_layer, f, lamda, sig, chi, thick, halfspace_switch):
     """
         Compute sensitivity of reflection coefficients for
         Transverse Electric (TE) mode with regard to conductivity
@@ -157,7 +157,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
             Susceptibility (SI); size = (n_layer x 1)
         depth: float, ndarray
             Top boundary of the layers
-        HalfSwitch: bool
+        halfspace_switch: bool
             Switch for halfspace
 
         Returns
@@ -248,7 +248,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
     M0sum01 = Mtemp01.copy()
     M0sum11 = Mtemp11.copy()
 
-    if HalfSwitch or n_layer == 1:
+    if halfspace_switch or n_layer == 1:
 
         M1sum00 = M0sum00.copy()
         M1sum10 = M0sum10.copy()
@@ -364,7 +364,7 @@ def rTEfunjac(n_layer, f, lamda, sig, chi, thick, HalfSwitch):
 
     # rTE = M1sum01/M1sum11
 
-    if HalfSwitch or n_layer == 1:
+    if halfspace_switch or n_layer == 1:
 
         utemp0 = np.sqrt(lamda**2+1j*w*mu_0*(1+chi[0])*sig[0])
         dudsig = 0.5*1j*w*mu_0*(1+chi[0])/utemp0
@@ -584,12 +584,12 @@ def magnetic_dipole_kernel(
         if rte_fortran is None:
             thick = simulation.thicknesses
             drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
             )
         else:
             depth = simulation.depth
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.half_switch, drTE,
+                f, lamda, sig, chi, depth, simulation.halfspace_switch, drTE,
                 n_layer, n_frequency, n_filter
                 )
 
@@ -601,12 +601,12 @@ def magnetic_dipole_kernel(
         if rte_fortran is None:
             thick = simulation.thicknesses
             rTE = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
             )
         else:
             depth = simulation.depth
             rte_fortran.rte_forward(
-                f, lamda, sig, chi, depth, simulation.half_switch,
+                f, lamda, sig, chi, depth, simulation.halfspace_switch,
                 rTE, n_layer, n_frequency, n_filter
             )
 
@@ -726,12 +726,12 @@ def magnetic_dipole_kernel(
 #         if rte_fortran is None:
 #             thick = simulation.thicknesses
 #             drTE = rTEfunjac(
-#                 n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+#                 n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
 #             )
 #         else:
 #             depth = simulation.depth
 #             rte_fortran.rte_sensitivity(
-#                 f, lamda, sig, chi, depth, simulation.half_switch, drTE,
+#                 f, lamda, sig, chi, depth, simulation.halfspace_switch, drTE,
 #                 n_layer, n_frequency, n_filter
 #                 )
 
@@ -743,12 +743,12 @@ def magnetic_dipole_kernel(
 #         if rte_fortran is None:
 #             thick = simulation.thicknesses
 #             rTE = rTEfunfwd(
-#                 n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+#                 n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
 #             )
 #         else:
 #             depth = simulation.depth
 #             rte_fortran.rte_forward(
-#                 f, lamda, sig, chi, depth, simulation.half_switch,
+#                 f, lamda, sig, chi, depth, simulation.halfspace_switch,
 #                 rTE, n_layer, n_frequency, n_filter
 #             )
 
@@ -806,12 +806,12 @@ def horizontal_loop_kernel(
         if rte_fortran is None:
             thick = simulation.thicknesses
             drTE[:, :] = rTEfunjac(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
             )
         else:
             depth = simulation.depth
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.half_switch,
+                f, lamda, sig, chi, depth, simulation.halfspace_switch,
                 drTE, n_layer, n_frequency, n_filter
             )
 
@@ -823,12 +823,12 @@ def horizontal_loop_kernel(
         if rte_fortran is None:
             thick = simulation.thicknesses
             rTE[:, :] = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
             )
         else:
             depth = simulation.depth
             rte_fortran.rte_forward(
-                f, lamda, sig, chi, depth, simulation.half_switch,
+                f, lamda, sig, chi, depth, simulation.halfspace_switch,
                 rTE, n_layer, n_frequency, n_filter
             )
 
@@ -863,12 +863,12 @@ def hz_kernel_horizontal_electric_dipole(
         if rte_fortran is None:
             thick = simulation.thicknesses
             drTE = rTEfunjac(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
             )
         else:
             depth = simulation.depth
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.half_switch,
+                f, lamda, sig, chi, depth, simulation.halfspace_switch,
                 drTE, n_layer, n_frequency, n_filter
             )
 
@@ -880,12 +880,12 @@ def hz_kernel_horizontal_electric_dipole(
         if rte_fortran is None:
             thick = simulation.thicknesses
             rTE = rTEfunfwd(
-                n_layer, f, lamda, sig, chi, thick, simulation.half_switch
+                n_layer, f, lamda, sig, chi, thick, simulation.halfspace_switch
             )
         else:
             depth = simulation.depth
             rte_fortran.rte_forward(
-                f, lamda, sig, chi, depth, simulation.half_switch,
+                f, lamda, sig, chi, depth, simulation.halfspace_switch,
                 rTE, n_layer, n_frequency, n_filter
             )
 
