@@ -306,16 +306,16 @@ class BaseEM1DSimulation(BaseSimulation):
         or sensitivities.
         """
 
-        self.model = m
-        n_layer = self.n_layer
-        n_filter = self.n_filter
-
         # Set half-space switch if required.
         if self.halfspace_switch is None:
             if len(self.thicknesses)==0:
                 self.halfspace_switch=True
             else:
                 self.halfspace_switch=False
+        
+        self.model = m
+        n_layer = self.n_layer
+        n_filter = self.n_filter
         
         # For time-domain simulations, set frequencies for the evaluation
         # of the Hankel transform.

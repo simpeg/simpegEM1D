@@ -90,7 +90,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         dbdt = d[len(self.times):]
 
         def step_func_Bzt(times):
-            return BzAnalCircT(
+            return Bz_horizontal_circular_loop(
                 self.a, times, self.sigma
             )
 
@@ -115,7 +115,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.assertTrue(err < 6e-2)
 
         def step_func_dBzdt(times):
-            return dBzdtAnalCircT(
+            return dBzdt_horizontal_circular_loop(
                 self.a, times, self.sigma
             )
 

@@ -84,18 +84,17 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         
         sigma_map = maps.ExpMap(nP=1)
         sim = em1d.simulation.EM1DFMSimulation(
-            survey=self.survey,
-            sigmaMap=sigma_map, topo=self.topo
+            survey=self.survey, sigmaMap=sigma_map, topo=self.topo
         )
         
         m_1D = np.array([np.log(self.sigma)])
         H = sim.dpred(m_1D)
         
-        soln_anal_z = Hzanal(
-            self.sigma, self.frequencies, self.offset, 'secondary'
+        soln_anal_z = Hz_vertical_magnetic_dipole(
+            self.frequencies, self.offset, self.sigma, 'secondary'
         )
-        soln_anal_r = Hranal(
-            self.sigma, self.frequencies, self.offset
+        soln_anal_r = Hr_vertical_magnetic_dipole(
+            self.frequencies, self.offset, self.sigma 
         )
         
         if self.showIt is True:
@@ -126,11 +125,11 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         m_1D = np.log(np.ones(self.nlayers)*self.sigma)
         H = sim.dpred(m_1D)
         
-        soln_anal_z = Hzanal(
-            self.sigma, self.frequencies, self.offset, 'secondary'
+        soln_anal_z = Hz_vertical_magnetic_dipole(
+            self.frequencies, self.offset, self.sigma, 'secondary'
         )
-        soln_anal_r = Hranal(
-            self.sigma, self.frequencies, self.offset
+        soln_anal_r = Hr_vertical_magnetic_dipole(
+            self.frequencies, self.offset, self.sigma
         )
         
         if self.showIt is True:
@@ -170,11 +169,11 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
             self.frequencies, self.sigma, self.eta, self.tau, self.c
         )
         
-        soln_anal_z = Hzanal(
-            sigma_colecole, self.frequencies, self.offset, 'secondary'
+        soln_anal_z = Hz_vertical_magnetic_dipole(
+            self.frequencies, self.offset, sigma_colecole, 'secondary'
         )
-        soln_anal_r = Hranal(
-            sigma_colecole, self.frequencies, self.offset
+        soln_anal_r = Hr_vertical_magnetic_dipole(
+            self.frequencies, self.offset, sigma_colecole
         )
 
         if self.showIt is True:
@@ -234,8 +233,8 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         m_1D = np.log(np.ones(self.nlayers)*self.sigma)
         Hz = sim.dpred(m_1D)
         
-        soln_anal = Hzanal_hmd(
-            self.sigma, self.frequencies, self.offset, self.offset
+        soln_anal = Hz_horizontal_magnetic_dipole(
+            self.frequencies, self.offset, self.offset, self.sigma 
         )
 
         if self.showIt is True:
@@ -250,7 +249,7 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         
         err = np.linalg.norm(Hz-soln_anal)/np.linalg.norm(soln_anal)
         self.assertTrue(err < 1e-5)
-        print ("EM1DFD-HMD for complex conductivity works")    
+        print ("EM1DFD-HMD for real conductivity works")    
 
 
     def test_EM1DFDfwd_CircularLoop_RealCond(self):
@@ -293,8 +292,8 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
         m_1D = np.log(np.ones(self.nlayers)*self.sigma)
         Hz = sim.dpred(m_1D)
         
-        soln_anal = HzanalCirc(
-            self.sigma, self.frequencies, 1., 5., 'secondary'
+        soln_anal = Hz_horizontal_circular_loop(
+            self.frequencies, 1., 5., self.sigma, 'secondary'
         )
 
         if self.showIt is True:
@@ -361,8 +360,8 @@ class EM1D_FD_FwdProblemTests(unittest.TestCase):
             self.frequencies, self.sigma, self.eta, self.tau, self.c
         )
         
-        soln_anal = HzanalCirc(
-            sigma_colecole, self.frequencies, 1., 5., 'secondary'
+        soln_anal = Hz_horizontal_circular_loop(
+            self.frequencies, 1., 5., sigma_colecole, 'secondary'
         )
 
         if self.showIt is True:

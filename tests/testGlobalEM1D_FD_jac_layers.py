@@ -68,7 +68,7 @@ class GlobalEM1DFD(unittest.TestCase):
             source_list.append(
                 em1d.sources.HarmonicMagneticDipoleSource(
                     receiver_list=receiver_list, location=source_location,
-                    orientation="z", I=1.
+                    orientation="z", moment_amplitude=1.
                 )
             )
         
@@ -197,7 +197,7 @@ class GlobalEM1DFD_Height(unittest.TestCase):
             source_list.append(
                 em1d.sources.HarmonicMagneticDipoleSource(
                     receiver_list=receiver_list, location=source_location,
-                    orientation="z", I=1.
+                    orientation="z", moment_amplitude=1.
                 )
             )
         
