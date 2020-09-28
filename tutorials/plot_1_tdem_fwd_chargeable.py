@@ -95,7 +95,7 @@ c = 0.75
 # half-space magnetic viscosity properties
 chi = 0.001
 dchi = 0.001
-tau1 = 1e-6
+tau1 = 1e-7
 tau2 = 1.
 
 

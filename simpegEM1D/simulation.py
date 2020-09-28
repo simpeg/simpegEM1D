@@ -281,9 +281,9 @@ class BaseEM1DSimulation(BaseSimulation):
         else:
 
             if np.isscalar(self.dchi):
-                dchi = self.dchi
-                tau1 = self.tau1
-                tau2 = self.tau2
+                dchi = self.dchi * np.ones_like(self.chi)
+                tau1 = self.tau1 * np.ones_like(self.chi)
+                tau2 = self.tau2 * np.ones_like(self.chi)
             else:
                 dchi = np.tile(self.dchi.reshape([-1, 1]), (1, n_frequency))
                 tau1 = np.tile(self.tau1.reshape([-1, 1]), (1, n_frequency))
@@ -298,7 +298,9 @@ class BaseEM1DSimulation(BaseSimulation):
                 [n_layer, n_frequency], dtype=np.complex128, order='F'
             )
             chi_complex[:, :] = chi + dchi*(
-                1 - np.log((1 + 1j+w*tau2)/(1 + 1j*w*tau1))/np.log(tau2/tau1)
+                1 - (np.log(tau2/tau1))**-1 * np.log(
+                    (1 + 1j*w*tau2)/(1 + 1j*w*tau1)
+                )
             )
 
             chi_complex_tensor = np.empty(
