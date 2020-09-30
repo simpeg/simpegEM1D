@@ -109,8 +109,6 @@ class BaseEM1DSimulation(BaseSimulation):
 
     topo = properties.Array("Topography (x, y, z)", dtype=float)
 
-    halfspace_switch = properties.Bool("Switch for simulating half-space response")
-
     thicknesses, thicknessesMap, thicknessesDeriv = props.Invertible(
         "layer thicknesses (m)", default=np.array([])
     )
@@ -136,13 +134,20 @@ class BaseEM1DSimulation(BaseSimulation):
 
 
     @property
+    def halfspace_switch(self):
+        """True = halfspace, False = layered Earth"""
+        if (self.thicknesses is None) | (len(self.thicknesses)==0):
+            return True
+        else:
+            return False
+
+    @property
     def n_layer(self):
         """number of layers"""
         if self.halfspace_switch is False:
             return int(self.thicknesses.size + 1)
         elif self.halfspace_switch is True:
             return int(1)
-
 
     @property
     def n_filter(self):
@@ -305,13 +310,6 @@ class BaseEM1DSimulation(BaseSimulation):
         receiver and outputs it as a list. Used for computing response
         or sensitivities.
         """
-
-        # Set half-space switch if required.
-        if self.halfspace_switch is None:
-            if len(self.thicknesses)==0:
-                self.halfspace_switch=True
-            else:
-                self.halfspace_switch=False
         
         self.model = m
         n_layer = self.n_layer
@@ -509,7 +507,6 @@ class BaseEM1DSimulation(BaseSimulation):
                 print(">> Compute J sigma")
 
             dudsig = self.compute_integral(m, output_type="sensitivity_sigma")
-
             self._Jmatrix_sigma = np.vstack(self.project_fields(dudsig))
             if self._Jmatrix_sigma.ndim == 1:
                 self._Jmatrix_sigma = self._Jmatrix_sigma.reshape([-1, 1])
@@ -751,18 +748,19 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                 if src.wave_type == 'stepoff':
                     
                     # Compute EM responses
-                    if u_temp.size == rx.n_frequency:
+                    if u_temp.ndim == 1:
                         resp, _ = fourier_dlf(
                             u_temp.flatten()*factor, rx.times, rx.frequencies, rx.ftarg
                         )
                     
                     # Compute EM sensitivities
                     else:
+                        
                         resp = np.zeros(
-                            (rx.n_time, self.n_layer), dtype=np.float64, order='F')
-                        # )
+                            (rx.n_time, self.n_layer), dtype=np.float64, order='F'
+                        )
                         # TODO: remove for loop
-                        for i in range(self.n_layer):
+                        for i in range(0, self.n_layer):
                             resp_i, _ = fourier_dlf(
                                 u_temp[:, i]*factor, rx.times, rx.frequencies, rx.ftarg
                             )
@@ -774,7 +772,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                 elif src.wave_type == 'general':
                     
                     # Compute EM responses
-                    if u_temp.size == rx.n_frequency:
+                    if u_temp.ndim == 1:
                         resp_int, _ = fourier_dlf(
                             u_temp.flatten()*factor, rx.time_interval, rx.frequencies, rx.ftarg
                         )
@@ -819,7 +817,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                                 (rx.n_time+src.n_time_dual_moment, self.n_layer),
                                 dtype=np.float64, order='F'
                             )
-
+                        
                         # TODO: remove for loop (?)
                         for i in range(self.n_layer):
                             resp_int_i, _ = fourier_dlf(
@@ -887,12 +885,11 @@ def run_simulation_FD(args):
     :param float h: source height for a single sounding
     :param string output_type: "response", "sensitivity_sigma", "sensitivity_height"
     :param bool invert_height: boolean switch for inverting for source height
-    :param bool halfspace_switch: boolean switch for simulation for a halfspace
     :return: response or sensitivities
 
     """
 
-    src, topo, thicknesses, sigma, eta, tau, c, chi, dchi, tau1, tau2, h, output_type, invert_height, halfspace_switch = args
+    src, topo, thicknesses, sigma, eta, tau, c, chi, dchi, tau1, tau2, h, output_type, invert_height = args
 
     n_layer = len(thicknesses) + 1
     local_survey = EM1DSurveyFD([src])
@@ -905,7 +902,7 @@ def run_simulation_FD(args):
         sim = EM1DFMSimulation(
             survey=local_survey, thicknesses=thicknesses,
             sigmaMap=exp_map, eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
-            topo=topo, halfspace_switch=halfspace_switch, hankel_filter='key_101_2009'
+            topo=topo, hankel_filter='key_101_2009'
         )
         
         if output_type == 'sensitivity_sigma':
@@ -923,7 +920,7 @@ def run_simulation_FD(args):
             survey=local_survey, thicknesses=thicknesses,
             sigmaMap=sigma_map, hMap=wires.h, topo=topo,
             eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
-            halfspace_switch=halfspace_switch, hankel_filter='key_101_2009'
+            hankel_filter='key_101_2009'
         )
         
         m = np.r_[np.log(sigma), h]
@@ -959,12 +956,11 @@ def run_simulation_TD(args):
     :param float h: source height for a single sounding
     :param string output_type: "response", "sensitivity_sigma", "sensitivity_height"
     :param bool invert_height: boolean switch for inverting for source height
-    :param bool halfspace_switch: boolean switch for simulation for a halfspace
     :return: response or sensitivities
     
     """
 
-    src, topo, thicknesses, sigma, eta, tau, c, chi, dchi, tau1, tau2, h, output_type, invert_height, halfspace_switch = args
+    src, topo, thicknesses, sigma, eta, tau, c, chi, dchi, tau1, tau2, h, output_type, invert_height = args
 
     n_layer = len(thicknesses) + 1
     local_survey = EM1DSurveyTD([src])
@@ -976,7 +972,7 @@ def run_simulation_TD(args):
         sim = EM1DTMSimulation(
             survey=local_survey, thicknesses=thicknesses,
             sigmaMap=exp_map, eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
-            topo=topo, halfspace_switch=halfspace_switch, hankel_filter='key_101_2009'
+            topo=topo, hankel_filter='key_101_2009'
         )
         
         if output_type == 'sensitivity_sigma':
@@ -993,7 +989,7 @@ def run_simulation_TD(args):
             survey=local_survey, thicknesses=thicknesses,
             sigmaMap=sigma_map, hMap=wires.h, topo=topo,
             eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
-            halfspace_switch=halfspace_switch, hankel_filter='key_101_2009'
+            hankel_filter='key_101_2009'
         )
         
         m = np.r_[np.log(sigma), h]
@@ -1071,8 +1067,6 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         "a survey object", BaseEM1DSurvey, required=True
     )
 
-    halfspace_switch = properties.Bool("Switch for half-space", default=False)
-
     def __init__(self, **kwargs):
         utils.setKwargs(self, **kwargs)
         
@@ -1100,6 +1094,14 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
     #     elif self.mesh.dim==3:
     #         return self.mesh.dz
    
+    @property
+    def halfspace_switch(self):
+        """True = halfspace, False = layered Earth"""
+        if (self.thicknesses is None) | (len(self.thicknesses)==0):
+            return True
+        else:
+            return False
+
     @property
     def n_layer(self):
         if self.thicknesses is None:
@@ -1256,8 +1258,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
             self.Tau2[i_sounding, :],
             self.H[i_sounding],
             output_type,
-            self.invert_height,
-            self.halfspace_switch
+            self.invert_height
         )
         return output
 

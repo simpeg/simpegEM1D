@@ -146,10 +146,11 @@ class GlobalEM1DFD_Height(unittest.TestCase):
     def setUp(self, parallel=True):
         
         frequencies = np.array([900, 7200, 56000], dtype=float)
-        hz = np.r_[1.]
+        n_layer = 0
         n_sounding = 10
         dx = 20.
         hx = np.ones(n_sounding) * dx
+        hz = 1.  # not used in simulation
         e = np.ones(n_sounding)
         mSynth = np.r_[e*np.log(1./100.), e*20.]
         mesh = TensorMesh([hx, hz], x0='00')
@@ -241,83 +242,6 @@ class GlobalEM1DFD_Height(unittest.TestCase):
         self.m0 = mSynth * 1.2
         self.survey = survey
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-#         # frequency = np.array([900, 7200, 56000], dtype=float)
-#         # hz = np.r_[1.]
-#         # n_sounding = 10
-#         # dx = 20.
-#         # hx = np.ones(n_sounding) * dx
-#         # e = np.ones(n_sounding)
-#         # mSynth = np.r_[e*np.log(1./100.), e*20]
-
-#         # x = np.arange(n_sounding)
-#         # y = np.zeros_like(x)
-#         # z = np.ones_like(x) * 30.
-#         # rx_locations = np.c_[x, y, z]
-#         # src_locations = np.c_[x, y, z]
-#         # topo = np.c_[x, y, z-30.].astype(float)
-
-#         # wires = Maps.Wires(('sigma', n_sounding),('h', n_sounding))
-#         # expmap = Maps.ExpMap(nP=n_sounding)
-#         # sigmaMap = expmap * wires.sigma
-
-#         # survey = GlobalEM1DSurveyFD(
-#         #     rx_locations=rx_locations,
-#         #     src_locations=src_locations,
-#         #     frequency=frequency,
-#         #     offset=np.ones_like(frequency) * 8.,
-#         #     src_type="VMD",
-#         #     rx_type="ppm",
-#         #     field_type='secondary',
-#         #     topo=topo,
-#         #     half_switch=True
-#         # )
-#         #
-#         # problem = GlobalEM1DProblemFD(
-#         #     [], sigmaMap=sigmaMap, hMap=wires.h, hz=hz,
-#         #     parallel=parallel, n_cpu=2
-#         # )
-#         # problem.pair(survey)
-#         # survey.makeSyntheticData(mSynth)
-
-#         # # Now set up the problem to do some minimization
-#         # mesh = Mesh.TensorMesh([int(n_sounding * 2)])
-#         # dmis = DataMisfit.l2_DataMisfit(survey)
-#         # reg = regularization.Tikhonov(mesh)
-#         # opt = Optimization.InexactGaussNewton(
-#         #     maxIterLS=20, maxIter=10, tolF=1e-6,
-#         #     tolX=1e-6, tolG=1e-6, maxIterCG=6
-#         # )
-
-#         # invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=0.)
-#         # inv = Inversion.BaseInversion(invProb)
-#         # self.inv = inv
-#         # self.reg = reg
-#         # self.p = problem
-#         # self.mesh = mesh
-#         # self.m0 = mSynth * 1.2
-#         # self.survey = survey
-#         # self.dmis = dmis
 
     def test_misfit(self):
         passed = tests.checkDerivative(
