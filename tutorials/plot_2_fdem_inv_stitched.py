@@ -211,10 +211,13 @@ starting_model = np.log(conductivity)
 # Simulate response for static conductivity
 simulation = em1d.simulation.StitchedEM1DFMSimulation(
     survey=survey, thicknesses=thicknesses, sigmaMap=mapping, topo=topo,
-    parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
+    verbose=True, Solver=PardisoSolver
 )
 
-
+# simulation = em1d.simulation.StitchedEM1DFMSimulation(
+#     survey=survey, thicknesses=thicknesses, sigmaMap=mapping, topo=topo,
+#     parallel=True, n_cpu=3, verbose=True, Solver=PardisoSolver
+# )
 
 
 ########################################################################

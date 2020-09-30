@@ -32,6 +32,7 @@ source_location = np.array([0., 0., 0.])
 source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 source_radius = 10.
+moment_amplitude=1.
 
 receiver_location = np.array([10., 0., 0.])
 receiver_orientation = "z"  # "x", "y" or "z"
@@ -54,7 +55,8 @@ source_list = []
 source_list.append(
     em1d.sources.TimeDomainMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location,
-        orientation=source_orientation, I=source_current, wave_type="stepoff"
+        orientation=source_orientation, moment_amplitude=moment_amplitude,
+        wave_type="stepoff"
     )
 )
 
@@ -64,7 +66,7 @@ input_currents = TriangleFun(time_input_currents+0.01, 5e-3, 0.01)
 source_list.append(
     em1d.sources.TimeDomainMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location,
-        I=source_current,
+        moment_amplitude=moment_amplitude,
         orientation=source_orientation,
         wave_type="general",
         time_input_currents=time_input_currents,
@@ -82,7 +84,7 @@ input_currents_2 = VTEMFun(time_input_currents+0.01, 8e-3, 0.01, 1)
 source_list.append(
     em1d.sources.TimeDomainMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location,
-        I=source_current,
+        moment_amplitude=moment_amplitude,
         orientation=source_orientation, 
         wave_type="general",
         time_input_currents=time_input_currents_2,

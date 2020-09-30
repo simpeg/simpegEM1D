@@ -1,6 +1,6 @@
 """
-Forward Simulation of 1D Frequency-Domain Data
-==============================================
+Single Sounding Forward Simulation of 1D Frequency-Domain Data
+==============================================================
 
 
 

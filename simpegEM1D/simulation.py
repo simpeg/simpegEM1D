@@ -642,8 +642,8 @@ class EM1DTMSimulation(BaseEM1DSimulation):
         BaseEM1DSimulation.__init__(self, **kwargs)
 
         # self.fftfilt = filters.key_81_CosSin_2009()
-        # self.fftfilt = filters.key_101_CosSin_2012()
-        self.fftfilt = filters.key_601_CosSin_2009()
+        self.fftfilt = filters.key_101_CosSin_2012()
+        # self.fftfilt = filters.key_601_CosSin_2009()
 
 
     def set_time_intervals(self):
@@ -1295,7 +1295,8 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         else:
             run_simulation = run_simulation_TD
 
-        if self.parallel:
+        if (self.parallel) & (__name__=='__main__'):
+            
             pool = Pool(self.n_cpu)
             # This assumes the same # of layers for each of sounding
             result = pool.map(
@@ -1391,7 +1392,8 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         else:
             run_simulation = run_simulation_TD
 
-        if self.parallel:
+        if (self.parallel) & (__name__=='__main__'):
+            
             pool = Pool(self.n_cpu)
             self._Jmatrix_sigma = pool.map(
                 run_simulation,
@@ -1401,6 +1403,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
             )
             pool.close()
             pool.join()
+            
             if self.parallel_jvec_jtvec is False:
                 # self._Jmatrix_sigma = sp.block_diag(self._Jmatrix_sigma).tocsr()
                 self._Jmatrix_sigma = np.hstack(self._Jmatrix_sigma)
@@ -1444,7 +1447,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         else:
             run_simulation = run_simulation_TD
 
-        if self.parallel:
+        if (self.parallel) & (__name__=='__main__'):
             pool = Pool(self.n_cpu)
             self._Jmatrix_height = pool.map(
                 run_simulation,

@@ -237,17 +237,14 @@ cbar.set_label("Conductivity [S/m]", rotation=270, labelpad=15, size=12)
 # Simulate response for static conductivity
 simulation = em1d.simulation.StitchedEM1DFMSimulation(
     survey=survey, thicknesses=thicknesses, sigmaMap=mapping, chi=chi,
-    topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
+    topo=topo, parallel=False, verbose=True, Solver=PardisoSolver
 )
 
-#simulation.model = sounding_models
-#
-#ARGS = simulation.input_args(0)
-#print("Number of arguments")
-#print(len(ARGS))
-#print("Print arguments")
-#for ii in range(0, len(ARGS)):
-#    print(ARGS[ii])
+# simulation = em1d.simulation.StitchedEM1DFMSimulation(
+#     survey=survey, thicknesses=thicknesses, sigmaMap=mapping, chi=chi,
+#     topo=topo, parallel=True, n_cpu=2, verbose=True, Solver=PardisoSolver
+# )
+
 
 dpred = simulation.dpred(sounding_models)
 

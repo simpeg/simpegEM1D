@@ -22,7 +22,7 @@ from SimPEG import maps
 import simpegEM1D as em1d
 from simpegEM1D.utils import plotLayer
 
-save_file = True
+save_file = False
 plt.rcParams.update({'font.size': 16})
 
 #####################################################################

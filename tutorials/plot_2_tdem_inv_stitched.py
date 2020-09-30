@@ -201,29 +201,13 @@ starting_model = np.log(conductivity)
 # Simulate response for static conductivity
 simulation = em1d.simulation.StitchedEM1DTMSimulation(
     survey=survey, thicknesses=thicknesses, sigmaMap=mapping,
-    topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
+    topo=topo, verbose=True, Solver=PardisoSolver
 )
 
-#simulation.model = starting_model
-#
-#simulation.set_ij_n_layer()
-#
-#simulation._Jmatrix_sigma = [
-#    run_simulation_FD(simulation.input_args(i, jac_switch='sensitivity_sigma')) for i in range(simulation.n_sounding)
-#]
-#print("J_sigma matrix shape")
-#simulation._Jmatrix_sigma = np.hstack(simulation._Jmatrix_sigma)
-#print(simulation._Jmatrix_sigma.shape)
-#print("IJLayers shapes")
-#for x in simulation.IJLayers:
-#    print(x.shape)
-
-
-
-
-
-
-
+# simulation = em1d.simulation.StitchedEM1DTMSimulation(
+#     survey=survey, thicknesses=thicknesses, sigmaMap=mapping,
+#     topo=topo, parallel=True, n_cpu=4, verbose=True, Solver=PardisoSolver
+# )
 
 
 
