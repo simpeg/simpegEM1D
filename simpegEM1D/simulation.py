@@ -642,7 +642,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
         BaseEM1DSimulation.__init__(self, **kwargs)
 
         # self.fftfilt = filters.key_81_CosSin_2009()
-        self.fftfilt = filters.key_101_CosSin_2012()
+        self.fftfilt = filters.key_201_CosSin_2012()
         # self.fftfilt = filters.key_601_CosSin_2009()
 
 
