@@ -19,6 +19,10 @@ class HarmonicPointReceiver(BaseRx):
         "Receiver Locations", dtype=float, shape=("*",), required=True
     )
 
+    source_receiver_offset = properties.Array(
+        "Source receiver offset", dtype=float, shape=("*",), required=True
+    )
+
     frequencies = properties.Array(
         "Frequency (Hz)", dtype=float, shape=("*",), required=True
     )
@@ -28,10 +32,15 @@ class HarmonicPointReceiver(BaseRx):
     )
 
     component = properties.StringChoice(
-        "component of the field (real or imag)", {
-            "real": ["re", "in-phase", "in phase"],
-            "imag": ["imaginary", "im", "out-of-phase", "out of phase"]
-        }
+        # "component of the field (real or imag or both)", {
+            # "real": ["re", "in-phase", "in phase"],
+            # "imag": ["imaginary", "im", "out-of-phase", "out of phase"],
+            # "both": ["both"]
+        # }
+        "component of the field (real or imag or both)",
+        choices=["real", "imag", "both"],
+        default="both",
+
     )
 
     field_type = properties.StringChoice(
@@ -59,6 +68,16 @@ class HarmonicPointReceiver(BaseRx):
         if use_source_receiver_offset is not None:
             self.use_source_receiver_offset = use_source_receiver_offset
 
+    @property
+    def nD(self):
+        """
+        Number of data in the receiver.
+        We assume that a receiver object, only have a single location
+        """
+        if self.component is 'both':
+            return int(self.frequencies.size * 2)
+        else:
+            return self.frequencies.size
 
 
 class TimeDomainPointReceiver(BaseTimeRx):
@@ -144,5 +163,5 @@ class TimeDomainPointReceiver(BaseTimeRx):
     @property
     def nD(self):
         """Number of data in the receiver."""
-        return self.locations.shape[0] * self.n_time
+        return self.n_time
 

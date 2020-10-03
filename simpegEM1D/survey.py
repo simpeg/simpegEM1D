@@ -48,7 +48,7 @@ class EM1DSurveyFD(BaseEM1DSurvey):
 
         for src in self.source_list:
             for rx in src.receiver_list:
-                nD += len(rx.frequencies)
+                nD += rx.nD
 
         return int(nD)
 
@@ -70,7 +70,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
     as well as stitched 1D simulation.
     """
 
-    
+
     def __init__(self, source_list=None, **kwargs):
         BaseEM1DSurvey.__init__(self, source_list, **kwargs)
 
@@ -88,7 +88,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
 
         for src in self.source_list:
             for rx in src.receiver_list:
-                nD += len(rx.times)
+                nD += rx.nD
 
         return int(nD)
 
@@ -103,7 +103,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
                 )
             self._vnD_by_sounding = np.array(temp)
         return self._vnD_by_sounding
-    
+
 
     @property
     def lowpass_filter(self):

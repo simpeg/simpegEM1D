@@ -68,25 +68,25 @@ frequencies = np.array([25., 100., 382, 1822, 7970, 35920], dtype=float)
 source_list = []
 
 for ii in range(0, n_sounding):
-    
+
     source_location = mkvc(source_locations[ii, :])
     receiver_location = mkvc(source_receiver_offsets[ii, :])
-    
+
     receiver_list = []
-    
+
     receiver_list.append(
         em1d.receivers.HarmonicPointReceiver(
             receiver_location, frequencies, orientation=receiver_orientation,
-            field_type=field_type, component="real", use_source_receiver_offset=True
+            field_type=field_type, component="both", use_source_receiver_offset=True
         )
     )
-    receiver_list.append(
-        em1d.receivers.HarmonicPointReceiver(
-            receiver_location, frequencies, orientation=receiver_orientation,
-            field_type=field_type, component="imag", use_source_receiver_offset=True
-        )
-    )
-    
+    # receiver_list.append(
+    #     em1d.receivers.HarmonicPointReceiver(
+    #         receiver_location, frequencies, orientation=receiver_orientation,
+    #         field_type=field_type, component="imag", use_source_receiver_offset=True
+    #     )
+    # )
+
     source_list.append(
         em1d.sources.HarmonicMagneticDipoleSource(
             receiver_list=receiver_list, location=source_location, orientation="z",
@@ -204,7 +204,7 @@ fig, ax = plt.subplots(1,1, figsize = (7, 7))
 for ii in range(0, n_sounding):
     ax.loglog(frequencies, np.abs(d[0:len(frequencies), ii]), '-', lw=2)
     ax.loglog(frequencies, np.abs(d[len(frequencies):, ii]), '--', lw=2)
-    
+
 ax.set_xlabel("Frequency (Hz)")
 ax.set_ylabel("|Hs/Hp| (ppm)")
 ax.set_title("Magnetic Field as a Function of Frequency")
@@ -227,11 +227,11 @@ if save_file == True:
     noise = 0.1*np.abs(dpred)*np.random.rand(len(dpred))
     dpred += noise
     fname = os.path.dirname(em1d.__file__) + '\\..\\tutorials\\assets\\em1dfm_stitched_data.obs'
-    
+
     loc = np.repeat(source_locations, len(frequencies), axis=0)
     fvec = np.kron(np.ones(n_sounding), frequencies)
     dout = np.c_[dpred[0::2], dpred[1::2]]
-    
+
     np.savetxt(
         fname,
         np.c_[loc, fvec, dout],

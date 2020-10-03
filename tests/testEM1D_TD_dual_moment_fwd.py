@@ -111,6 +111,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
             src.input_currents_dual_moment,
             src.period_dual_moment
         )
+
         if self.showIt:
             plt.loglog(rx.times, -dBzdtTD_HM)
             plt.loglog(rx.times_dual_moment, -dBzdtTD_LM)

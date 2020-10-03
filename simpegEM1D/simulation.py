@@ -611,24 +611,24 @@ class EM1DFMSimulation(BaseEM1DSimulation):
                     u_temp = np.real(u_temp)
                 elif rx.component == 'imag':
                     u_temp = np.imag(u_temp)
-
-                # TODO: have an option for both
-                # elif rx.component == 'both':
-                #     u_temp_i = np.real(u_temp)
-                #     u_temp_r = np.imag(u_temp)
+                elif rx.component == 'both':
+                    u_temp_r = np.real(u_temp)
+                    u_temp_i = np.imag(u_temp)
+                    u_temp = np.r_[u_temp_r,u_temp_i]
                 else:
                     raise Exception()
 
-
+                # Either total or ppm
                 if rx.field_type != "secondary":
-                    # Seogi note: this is not right
                     u_primary = src.PrimaryField(rx.locations, rx.use_source_receiver_offset)
-
                     if rx.field_type == "ppm":
                         k = [comp == rx.orientation for comp in ["x", "y", "z"]]
                         u_temp = 1e6 * u_temp/u_primary[0, k]
                     else:
-                        u_temp =+ u_primary
+                        if rx.component == 'both':
+                            u_temp = np.r_[u_temp_r+u_primary, u_temp_i]
+                        else:
+                            u_temp =+ u_primary
 
                 u[COUNT] = u_temp
                 COUNT = COUNT + 1
