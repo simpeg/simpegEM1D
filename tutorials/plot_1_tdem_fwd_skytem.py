@@ -33,17 +33,15 @@ time_HM = wave_HM.time_gate_center[0::2]
 time_LM = wave_LM.time_gate_center[0::2]
 
 
-source_location = np.array([0., 0., 0.])
+source_location = np.array([0., 0., 40.])
 source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
-source_radius = 10.
 moment_amplitude=1.
-
-receiver_location = np.array([10., 0., 0.])
+receiver_offset_r = 13.25
+receiver_offset_z = 2.
+receiver_location = np.array([receiver_offset_r, 0., 40.+receiver_offset_z ])
 receiver_orientation = "z"  # "x", "y" or "z"
 field_type = "secondary"  # "secondary", "total" or "ppm"
-
-times = np.logspace(-5, -2, 41)
 
 # Receiver list
 rx = em1d.receivers.TimeDomainPointReceiver(
@@ -148,20 +146,13 @@ dpred = simulation.dpred(sigma_model)
 
 fig = plt.figure(figsize = (6, 5))
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.85])
-ax.loglog(rx.times, -dpred[:rx.times.size], 'k', lw=2, label='HM')
+ax.loglog(rx.times, -dpred[:rx.times.size], 'b', lw=2, label='HM')
 ax.loglog(rx.times_dual_moment, -dpred[rx.times.size:], 'r', lw=2, label='LM')
 
 ax.legend()
 ax.set_xlabel("Times (s)")
 ax.set_ylabel("|dB/dt| (T/s)")
-
-
-
-
-
-
-
-
+plt.show()
 
 
 

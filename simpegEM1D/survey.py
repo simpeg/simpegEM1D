@@ -90,6 +90,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             for rx in src.receiver_list:
                 nD += rx.nD
 
+
         return int(nD)
 
 

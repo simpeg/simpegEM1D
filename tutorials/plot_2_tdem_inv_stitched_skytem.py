@@ -30,7 +30,8 @@ from SimPEG import (
 from SimPEG.utils import mkvc
 import simpegEM1D as em1d
 from simpegEM1D import get_2d_mesh, LateralConstraint
-from simpegEM1D.utils import plotLayer, get_vertical_discretization_frequency
+from simpegEM1D.utils import plotLayer, get_vertical_discretization_time
+from simpegEM1D import skytem_HM_2015, skytem_LM_2015
 
 save_file = True
 
@@ -46,7 +47,7 @@ plt.rcParams.update({'font.size': 16, 'lines.linewidth': 2, 'lines.markersize':8
 # is loaded to compare with the inversion result.
 #
 
-data_filename = os.path.dirname(em1d.__file__) + '\\..\\tutorials\\assets\\em1dfm_stitched_data.obs'
+data_filename = './assets/em1dtm_stitched_data_skytem.obs'
 
 
 
@@ -57,10 +58,20 @@ data_filename = os.path.dirname(em1d.__file__) + '\\..\\tutorials\\assets\\em1df
 #
 
 x = np.linspace(50,4950,50)
-#x = np.linspace(50,250,3)
 y = np.zeros_like(x)
 z = np.zeros_like(x)
 topo = np.c_[x, y, z].astype(float)
+
+n_sounding = len(x)
+
+source_locations = np.c_[x, np.zeros(n_sounding), 30.*np.ones(n_sounding)]
+source_current = 1.
+source_orientation = 'z'
+receiver_offset_r = 13.25
+receiver_offset_z = 2.
+
+receiver_locations = np.c_[x+receiver_offset_r, np.zeros(n_sounding), 30.*np.ones(n_sounding)+receiver_offset_z]
+receiver_orientation = "z"  # "x", "y" or "z"
 
 
 
@@ -73,27 +84,7 @@ topo = np.c_[x, y, z].astype(float)
 
 # Load field data
 dobs = np.loadtxt(str(data_filename))
-
-
-source_locations = np.unique(dobs[:, 0:3], axis=0)
-frequencies = np.unique(dobs[:, 3])
-dobs = mkvc(dobs[:, 4:].T)
-
-n_sounding = np.shape(source_locations)[0]
-
-dobs_plotting = np.reshape(dobs, (n_sounding, 2*len(frequencies))).T
-
-fig, ax = plt.subplots(1,1, figsize = (7, 7))
-
-for ii in range(0, n_sounding):
-    ax.loglog(frequencies, np.abs(dobs_plotting[0:len(frequencies), ii]), '-', lw=2)
-    ax.loglog(frequencies, np.abs(dobs_plotting[len(frequencies):, ii]), '--', lw=2)
-
-ax.set_xlabel("Frequency (Hz)")
-ax.set_ylabel("|Hs/Hp| (ppm)")
-ax.set_title("Magnetic Field as a Function of Frequency")
-ax.legend(["real", "imaginary"])
-
+dobs = mkvc(dobs[:, -1])
 
 
 ######################################################
@@ -101,12 +92,16 @@ ax.legend(["real", "imaginary"])
 # -------------
 #
 
+wave_HM = skytem_HM_2015()
+wave_LM = skytem_LM_2015()
+time_HM = wave_HM.time_gate_center[0::2]
+time_LM = wave_LM.time_gate_center[0::2]
 
-moment_amplitude = 1.
+time_input_currents_HM = wave_HM.current_times[-7:]
+input_currents_HM = wave_HM.currents[-7:]
+time_input_currents_LM = wave_LM.current_times[-13:]
+input_currents_LM = wave_LM.currents[-13:]
 
-receiver_locations = np.c_[source_locations[:, 0]+10., source_locations[:, 1:]]
-receiver_orientation = "z"  # "x", "y" or "z"
-field_type = "ppm"  # "secondary", "total" or "ppm"
 
 source_list = []
 
@@ -114,39 +109,38 @@ for ii in range(0, n_sounding):
 
     source_location = mkvc(source_locations[ii, :])
     receiver_location = mkvc(receiver_locations[ii, :])
-
-    receiver_list = []
-
-    receiver_list.append(
-        em1d.receivers.HarmonicPointReceiver(
-            receiver_location, frequencies, orientation=receiver_orientation,
-            field_type=field_type, component="real"
+    receiver_list = [
+        em1d.receivers.TimeDomainPointReceiver(
+            receiver_location,
+            times=time_HM,
+            times_dual_moment=time_LM,
+            orientation=receiver_orientation,
+            component="dbdt"
         )
-    )
-    receiver_list.append(
-        em1d.receivers.HarmonicPointReceiver(
-            receiver_location, frequencies, orientation=receiver_orientation,
-            field_type=field_type, component="imag"
-        )
-    )
+    ]
 
 #     Sources
-#    source_list = [
-#        em1d.sources.HarmonicHorizontalLoopSource(
-#            receiver_list=receiver_list, location=source_location, a=source_radius,
-#            I=source_current
-#        )
-#    ]
-
     source_list.append(
-        em1d.sources.HarmonicMagneticDipoleSource(
-            receiver_list=receiver_list, location=source_location, orientation="z",
-            moment_amplitude=moment_amplitude
+        em1d.sources.TimeDomainMagneticDipoleSource(
+            receiver_list=receiver_list,
+            location=source_location,
+            moment_amplitude=source_current,
+            orientation=source_orientation,
+            wave_type="general",
+            moment_type='dual',
+            time_input_currents=time_input_currents_HM,
+            input_currents=input_currents_HM,
+            n_pulse = 1,
+            base_frequency = 25.,
+            time_input_currents_dual_moment = time_input_currents_LM,
+            input_currents_dual_moment = input_currents_LM,
+            base_frequency_dual_moment = 210
         )
     )
 
+
 # Survey
-survey = em1d.survey.EM1DSurveyFD(source_list)
+survey = em1d.survey.EM1DSurveyTD(source_list)
 
 
 
@@ -167,18 +161,18 @@ uncertainties = 0.1*np.abs(dobs)*np.ones(np.shape(dobs))
 # the survey, the observation values and the uncertainties.
 #
 
-data_object = data.Data(survey, dobs=dobs, standard_deviation=uncertainties)
+data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
 
 
 
 ###############################################
-# Defining Meshes
-# ---------------
+# Defining a Global Mesh
+# ----------------------
 #
 
-n_layer = 30
-thicknesses = get_vertical_discretization_frequency(
-    frequencies, sigma_background=0.1, n_layer=n_layer-1
+n_layer = 25
+thicknesses = get_vertical_discretization_time(
+    time_HM, sigma_background=0.1, n_layer=n_layer-1
 )
 
 dx = 100.
@@ -188,7 +182,6 @@ mesh2D = TensorMesh([hx, np.flipud(hz)], x0='0N')
 mesh_soundings = TensorMesh([hz, hx], x0='00')
 
 n_param = n_layer*n_sounding
-
 
 
 ###############################################
@@ -209,15 +202,23 @@ starting_model = np.log(conductivity)
 
 
 # Simulate response for static conductivity
-simulation = em1d.simulation.StitchedEM1DFMSimulation(
-    survey=survey, thicknesses=thicknesses, sigmaMap=mapping, topo=topo,
-    verbose=True, Solver=PardisoSolver
+# simulation = em1d.simulation.StitchedEM1DTMSimulation(
+#     survey=survey, thicknesses=thicknesses, sigmaMap=mapping,
+#     topo=topo, verbose=True, Solver=PardisoSolver
+# )
+
+simulation = em1d.simulation.StitchedEM1DTMSimulation(
+    survey=survey, thicknesses=thicknesses, sigmaMap=mapping,
+    topo=topo, parallel=True, n_cpu=4, verbose=True, Solver=PardisoSolver
 )
 
-# simulation = em1d.simulation.StitchedEM1DFMSimulation(
-#     survey=survey, thicknesses=thicknesses, sigmaMap=mapping, topo=topo,
-#     parallel=True, n_cpu=3, verbose=True, Solver=PardisoSolver
-# )
+
+pred = simulation.dpred(starting_model)
+fig = plt.figure()
+plt.semilogy(-pred, '.', ms=1)
+plt.semilogy(-dobs, 'x')
+plt.show()
+
 
 
 ########################################################################
@@ -241,7 +242,7 @@ dmis.W = 1./uncertainties
 
 # Define the regularization (model objective function)
 mesh_reg = get_2d_mesh(n_sounding, hz)
-reg_map = maps.IdentityMap(nP=n_param)
+reg_map = maps.IdentityMap(mesh_reg)
 reg = LateralConstraint(
     mesh_reg, mapping=reg_map,
     alpha_s = 0.1,
@@ -252,7 +253,7 @@ xy = utils.ndgrid(x, np.r_[0.])
 reg.get_grad_horizontal(xy, hz, dim=2, use_cell_weights=True)
 
 
-# reg_map = maps.IdentityMap(nP=n_param)
+# reg_map = maps.IdentityMap(nP=mesh_soundings.nC)
 # reg = regularization.Sparse(
 #     mesh_reg, mapping=reg_map,
 # )
@@ -263,16 +264,16 @@ reg.norms = np.c_[ps, px, py, 0]
 reg.mref = starting_model
 reg.mrefInSmooth = False
 
-# reg.eps_p = 1e-6
-# reg.eps_q = 1e-6
-
-
 # Define how the optimization problem is solved. Here we will use an inexact
 # Gauss-Newton approach that employs the conjugate gradient solver.
 opt = optimization.InexactGaussNewton(maxIter = 40, maxIterCG=20)
 
 # Define the inverse problem
 inv_prob = inverse_problem.BaseInvProblem(dmis, reg, opt)
+
+
+
+
 
 
 
@@ -318,8 +319,6 @@ update_IRLS = directives.Update_IRLS(
     coolingRate=3
 )
 
-
-
 # Updating the preconditionner if it is model dependent.
 update_jacobi = directives.UpdatePreconditioner()
 
@@ -333,15 +332,14 @@ target = directives.TargetMisfit()
 
 # The directives are defined as a list.
 directives_list = [
+    # sensitivity_weights,
     starting_beta,
     beta_schedule,
     save_iteration,
+    # target_misfit,
     update_IRLS,
+    # update_jacobi,
 ]
-
-
-# opt.LSshorten = 0.5
-# opt.remember('xc')
 
 #####################################################################
 # Running the Inversion
@@ -378,7 +376,7 @@ background_conductivity = 0.1
 overburden_conductivity = 0.025
 slope_conductivity = 0.4
 
-true_model = np.ones(n_param) * background_conductivity
+true_model = np.ones(mesh2D.nC) * background_conductivity
 
 layer_ind = mesh2D.gridCC[:, -1] > -30.
 true_model[layer_ind] = overburden_conductivity
@@ -392,13 +390,22 @@ pts = np.vstack((x0, x1, x2, x3, x0))
 poly_inds = PolygonInd(mesh2D, pts)
 true_model[poly_inds] = slope_conductivity
 
+# true_model = true_model.reshape(mesh_soundings.vnC, order='C')
+# true_model = np.flipud(true_model)
+# true_model = mkvc(true_model)
+
 
 l2_model = inv_prob.l2model
 dpred_l2 = simulation.dpred(l2_model)
 l2_model = np.exp(l2_model)
+# l2_model = l2_model.reshape((simulation.n_sounding, simulation.n_layer),)
+# l2_model = mkvc(l2_model)
 
 dpred = simulation.dpred(recovered_model)
 recovered_model = np.exp(recovered_model)
+# recovered_model = recovered_model.reshape((simulation.n_sounding, simulation.n_layer))
+# recovered_model = mkvc(recovered_model)
+
 
 mesh_plotting = TensorMesh([hx, np.flipud(hz)], x0='0N')
 l2_model = l2_model.reshape(mesh_plotting.vnC, order='C')
@@ -444,21 +451,15 @@ for ii, mod in enumerate(models_list):
 data_list = [dobs, dpred_l2, dpred]
 color_list = ['k', 'b', 'r']
 
-fig = plt.figure(figsize = (12, 6))
-ax1 = fig.add_axes([0.05, 0.1, 0.4, 0.8])
-ax2 = fig.add_axes([0.55, 0.1, 0.4, 0.8])
-
+fig, ax = plt.subplots(1,1, figsize = (7, 7))
+n_time = time_HM.size + time_LM.size
 for ii in range(0, len(data_list)):
-    d1 = np.reshape(data_list[ii][0::2], (n_sounding, len(frequencies)))
-    d2 = np.reshape(data_list[ii][1::2], (n_sounding, len(frequencies)))
-    ax1.semilogy(x, np.abs(d1), color_list[ii], lw=1)
-    ax2.semilogy(x, np.abs(d2), color_list[ii], lw=1)
+    d = np.reshape(data_list[ii], (n_sounding, n_time))
+    ax.semilogy(x, np.abs(d), color_list[ii], lw=1)
 
-ax.set_xlabel("Frequencies (s)")
-ax.set_ylabel("Re[H] (A/m)")
-
-
-
+ax.set_xlabel("Times (s)")
+ax.set_ylabel("|dBdt| (T/s)")
+plt.show()
 
 
 

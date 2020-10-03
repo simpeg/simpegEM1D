@@ -831,16 +831,16 @@ class EM1DTMSimulation(BaseEM1DSimulation):
 
                     # Compute EM sensitivities
                     else:
-                        if src.moment_type == "single":
-                            resp = np.zeros(
-                                (rx.n_time, self.n_layer), dtype=np.float64, order='F'
-                            )
-                        else:
-                            # For dual moment
-                            resp = np.zeros(
-                                (rx.n_time+src.n_time_dual_moment, self.n_layer),
-                                dtype=np.float64, order='F'
-                            )
+                        # if src.moment_type == "single":
+                        resp = np.zeros(
+                            (rx.n_time, self.n_layer), dtype=np.float64, order='F'
+                        )
+                        # else:
+                        #     # For dual moment
+                        #     resp = np.zeros(
+                        #         (rx.n_time, self.n_layer),
+                        #         dtype=np.float64, order='F'
+                        #     )
 
                         # TODO: remove for loop (?)
                         for i in range(self.n_layer):
