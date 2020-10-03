@@ -154,7 +154,7 @@ class BaseEM1DSimulation(BaseSimulation):
         """ Length of filter """
         return self.fhtfilt.base.size
 
-
+    @property
     def depth(self):
         """layer depths"""
         if self.thicknesses is not None:
@@ -180,7 +180,7 @@ class BaseEM1DSimulation(BaseSimulation):
         n_filter = self.n_filter
 
         sigma = np.tile(self.sigma.reshape([-1, 1]), (1, n_frequency))
-        
+
         # No IP effect
         if np.all(self.eta) == 0.:
 
@@ -255,7 +255,7 @@ class BaseEM1DSimulation(BaseSimulation):
         n_filter = self.n_filter
 
         chi = np.tile(chi.reshape([-1, 1]), (1, n_frequency))
-        
+
         # No magnetic viscosity
         if np.all(self.dchi) == 0.:
 
@@ -302,7 +302,7 @@ class BaseEM1DSimulation(BaseSimulation):
             )
 
             return chi_complex_tensor
-    
+
 
     def compute_integral(self, m, output_type='response'):
         """
@@ -310,18 +310,18 @@ class BaseEM1DSimulation(BaseSimulation):
         receiver and outputs it as a list. Used for computing response
         or sensitivities.
         """
-        
+
         self.model = m
         n_layer = self.n_layer
         n_filter = self.n_filter
-        
+
         # For time-domain simulations, set frequencies for the evaluation
         # of the Hankel transform.
         if isinstance(self.survey, EM1DSurveyTD):
             if self.frequencies_are_set is False:
                 self.set_frequencies()
 
-        
+
         # Define source height above topography by mapping or from sources and receivers.
         if self.hMap is not None:
             h_vector = np.array(self.h)
@@ -333,14 +333,14 @@ class BaseEM1DSimulation(BaseSimulation):
                     [src.location[2]-self.topo[-1] for src in self.survey.source_list]
                 )
 
-        
+
         integral_output_list = []
-        
+
         for ii, src in enumerate(self.survey.source_list):
             for jj, rx in enumerate(src.receiver_list):
 
                 n_frequency = len(rx.frequencies)
-                
+
                 f = np.empty([n_frequency, n_filter], order='F')
                 f[:, :] = np.tile(
                     rx.frequencies.reshape([-1, 1]), (1, n_filter)
@@ -371,6 +371,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
                     # Use function from empymod to define Hankel coefficients.
                     # Size of lambd is (n_frequency x n_filter)
+
                     lambd = np.empty([n_frequency, n_filter], order='F')
                     lambd[:, :], _ = get_dlf_points(
                         self.fhtfilt, r_vec, self.hankel_pts_per_dec
@@ -465,7 +466,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
         if self._Jmatrix_height is not None:
             return self._Jmatrix_height
-        
+
         else:
 
             if self.verbose:
@@ -485,7 +486,7 @@ class BaseEM1DSimulation(BaseSimulation):
                         temp = np.r_[temp, dudh[COUNT]]
                         COUNT += 1
                     dudh_by_source.append(temp.reshape([-1, 1]))
-                
+
                 self._Jmatrix_height= block_diag(*dudh_by_source)
             return self._Jmatrix_height
 
@@ -587,7 +588,7 @@ class EM1DFMSimulation(BaseEM1DSimulation):
     def __init__(self, **kwargs):
         BaseEM1DSimulation.__init__(self, **kwargs)
 
-    
+
     def project_fields(self, u):
         """
         Project from the list of Hankel transform evaluations to the data or sensitivities.
@@ -608,11 +609,19 @@ class EM1DFMSimulation(BaseEM1DSimulation):
 
                 if rx.component == 'real':
                     u_temp = np.real(u_temp)
-                else:
+                elif rx.component == 'imag':
                     u_temp = np.imag(u_temp)
 
-                if rx.field_type != "secondary":
+                # TODO: have an option for both
+                # elif rx.component == 'both':
+                #     u_temp_i = np.real(u_temp)
+                #     u_temp_r = np.imag(u_temp)
+                else:
+                    raise Exception()
 
+
+                if rx.field_type != "secondary":
+                    # Seogi note: this is not right
                     u_primary = src.PrimaryField(rx.locations, rx.use_source_receiver_offset)
 
                     if rx.field_type == "ppm":
@@ -636,14 +645,20 @@ class EM1DTMSimulation(BaseEM1DSimulation):
 
     time_intervals_are_set = False
     frequencies_are_set = False
+    time_filter = 'key_81_CosSin_2009'
 
 
     def __init__(self, **kwargs):
         BaseEM1DSimulation.__init__(self, **kwargs)
+        if self.time_filter == 'key_81_CosSin_2009':
+            self.fftfilt = filters.key_81_CosSin_2009()
+        elif self.time_filter == 'key_201_CosSin_2012':
+            self.fftfilt = filters.key_201_CosSin_2012()
+        elif self.time_filter == 'key_601_CosSin_2012':
+            self.fftfilt = filters.key_601_CosSin_2009()
+        else:
+            raise Exception()
 
-        # self.fftfilt = filters.key_81_CosSin_2009()
-        self.fftfilt = filters.key_201_CosSin_2012()
-        # self.fftfilt = filters.key_601_CosSin_2009()
 
 
     def set_time_intervals(self):
@@ -661,7 +676,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                         period = src.period
                     # Dual moment
                     else:
-                        time = np.unique(np.r_[rx.times, src.time_dual_moment])
+                        time = np.unique(np.r_[rx.times, rx.times_dual_moment])
                         pulse_period = np.maximum(
                             src.pulse_period, src.pulse_period_dual_moment
                         )
@@ -674,7 +689,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                     else:
                         raise NotImplementedError("n_pulse must be either 1 or 2")
                     n_time = int((np.log10(tmax)-np.log10(tmin))*10+1)
-                    
+
                     rx.time_interval = np.logspace(
                         np.log10(tmin), np.log10(tmax), n_time
                     )
@@ -691,10 +706,10 @@ class EM1DTMSimulation(BaseEM1DSimulation):
         # Set range of time channels
         if self.time_intervals_are_set == False:
             self.set_time_intervals()
-        
+
         for src in self.survey.source_list:
             for rx in src.receiver_list:
-                
+
                 if src.wave_type == "general":
                     _, freq, ft, ftarg = check_time(
                         rx.time_interval, -1, 'dlf',
@@ -746,16 +761,16 @@ class EM1DTMSimulation(BaseEM1DSimulation):
 
                 # For stepoff waveform
                 if src.wave_type == 'stepoff':
-                    
+
                     # Compute EM responses
                     if u_temp.ndim == 1:
                         resp, _ = fourier_dlf(
                             u_temp.flatten()*factor, rx.times, rx.frequencies, rx.ftarg
                         )
-                    
+
                     # Compute EM sensitivities
                     else:
-                        
+
                         resp = np.zeros(
                             (rx.n_time, self.n_layer), dtype=np.float64, order='F'
                         )
@@ -770,7 +785,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                 # Evaluate piecewise linear input current waveforms
                 # Using Fittermann's approach (19XX) with Gaussian Quadrature
                 elif src.wave_type == 'general':
-                    
+
                     # Compute EM responses
                     if u_temp.ndim == 1:
                         resp_int, _ = fourier_dlf(
@@ -794,7 +809,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                         # Compute response for the dual moment
                         if src.moment_type == "dual":
                             resp_dual_moment = piecewise_pulse_fast(
-                                step_func, src.time_dual_moment,
+                                step_func, rx.times_dual_moment,
                                 src.time_input_currents_dual_moment,
                                 src.input_currents_dual_moment,
                                 src.period_dual_moment,
@@ -817,7 +832,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                                 (rx.n_time+src.n_time_dual_moment, self.n_layer),
                                 dtype=np.float64, order='F'
                             )
-                        
+
                         # TODO: remove for loop (?)
                         for i in range(self.n_layer):
                             resp_int_i, _ = fourier_dlf(
@@ -842,14 +857,14 @@ class EM1DTMSimulation(BaseEM1DSimulation):
                             else:
                                 resp_dual_moment_i = piecewise_pulse_fast(
                                     step_func,
-                                    src.time_dual_moment,
+                                    rx.times_dual_moment,
                                     src.time_input_currents_dual_moment,
                                     src.input_currents_dual_moment,
                                     src.period_dual_moment,
                                     n_pulse=src.n_pulse
                                 )
                                 resp[:, i] = np.r_[resp_i, resp_dual_moment_i]
-                
+
                 u[COUNT] = resp * (-2.0/np.pi)
                 COUNT = COUNT + 1
 
@@ -898,13 +913,13 @@ def run_simulation_FD(args):
     if not invert_height:
         # Use Exponential Map
         # This is hard-wired at the moment
-        
+
         sim = EM1DFMSimulation(
             survey=local_survey, thicknesses=thicknesses,
             sigmaMap=exp_map, eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
             topo=topo, hankel_filter='key_101_2009'
         )
-        
+
         if output_type == 'sensitivity_sigma':
             drespdsig = sim.getJ_sigma(np.log(sigma))
             return utils.mkvc(drespdsig * sim.sigmaDeriv)
@@ -912,17 +927,17 @@ def run_simulation_FD(args):
             resp = sim.dpred(np.log(sigma))
             return resp
     else:
-        
+
         wires = maps.Wires(('sigma', n_layer), ('h', 1))
         sigma_map = exp_map * wires.sigma
-        
+
         sim = EM1DFMSimulation(
             survey=local_survey, thicknesses=thicknesses,
             sigmaMap=sigma_map, hMap=wires.h, topo=topo,
             eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
             hankel_filter='key_101_2009'
         )
-        
+
         m = np.r_[np.log(sigma), h]
         if output_type == 'sensitivity_sigma':
             drespdsig = sim.getJ_sigma(m)
@@ -957,7 +972,7 @@ def run_simulation_TD(args):
     :param string output_type: "response", "sensitivity_sigma", "sensitivity_height"
     :param bool invert_height: boolean switch for inverting for source height
     :return: response or sensitivities
-    
+
     """
 
     src, topo, thicknesses, sigma, eta, tau, c, chi, dchi, tau1, tau2, h, output_type, invert_height = args
@@ -974,7 +989,7 @@ def run_simulation_TD(args):
             sigmaMap=exp_map, eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
             topo=topo, hankel_filter='key_101_2009'
         )
-        
+
         if output_type == 'sensitivity_sigma':
             drespdsig = sim.getJ_sigma(np.log(sigma))
             return utils.mkvc(drespdsig * sim.sigmaDeriv)
@@ -982,7 +997,7 @@ def run_simulation_TD(args):
             resp = sim.dpred(np.log(sigma))
             return resp
     else:
-        
+
         wires = maps.Wires(('sigma', n_layer), ('h', 1))
         sigma_map = exp_map * wires.sigma
         sim = EM1DTMSimulation(
@@ -991,7 +1006,7 @@ def run_simulation_TD(args):
             eta=eta, tau=tau, c=c, chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
             hankel_filter='key_101_2009'
         )
-        
+
         m = np.r_[np.log(sigma), h]
         if output_type == 'sensitivity_sigma':
             drespdsig = sim.getJ_sigma(m)
@@ -1009,7 +1024,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
     Base class for the stitched 1D simulation. This simulation models the EM
     response for a set of 1D EM soundings.
     """
-    
+
     _Jmatrix_sigma = None
     _Jmatrix_height = None
     run_simulation = None
@@ -1069,7 +1084,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
 
     def __init__(self, **kwargs):
         utils.setKwargs(self, **kwargs)
-        
+
         if PARALLEL:
             if self.parallel:
                 print(">> Use multiprocessing for parallelization")
@@ -1093,7 +1108,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
     #         return self.mesh.dy
     #     elif self.mesh.dim==3:
     #         return self.mesh.dz
-   
+
     @property
     def halfspace_switch(self):
         """True = halfspace, False = layered Earth"""
@@ -1296,7 +1311,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
             run_simulation = run_simulation_TD
 
         if (self.parallel) & (__name__=='__main__'):
-            
+
             pool = Pool(self.n_cpu)
             # This assumes the same # of layers for each of sounding
             result = pool.map(
@@ -1393,7 +1408,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
             run_simulation = run_simulation_TD
 
         if (self.parallel) & (__name__=='__main__'):
-            
+
             pool = Pool(self.n_cpu)
             self._Jmatrix_sigma = pool.map(
                 run_simulation,
@@ -1403,7 +1418,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
             )
             pool.close()
             pool.join()
-            
+
             if self.parallel_jvec_jtvec is False:
                 # self._Jmatrix_sigma = sp.block_diag(self._Jmatrix_sigma).tocsr()
                 self._Jmatrix_sigma = np.hstack(self._Jmatrix_sigma)

@@ -27,7 +27,7 @@ from simpegEM1D.analytics import ColeCole
 #
 #
 
-source_location = np.array([0., 0., 0.])  
+source_location = np.array([0., 0., 0.])
 source_orientation = "z"  # "x", "y" or "z"
 source_current = 1.
 moment_amplitude = 1.
@@ -110,9 +110,10 @@ ax.set_ylim(0., 1.1*sigma)
 ax.set_xlabel("Frequency (Hz)")
 ax.set_ylabel("Conductivity")
 ax.legend(
-    ["$\sigma_{DC}$", "$Re[\sigma (\omega)]$", "$Im[\sigma (\omega)]$"],
+    ["$\sigma_{\infty}$", "$Re[\sigma (\omega)]$", "$Im[\sigma (\omega)]$"],
     loc="center right"
 )
+plt.show()
 
 #######################################################################
 # Define the Forward Simulation and Predict Data

@@ -2,12 +2,10 @@ import numpy as np
 from scipy.constants import mu_0
 
 try:
-    from simpegEM1D.Fortran.m_rTE_Fortran import rte_fortran
+    from simpegEM1D.m_rTE_Fortran import rte_fortran
+    # rte_fortran = None
 except ImportError as e:
     rte_fortran = None
-
-
-
 
 
 
@@ -526,7 +524,7 @@ def magnetic_dipole_kernel(
     """
     Kernel for vertical (Hz) and radial (Hrho) magnetic component due to
     vertical magnetic diopole (VMD) source in (kx,ky) domain.
-    
+
     For vertical magnetic dipole:
 
     .. math::
@@ -589,7 +587,7 @@ def magnetic_dipole_kernel(
         else:
             depth = simulation.depth
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.halfspace_switch, drTE,
+                f, lamda, sig, chi[:,0,0].real, depth, simulation.halfspace_switch, drTE,
                 n_layer, n_frequency, n_filter
                 )
 
@@ -668,7 +666,7 @@ def magnetic_dipole_kernel(
 #     """
 #     Kernel for vertical (Hz) and radial (Hrho) magnetic component due to
 #     vertical magnetic diopole (VMD) source in (kx,ky) domain.
-    
+
 #     For vertical magnetic dipole:
 
 #     .. math::
@@ -770,7 +768,7 @@ def horizontal_loop_kernel(
 
     Kernel for vertical (Hz) and radial (Hrho) magnetic component due to
     horizontal cirular loop source in (kx,ky) domain.
-    
+
     For the vertical component:
 
     .. math::
@@ -811,7 +809,7 @@ def horizontal_loop_kernel(
         else:
             depth = simulation.depth
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.halfspace_switch,
+                f, lamda, sig, chi[:,0,0].real, depth, simulation.halfspace_switch,
                 drTE, n_layer, n_frequency, n_filter
             )
 
@@ -868,7 +866,7 @@ def hz_kernel_horizontal_electric_dipole(
         else:
             depth = simulation.depth
             rte_fortran.rte_sensitivity(
-                f, lamda, sig, chi, depth, simulation.halfspace_switch,
+                f, lamda, sig, chi[:,0,0].real, depth, simulation.halfspace_switch,
                 drTE, n_layer, n_frequency, n_filter
             )
 

@@ -1,10 +1,13 @@
 import unittest
 from SimPEG import Mesh, Maps, Utils
+from SimPEG import maps
+from SimPEG.utils import mkvc
 import matplotlib.pyplot as plt
-from simpegEM1D import (
-    EM1D, EM1DSurveyTD, EM1DAnalytics, piecewise_pulse, set_mesh_1d,
-    skytem_HM_2015, skytem_LM_2015, get_vertical_discretization_time
-)
+import simpegEM1D as em1d
+from simpegEM1D.known_waveforms import piecewise_ramp
+from simpegEM1D.analytics import *
+from simpegEM1D.waveforms import TriangleFun
+from simpegEM1D import skytem_HM_2015, skytem_LM_2015
 import numpy as np
 from scipy import io
 from scipy.interpolate import interp1d
@@ -19,12 +22,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         time_HM = wave_HM.time_gate_center[0::2]
         time_LM = wave_LM.time_gate_center[0::2]
 
-        hz = get_vertical_discretization_time(
-            np.unique(np.r_[time_HM, time_LM]), facter_tmax=0.5, factor_tmin=10.
-        )
-        mesh1D = set_mesh_1d(hz)
-        depth = -mesh1D.gridN[:-1]
-        LocSigZ = -mesh1D.gridCC
+        thicknesses = np.ones(5) * 10.
 
         time_input_currents_HM = wave_HM.current_times[-7:]
         input_currents_HM = wave_HM.currents[-7:]

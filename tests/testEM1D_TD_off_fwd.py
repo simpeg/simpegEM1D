@@ -16,13 +16,13 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         deepthick = np.logspace(1, 2, 10)
         thicknesses = np.r_[nearthick, deepthick]
         topo = np.r_[0., 0., 100.]
-        
-        src_location = np.array([0., 0., 100.+1e-5])  
+
+        src_location = np.array([0., 0., 100.+1e-5])
         rx_location = np.array([0., 0., 100.+1e-5])
         receiver_orientation = "z"  # "x", "y" or "z"
         times = np.logspace(-5, -2, 31)
         a = 20.
-        
+
         # Receiver list
         receiver_list = []
         receiver_list.append(
@@ -37,7 +37,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
                 component="dbdt"
             )
         )
-            
+
         source_list = [
             em1d.sources.TimeDomainHorizontalLoopSource(
                 receiver_list=receiver_list, location=src_location,
@@ -73,22 +73,22 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         self.a = a
 
     def test_EM1DTDfwd_CirLoop_RealCond(self):
-        
+
         sigma_map = maps.ExpMap(nP=self.nlayers)
         sim = em1d.simulation.EM1DTMSimulation(
             survey=self.survey, thicknesses=self.thicknesses,
             sigmaMap=sigma_map, topo=self.topo
         )
-        
+
         m_1D = np.log(np.ones(self.nlayers)*self.sigma)
         d = sim.dpred(m_1D)
         bz = d[0:len(self.times)]
         dbdt = d[len(self.times):]
-        
+
         bzanal = Bz_horizontal_circular_loop(
             self.a, self.times, self.sigma
         )
-        
+
         dbdtanal = dBzdt_horizontal_circular_loop(
             self.a, self.times, self.sigma
         )
@@ -122,13 +122,13 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         tau = self.tau*np.ones(self.nlayers)
         c = self.c*np.ones(self.nlayers)
         eta = self.eta*np.ones(self.nlayers)
-        
+
         sim = em1d.simulation.EM1DTMSimulation(
             survey=self.survey, thicknesses=self.thicknesses,
             sigmaMap=sigma_map, topo=self.topo,
             eta=eta, tau=tau, c=c, chi=chi
         )
-        
+
         m_1D = np.ones(self.nlayers)*self.sigma
         d = sim.dpred(m_1D)
         bz = d[0:len(self.times)]
@@ -153,7 +153,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         err = np.linalg.norm(bz-bzanal)/np.linalg.norm(bzanal)
         print ('Bz error = ', err)
         self.assertTrue(err < 1e-2)
-        
+
         dbdtanal = dBzdt_horizontal_circular_loop_ColeCole(
             self.a, self.times, sigCole
         )
@@ -177,13 +177,14 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         dchi = self.dchi*np.ones(self.nlayers)
         tau1 = self.tau1*np.ones(self.nlayers)
         tau2 = self.tau2*np.ones(self.nlayers)
-        
+
         sim = em1d.simulation.EM1DTMSimulation(
             survey=self.survey, thicknesses=self.thicknesses,
             sigmaMap=sigma_map, topo=self.topo,
-            chi=chi, dchi=dchi, tau1=tau1, tau2=tau2
+            chi=chi, dchi=dchi, tau1=tau1, tau2=tau2,
+            time_filter='key_201_CosSin_2012'
         )
-        
+
         m_1D = 1e-8 * np.ones(self.nlayers)
         d = sim.dpred(m_1D)
         bz = d[0:len(self.times)]
@@ -202,7 +203,7 @@ class EM1D_TD_FwdProblemTests(unittest.TestCase):
         err = np.linalg.norm(bz-bzanal)/np.linalg.norm(bzanal)
         print ('Bz error = ', err)
         self.assertTrue(err < 5e-2)
-        
+
         dbdtanal = dBzdt_horizontal_circular_loop_VRM(
             self.a, 1e-5, 1e-5, self.times, self.dchi, self.tau1, self.tau2
         )

@@ -31,7 +31,7 @@ save_file = False
 #
 #
 
-source_location = np.array([0., 0., 30.])  
+source_location = np.array([0., 0., 30.])
 source_current = 1.
 source_radius = 5.
 moment_amplitude = 1.
@@ -64,7 +64,7 @@ receiver_list.append(
 #        I=source_current
 #    )
 #]
-    
+
 source_list = [
     em1d.sources.HarmonicMagneticDipoleSource(
         receiver_list=receiver_list, location=source_location, orientation="z",

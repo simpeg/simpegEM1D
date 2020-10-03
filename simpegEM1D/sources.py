@@ -11,14 +11,14 @@ from scipy import special as spec
 
 
 class HarmonicMagneticDipoleSource(survey.BaseSrc):
-    """
-    Harmonic magnetic dipole source. 
+    """f
+    Harmonic magnetic dipole source.
 
     :param numpy.array location: source location (x,y,z)
     :param string orientation: dipole orientation 'x', 'y' or 'z'
     :param float moment_amplitude: magnitude of the dipole moment |m|
     """
-    
+
     orientation = properties.StringChoice(
         "Magnetic dipole orientation", default="z", choices=["x", "y", "z"]
     )
@@ -63,7 +63,7 @@ class HarmonicMagneticDipoleSource(survey.BaseSrc):
 
 class HarmonicHorizontalLoopSource(survey.BaseSrc):
     """
-    Harmonic horizontal loop source. 
+    Harmonic horizontal loop source.
 
     :param numpy.array locations: source location (x,y,z)
     :param float I: current amplitude [A]
@@ -71,7 +71,7 @@ class HarmonicHorizontalLoopSource(survey.BaseSrc):
     """
 
     I = properties.Float("Source loop current", default=1.)
-    
+
     a = properties.Float("Source loop radius", default=1.)
 
     def __init__(self, receiver_list=None, **kwargs):
@@ -135,12 +135,12 @@ class HarmonicHorizontalLoopSource(survey.BaseSrc):
 
 class HarmonicCurrentLineSource(survey.BaseSrc):
     """
-    Harmonic current line source. 
+    Harmonic current line source.
 
-    :param numpy.ndarray node_locations: np.array(N+1, 3) of node locations defining N line segments 
+    :param numpy.ndarray node_locations: np.array(N+1, 3) of node locations defining N line segments
     :param float I: current amplitude [A]
     """
-    
+
     node_locations = properties.Array(
         "Source path (xi, yi, zi), i=0,...,N",
         dtype=float
@@ -230,7 +230,7 @@ class HarmonicCurrentLineSource(survey.BaseSrc):
 
 class BaseTimeSrc(survey.BaseSrc):
     """
-    Base class for EM1D time-domain sources. 
+    Base class for EM1D time-domain sources.
 
     :param numpy.array location: source location (x,y,z)
     :param string orientation: dipole orientation 'x', 'y' or 'z'
@@ -277,10 +277,6 @@ class BaseTimeSrc(survey.BaseSrc):
 
     # ------------- For dual moment ------------- #
 
-    time_dual_moment = properties.Array(
-        "Off-time channels (s) for the dual moment", dtype=float
-    )
-
     time_input_currents_dual_moment = properties.Array(
         "Time for input currents (dual moment)", dtype=float
     )
@@ -312,10 +308,6 @@ class BaseTimeSrc(survey.BaseSrc):
 
     # ------------- For dual moment ------------- #
     @property
-    def n_time_dual_moment(self):
-        return int(self.time_dual_moment.size)
-
-    @property
     def period_dual_moment(self):
         return 1./self.base_frequency_dual_moment
 
@@ -327,21 +319,26 @@ class BaseTimeSrc(survey.BaseSrc):
         )
         return Tp
 
-    @property
-    def nD(self):
-        """
-            # of data
-        """
+    # Note: not relevant here
+    # @property
+    # def n_time_dual_moment(self):
+    #     return int(self.time_dual_moment.size)
 
-        if self.moment_type == "single":
-            return self.n_time
-        else:
-            return self.n_time + self.n_time_dual_moment
+    # @property
+    # def nD(self):
+    #     """
+    #         # of data
+    #     """
+
+    #     if self.moment_type == "single":
+    #         return self.n_time
+    #     else:
+    #         return self.n_time + self.n_time_dual_moment
 
 
 class TimeDomainMagneticDipoleSource(BaseTimeSrc):
     """
-    Time-domain magnetic dipole source. 
+    Time-domain magnetic dipole source.
 
     :param numpy.array location: source location (x,y,z)
     :param string orientation: dipole orientation 'z'
@@ -360,7 +357,7 @@ class TimeDomainMagneticDipoleSource(BaseTimeSrc):
 
 class TimeDomainHorizontalLoopSource(BaseTimeSrc):
     """
-    Time-domain horizontal loop source. 
+    Time-domain horizontal loop source.
 
     :param numpy.array location: source location (x,y,z)
     :param float I: source current amplitude [A]
@@ -377,14 +374,14 @@ class TimeDomainHorizontalLoopSource(BaseTimeSrc):
 
 class TimeDomainLineSource(BaseTimeSrc):
     """
-    Time-domain current line source. 
+    Time-domain current line source.
 
-    :param numpy.ndarray node_locations: np.array(N+1, 3) of node locations defining N line segments 
+    :param numpy.ndarray node_locations: np.array(N+1, 3) of node locations defining N line segments
     :param float I: current amplitude [A]
     """
 
     I = properties.Float("Source loop current", default=1.)
-    
+
     node_locations = properties.Array(
         "Source path (xi, yi, zi), i=0,...N",
         dtype=float
@@ -392,5 +389,5 @@ class TimeDomainLineSource(BaseTimeSrc):
 
     def __init__(self, receiver_list=None, **kwargs):
         super(TimeDomainLineSource, self).__init__(receiver_list=receiver_list, **kwargs)
-    
+
 

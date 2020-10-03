@@ -1,7 +1,7 @@
 import numpy as np
 import properties
 from SimPEG.survey import BaseRx, BaseTimeRx
-        
+
 
 class HarmonicPointReceiver(BaseRx):
     """
@@ -22,7 +22,7 @@ class HarmonicPointReceiver(BaseRx):
     frequencies = properties.Array(
         "Frequency (Hz)", dtype=float, shape=("*",), required=True
     )
-    
+
     orientation = properties.StringChoice(
         "Field orientation", default="z", choices=["x", "y", "z"]
     )
@@ -59,7 +59,7 @@ class HarmonicPointReceiver(BaseRx):
         if use_source_receiver_offset is not None:
             self.use_source_receiver_offset = use_source_receiver_offset
 
-        
+
 
 class TimeDomainPointReceiver(BaseTimeRx):
     """
@@ -83,7 +83,7 @@ class TimeDomainPointReceiver(BaseTimeRx):
     # times property is inherited from BaseTimeRx class
 
     orientation = properties.StringChoice(
-        "Field orientation", default="z", choices=["z"]
+        "Field orientation", default="z", choices=["x", "y", "z"]
     )
 
     component = properties.StringChoice(
@@ -105,6 +105,9 @@ class TimeDomainPointReceiver(BaseTimeRx):
         default=False
     )
 
+    times_dual_moment = properties.Array(
+        "Off-time channels (s) for the dual moment", dtype=float
+    )
 
     def __init__(self, locations=None, times=None, orientation=None, component=None, use_source_receiver_offset=None, **kwargs):
 
@@ -126,13 +129,20 @@ class TimeDomainPointReceiver(BaseTimeRx):
         """
             Number of time channels
         """
-        return int(self.times.size)
+        if self.times_dual_moment is not None:
+            return int(self.times.size) + int(self.times_dual_moment.size)
+        else:
+            return int(self.times.size)
 
     @property
     def n_frequency(self):
         """
             Number of frequencies
         """
-
         return int(self.frequencies.size)
+
+    @property
+    def nD(self):
+        """Number of data in the receiver."""
+        return self.locations.shape[0] * self.n_time
 
