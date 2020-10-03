@@ -15,13 +15,13 @@ np.random.seed(41)
 class GlobalEM1DTD(unittest.TestCase):
 
     def setUp(self, parallel=True):
-        
+
         times = np.logspace(-5, -2, 31)
         n_layer = 20
         thicknesses = get_vertical_discretization_time(
             times, facter_tmax=0.5, factor_tmin=10., n_layer=n_layer-1
         )
-        
+
         n_sounding = 5
         dx = 20.
         hx = np.ones(n_sounding) * dx
@@ -43,33 +43,33 @@ class GlobalEM1DTD(unittest.TestCase):
         topo = np.c_[x, y, z-30.].astype(float)
 
         sigma_map = maps.ExpMap(mesh)
-        
+
         source_list = []
-        
+
         for ii in range(0, n_sounding):
-            
+
             source_location = mkvc(source_locations[ii, :])
             receiver_location = mkvc(receiver_locations[ii, :])
-            
+
             receiver_list = []
-            
+
             receiver_list.append(
                 em1d.receivers.TimeDomainPointReceiver(
                     receiver_location, times, orientation="z",
                     component="b"
                 )
             )
-            
+
             receiver_list.append(
                 em1d.receivers.TimeDomainPointReceiver(
                     receiver_location, times, orientation="z",
                     component="dbdt"
                 )
             )
-            
+
             time_input_currents = np.r_[-np.logspace(-2, -5, 31), 0.]
             input_currents = TriangleFun(time_input_currents+0.01, 5e-3, 0.01)
-            
+
             source_list.append(
                 em1d.sources.TimeDomainHorizontalLoopSource(
                     receiver_list=receiver_list,
@@ -84,12 +84,12 @@ class GlobalEM1DTD(unittest.TestCase):
                     high_cut_frequency=210*1e3
                 )
             )
-        
+
         survey = em1d.survey.EM1DSurveyTD(source_list)
-        
+
         simulation = em1d.simulation.StitchedEM1DTMSimulation(
             survey=survey, thicknesses=thicknesses, sigmaMap=sigma_map,
-            topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
+            topo=topo, parallel=False, n_cpu=2, verbose=False, solver=PardisoSolver
         )
 
         dpred = simulation.dpred(mSynth)
@@ -97,20 +97,20 @@ class GlobalEM1DTD(unittest.TestCase):
         uncertainties = 0.1*np.abs(dpred)*np.ones(np.shape(dpred))
         dobs =  dpred + noise
         data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
-        
+
         dmis = data_misfit.L2DataMisfit(simulation=simulation, data=data_object)
         dmis.W = 1./uncertainties
-        
+
         reg = regularization.Tikhonov(mesh)
-        
+
         opt = optimization.InexactGaussNewton(
             maxIterLS=20, maxIter=10, tolF=1e-6,
             tolX=1e-6, tolG=1e-6, maxIterCG=6
         )
-        
+
         invProb = inverse_problem.BaseInvProblem(dmis, reg, opt, beta=0.)
         inv = inversion.BaseInversion(invProb)
-        
+
         self.data = data_object
         self.dmis = dmis
         self.inv = inv
@@ -155,7 +155,7 @@ class GlobalEM1DTD(unittest.TestCase):
 class GlobalEM1DTD_Height(unittest.TestCase):
 
     def setUp(self, parallel=True):
-        
+
         times = np.logspace(-5, -2, 31)
 
         hz = 1.
@@ -165,7 +165,7 @@ class GlobalEM1DTD_Height(unittest.TestCase):
         e = np.ones(n_sounding)
         mSynth = np.r_[e*np.log(1./100.), e*30]
         mesh = TensorMesh([hx, hz], x0='00')
-        
+
         wires = maps.Wires(('sigma', n_sounding),('height', n_sounding))
         expmap = maps.ExpMap(nP=n_sounding)
         sigma_map = expmap * wires.sigma
@@ -176,33 +176,33 @@ class GlobalEM1DTD_Height(unittest.TestCase):
         receiver_locations = np.c_[x, y, z]
         source_locations = np.c_[x, y, z]
         topo = np.c_[x, y, z-30.].astype(float)
-        
+
         source_list = []
-        
+
         for ii in range(0, n_sounding):
-            
+
             source_location = mkvc(source_locations[ii, :])
             receiver_location = mkvc(receiver_locations[ii, :])
-            
+
             receiver_list = []
-            
+
             receiver_list.append(
                 em1d.receivers.TimeDomainPointReceiver(
                     receiver_location, times, orientation="z",
                     component="b"
                 )
             )
-            
+
             receiver_list.append(
                 em1d.receivers.TimeDomainPointReceiver(
                     receiver_location, times, orientation="z",
                     component="dbdt"
                 )
             )
-            
+
             time_input_currents = np.r_[-np.logspace(-2, -5, 31), 0.]
             input_currents = TriangleFun(time_input_currents+0.01, 5e-3, 0.01)
-            
+
             source_list.append(
                 em1d.sources.TimeDomainHorizontalLoopSource(
                     receiver_list=receiver_list,
@@ -217,12 +217,12 @@ class GlobalEM1DTD_Height(unittest.TestCase):
                     high_cut_frequency=210*1e3
                 )
             )
-        
+
         survey = em1d.survey.EM1DSurveyTD(source_list)
-        
+
         simulation = em1d.simulation.StitchedEM1DTMSimulation(
             survey=survey, sigmaMap=sigma_map, hMap=wires.height,
-            topo=topo, parallel=False, n_cpu=2, verbose=True, Solver=PardisoSolver
+            topo=topo, parallel=False, n_cpu=2, verbose=False, solver=PardisoSolver
         )
 
         dpred = simulation.dpred(mSynth)
@@ -230,24 +230,24 @@ class GlobalEM1DTD_Height(unittest.TestCase):
         uncertainties = 0.1*np.abs(dpred)*np.ones(np.shape(dpred))
         dobs =  dpred + noise
         data_object = data.Data(survey, dobs=dobs, noise_floor=uncertainties)
-        
+
         dmis = data_misfit.L2DataMisfit(simulation=simulation, data=data_object)
         dmis.W = 1./uncertainties
-        
+
         reg_mesh = TensorMesh([int(n_sounding)])
         reg_sigma = regularization.Tikhonov(reg_mesh, mapping=wires.sigma)
         reg_height = regularization.Tikhonov(reg_mesh, mapping=wires.height)
-        
+
         reg = reg_sigma + reg_height
-        
+
         opt = optimization.InexactGaussNewton(
             maxIterLS=20, maxIter=10, tolF=1e-6,
             tolX=1e-6, tolG=1e-6, maxIterCG=6
         )
-        
+
         invProb = inverse_problem.BaseInvProblem(dmis, reg, opt, beta=0.)
         inv = inversion.BaseInversion(invProb)
-        
+
         self.data = data_object
         self.dmis = dmis
         self.inv = inv

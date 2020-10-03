@@ -3,7 +3,6 @@ from scipy.constants import mu_0
 
 try:
     from simpegEM1D.m_rTE_Fortran import rte_fortran
-    # rte_fortran = None
 except ImportError as e:
     rte_fortran = None
 

@@ -14,18 +14,18 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         deepthick = np.logspace(1, 2, 10)
         thicknesses = np.r_[nearthick, deepthick]
         topo = np.r_[0., 0., 100.]
-        
-        src_location = np.array([0., 0., 100.+1e-5])  
+
+        src_location = np.array([0., 0., 100.+1e-5])
         rx_location = np.array([10., 0., 100.+1e-5])
         field_type = "secondary"  # "secondary", "total" or "ppm"
         frequencies = np.logspace(1, 8, 21)
-        
+
         # Receiver list
         receiver_list = []
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
                 rx_location, frequencies, orientation="x",
-                field_type=field_type, component="real"
+                field_type=field_type, component="both"
             )
         )
         receiver_list.append(
@@ -37,28 +37,28 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
                 rx_location, frequencies, orientation="y",
-                field_type=field_type, component="real"
+                field_type=field_type, component="both"
             )
         )
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
                 rx_location, frequencies, orientation="y",
-                field_type=field_type, component="imag"
-            )
-        )
-        receiver_list.append(
-            em1d.receivers.HarmonicPointReceiver(
-                rx_location, frequencies, orientation="z",
                 field_type=field_type, component="real"
             )
         )
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
                 rx_location, frequencies, orientation="z",
+                field_type=field_type, component="both"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="z",
                 field_type=field_type, component="imag"
             )
         )
-        
+
         I = 1.
         a = 10.
         source_list = [
@@ -77,12 +77,12 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         self.thicknesses = thicknesses
         self.nlayers = len(thicknesses)+1
         self.sigma_map = maps.ExpMap(nP=self.nlayers)
-        
+
         sim = em1d.simulation.EM1DFMSimulation(
             survey=self.survey, thicknesses=self.thicknesses,
             sigmaMap=self.sigma_map, topo=self.topo
         )
-        
+
         self.sim = sim
 
     def test_EM1DFDJvec_Layers(self):
@@ -92,7 +92,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         sig = np.ones(self.nlayers)*sigma_half
         sig[3] = sigma_blk
         m_1D = np.log(sig)
-        
+
         Hz = self.sim.dpred(m_1D)
         dHzdsig = self.sim.compute_integral(
             m_1D, output_type='sensitivity_sigma'
@@ -136,7 +136,7 @@ class EM1D_FD_Jac_layers_ProblemTests(unittest.TestCase):
         sig = np.ones(self.nlayers)*sigma_half
         sig[3] = sigma_blk
         m_true = np.log(sig)
-        
+
         dobs = self.sim.dpred(m_true)
 
         m_ini = np.log(
@@ -165,18 +165,24 @@ class EM1D_FD_Jac_layers_ProblemTests_Height(unittest.TestCase):
     def setUp(self):
 
         topo = np.r_[0., 0., 100.]
-        
-        src_location = np.array([0., 0., 100.+20.])  
+
+        src_location = np.array([0., 0., 100.+20.])
         rx_location = np.array([10., 0., 100.+20.])
         field_type = "secondary"  # "secondary", "total" or "ppm"
         frequencies = np.logspace(1, 8, 21)
-        
+
         # Receiver list
         receiver_list = []
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
                 rx_location, frequencies, orientation="x",
-                field_type=field_type, component="real"
+                field_type=field_type, component="both"
+            )
+        )
+        receiver_list.append(
+            em1d.receivers.HarmonicPointReceiver(
+                rx_location, frequencies, orientation="x",
+                field_type=field_type, component="both"
             )
         )
         receiver_list.append(
@@ -188,19 +194,13 @@ class EM1D_FD_Jac_layers_ProblemTests_Height(unittest.TestCase):
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
                 rx_location, frequencies, orientation="y",
-                field_type=field_type, component="real"
-            )
-        )
-        receiver_list.append(
-            em1d.receivers.HarmonicPointReceiver(
-                rx_location, frequencies, orientation="y",
                 field_type=field_type, component="imag"
             )
         )
         receiver_list.append(
             em1d.receivers.HarmonicPointReceiver(
                 rx_location, frequencies, orientation="z",
-                field_type=field_type, component="real"
+                field_type=field_type, component="both"
             )
         )
         receiver_list.append(
@@ -209,7 +209,7 @@ class EM1D_FD_Jac_layers_ProblemTests_Height(unittest.TestCase):
                 field_type=field_type, component="imag"
             )
         )
-        
+
         I = 1.
         a = 10.
         source_list = [
@@ -220,7 +220,7 @@ class EM1D_FD_Jac_layers_ProblemTests_Height(unittest.TestCase):
 
         # Survey
         survey = em1d.survey.EM1DSurveyFD(source_list)
-        
+
         wires = maps.Wires(('sigma', 1),('height', 1))
         expmap = maps.ExpMap(nP=1)
         sigma_map = expmap * wires.sigma
@@ -232,19 +232,19 @@ class EM1D_FD_Jac_layers_ProblemTests_Height(unittest.TestCase):
         self.nlayers = 1
         self.sigma_map = sigma_map
         self.h_map = wires.height
-        
+
         sim = em1d.simulation.EM1DFMSimulation(
             survey=self.survey,
             sigmaMap=self.sigma_map, hMap=wires.height, topo=self.topo
         )
-        
+
         self.sim = sim
 
     def test_EM1DFDJvec_Layers(self):
 
         sigma_half = 0.01
         height = 20.
-        
+
         m_1D = np.r_[np.log(sigma_half), height]
 
         def fwdfun(m):
@@ -269,9 +269,9 @@ class EM1D_FD_Jac_layers_ProblemTests_Height(unittest.TestCase):
 
         sigma_half = 0.01
         height = 20.
-        
+
         m_true = np.r_[np.log(sigma_half), height]
-        
+
         dobs = self.sim.dpred(m_true)
 
         m_ini = m_true * 1.2

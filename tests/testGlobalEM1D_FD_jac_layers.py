@@ -55,15 +55,15 @@ class GlobalEM1DFD(unittest.TestCase):
             receiver_list.append(
                 em1d.receivers.HarmonicPointReceiver(
                     receiver_location, frequencies, orientation="z",
-                    field_type="secondary", component="real"
+                    field_type="secondary", component="both"
                 )
             )
-            receiver_list.append(
-                em1d.receivers.HarmonicPointReceiver(
-                    receiver_location, frequencies, orientation="z",
-                    field_type="secondary", component="imag"
-                )
-            )
+            # receiver_list.append(
+            #     em1d.receivers.HarmonicPointReceiver(
+            #         receiver_location, frequencies, orientation="z",
+            #         field_type="secondary", component="imag"
+            #     )
+            # )
 
             source_list.append(
                 em1d.sources.HarmonicMagneticDipoleSource(
@@ -183,17 +183,17 @@ class GlobalEM1DFD_Height(unittest.TestCase):
             receiver_list.append(
                 em1d.receivers.HarmonicPointReceiver(
                     receiver_offset, frequencies, orientation="z",
-                    field_type="secondary", component="real",
+                    field_type="secondary", component="both",
                     use_source_receiver_offset=True
                 )
             )
-            receiver_list.append(
-                em1d.receivers.HarmonicPointReceiver(
-                    receiver_offset, frequencies, orientation="z",
-                    field_type="secondary", component="imag",
-                    use_source_receiver_offset=True
-                )
-            )
+            # receiver_list.append(
+            #     em1d.receivers.HarmonicPointReceiver(
+            #         receiver_offset, frequencies, orientation="z",
+            #         field_type="secondary", component="imag",
+            #         use_source_receiver_offset=True
+            #     )
+            # )
 
             source_list.append(
                 em1d.sources.HarmonicMagneticDipoleSource(

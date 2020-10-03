@@ -58,7 +58,7 @@ class EM1DSurveyFD(BaseEM1DSurvey):
             temp = []
             for src in self.source_list:
                 temp.append(
-                    np.sum([len(rx.frequencies) for rx in src.receiver_list])
+                    np.sum([rx.nD for rx in src.receiver_list])
                 )
             self._vnD_by_sounding = np.array(temp)
         return self._vnD_by_sounding
@@ -99,7 +99,7 @@ class EM1DSurveyTD(BaseEM1DSurvey):
             temp = []
             for src in self.source_list:
                 temp.append(
-                    np.sum([len(rx.times) for rx in src.receiver_list])
+                    np.sum([rx.nD for rx in src.receiver_list])
                 )
             self._vnD_by_sounding = np.array(temp)
         return self._vnD_by_sounding

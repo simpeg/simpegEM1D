@@ -22,6 +22,7 @@ from .known_waveforms import (
 
 try:
     from multiprocessing import Pool
+    from sys import platform
 except ImportError:
     print("multiprocessing is not available")
     PARALLEL = False
@@ -438,7 +439,7 @@ class BaseEM1DSimulation(BaseSimulation):
 
     def fields(self, m):
         f = self.compute_integral(m, output_type='response')
-        f = self.project_fields(f)
+        f = self.project_fields(f, output_type='response')
         return np.hstack(f)
 
     def dpred(self, m, f=None):
@@ -473,20 +474,21 @@ class BaseEM1DSimulation(BaseSimulation):
                 print(">> Compute J height ")
 
             dudh = self.compute_integral(m, output_type="sensitivity_height")
-            dudh = self.project_fields(dudh)
-
+            self._Jmatrix_height = np.hstack(self.project_fields(dudh, output_type="sensitivity_height"))
             if self.survey.nSrc == 1:
                 self._Jmatrix_height = np.hstack(dudh).reshape([-1, 1])
             else:
-                COUNT = 0
-                dudh_by_source = []
-                for ii, src in enumerate(self.survey.source_list):
-                    temp = np.array([])
-                    for jj, rx in enumerate(src.receiver_list):
-                        temp = np.r_[temp, dudh[COUNT]]
-                        COUNT += 1
-                    dudh_by_source.append(temp.reshape([-1, 1]))
+                # COUNT = 0
+                # dudh_by_source = []
+                # for ii, src in enumerate(self.survey.source_list):
+                #     temp = np.array([])
+                #     for jj, rx in enumerate(src.receiver_list):
+                #         temp = np.r_[temp, dudh[COUNT]]
+                #         COUNT += 1
 
+                #     dudh_by_source.append(temp.reshape([-1, 1]))
+
+                # self._Jmatrix_height= block_diag(*dudh_by_source)
                 self._Jmatrix_height= block_diag(*dudh_by_source)
             return self._Jmatrix_height
 
@@ -508,7 +510,7 @@ class BaseEM1DSimulation(BaseSimulation):
                 print(">> Compute J sigma")
 
             dudsig = self.compute_integral(m, output_type="sensitivity_sigma")
-            self._Jmatrix_sigma = np.vstack(self.project_fields(dudsig))
+            self._Jmatrix_sigma = np.vstack(self.project_fields(dudsig,output_type="sensitivity_sigma"))
             if self._Jmatrix_sigma.ndim == 1:
                 self._Jmatrix_sigma = self._Jmatrix_sigma.reshape([-1, 1])
             return self._Jmatrix_sigma
@@ -589,7 +591,7 @@ class EM1DFMSimulation(BaseEM1DSimulation):
         BaseEM1DSimulation.__init__(self, **kwargs)
 
 
-    def project_fields(self, u):
+    def project_fields(self, u, output_type='response'):
         """
         Project from the list of Hankel transform evaluations to the data or sensitivities.
         Data can be real or imaginary component of: total field, secondary field or ppm.
@@ -614,7 +616,10 @@ class EM1DFMSimulation(BaseEM1DSimulation):
                 elif rx.component == 'both':
                     u_temp_r = np.real(u_temp)
                     u_temp_i = np.imag(u_temp)
-                    u_temp = np.r_[u_temp_r,u_temp_i]
+                    if output_type == 'sensitivity_sigma':
+                        u_temp = np.vstack((u_temp_r,u_temp_i))
+                    else:
+                        u_temp = np.r_[u_temp_r,u_temp_i]
                 else:
                     raise Exception()
 
@@ -626,7 +631,11 @@ class EM1DFMSimulation(BaseEM1DSimulation):
                         u_temp = 1e6 * u_temp/u_primary[0, k]
                     else:
                         if rx.component == 'both':
-                            u_temp = np.r_[u_temp_r+u_primary, u_temp_i]
+                            if output_type == 'sensitivity_sigma':
+                                u_temp = np.vstack((u_temp_r+u_primary,u_temp_i))
+                            else:
+                                u_temp = np.r_[u_temp_r+u_primary, u_temp_i]
+
                         else:
                             u_temp =+ u_primary
 
@@ -729,7 +738,7 @@ class EM1DTMSimulation(BaseEM1DSimulation):
         self.frequencies_are_set = True
 
 
-    def project_fields(self, u):
+    def project_fields(self, u, output_type=None):
         """
         Project from the list of Hankel transform evaluations to the data or sensitivities.
 
@@ -1310,8 +1319,10 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         else:
             run_simulation = run_simulation_TD
 
-        if (self.parallel) & (__name__=='__main__'):
-
+        # if (self.parallel) & (__name__=='__main__'):
+        if self.parallel:
+            if self.verbose:
+                print ('parallel')
             pool = Pool(self.n_cpu)
             # This assumes the same # of layers for each of sounding
             result = pool.map(
@@ -1407,7 +1418,8 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         else:
             run_simulation = run_simulation_TD
 
-        if (self.parallel) & (__name__=='__main__'):
+        # if (self.parallel) & (__name__=='__main__'):
+        if self.parallel:
 
             pool = Pool(self.n_cpu)
             self._Jmatrix_sigma = pool.map(
