@@ -50,7 +50,7 @@ setup(
     version='0.0.18a',
     packages=find_packages(),
     install_requires=[
-        'SimPEG>=0.4.1',
+        'SimPEG==0.13.1',
         'empymod>=1.6.2',
         'multiprocess'
     ],
