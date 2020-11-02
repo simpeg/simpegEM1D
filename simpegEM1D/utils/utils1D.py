@@ -15,7 +15,7 @@ def plotLayer(sig, mesh, xscale='log', ax=None, showlayers=False, xlim=None,**kw
     # dz = LocSigZ[0]/2.
     # z = np.repeat(LocSigZ[1:], 2, axis=0)
     # z = np.r_[LocSigZ[0], z, LocSigZ[-1]] - dz
-    z_grid = -mesh.vectorNx
+    z_grid = mesh.vectorNx
     n_sig = sig.size
     sigma = np.repeat(sig, 2)
     z = []
