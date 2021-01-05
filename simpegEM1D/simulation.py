@@ -162,9 +162,9 @@ class BaseEM1DSimulation(BaseSimulation):
             return np.r_[0., -np.cumsum(self.thicknesses)]
 
 
-    def compute_sigma_tensor(self, frequencies):
+    def compute_sigma_matrix(self, frequencies):
         """
-        Computes the complex conductivity tensor using Pelton's Cole-Cole model:
+        Computes the complex conductivity matrix using Pelton's Cole-Cole model:
 
         .. math ::
             \\sigma (\\omega ) = \\sigma \\Bigg [
@@ -172,27 +172,19 @@ class BaseEM1DSimulation(BaseSimulation):
             \\Bigg ]
 
         :param numpy.array frequencies: np.array(N,) containing frequencies
-        :rtype: numpy.ndarray: np.array(n_layer, n_frequency, n_filter)
-        :return: complex conductivity tensor
+        :rtype: numpy.ndarray: np.array(n_layer, n_frequency)
+        :return: complex conductivity matrix
 
         """
         n_layer = self.n_layer
         n_frequency = len(frequencies)
-        n_filter = self.n_filter
+        # n_filter = self.n_filter
 
         sigma = np.tile(self.sigma.reshape([-1, 1]), (1, n_frequency))
 
         # No IP effect
         if np.all(self.eta) == 0.:
-
-            sigma_tensor = np.empty(
-                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
-            )
-            sigma_tensor[:, :, :] = np.tile(sigma.reshape(
-                (n_layer, n_frequency, 1)), (1, 1, n_filter)
-            )
-
-            return sigma_tensor
+            return sigma
 
         # IP effect
         else:
@@ -219,19 +211,12 @@ class BaseEM1DSimulation(BaseSimulation):
                 sigma*eta/(1+(1-eta)*(1j*w*tau)**c)
             )
 
-            sigma_complex_tensor = np.empty(
-                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
-            )
-            sigma_complex_tensor[:, :, :] = np.tile(sigma_complex.reshape(
-                (n_layer, n_frequency, 1)), (1, 1, n_filter)
-            )
-
-            return sigma_complex_tensor
+            return sigma_complex
 
 
-    def compute_chi_tensor(self, frequencies):
+    def compute_chi_matrix(self, frequencies):
         """
-        Computes the complex magnetic susceptibility tensor assuming a log-uniform
+        Computes the complex magnetic susceptibility matrix assuming a log-uniform
         distribution of time-relaxation constants:
 
         .. math::
@@ -241,8 +226,8 @@ class BaseEM1DSimulation(BaseSimulation):
             \\Bigg ]
 
         :param numpy.array frequencies: np.array(N,) containing frequencies
-        :rtype: numpy.ndarray: np.array(n_layer, n_frequency, n_filter)
-        :return: complex magnetic susceptibility tensor
+        :rtype: numpy.ndarray: np.array(n_layer, n_frequency)
+        :return: complex magnetic susceptibility matrix
 
         """
 
@@ -253,21 +238,16 @@ class BaseEM1DSimulation(BaseSimulation):
 
         n_layer = self.n_layer
         n_frequency = len(frequencies)
-        n_filter = self.n_filter
-
+        # n_filter = self.n_filter
+     
         chi = np.tile(chi.reshape([-1, 1]), (1, n_frequency))
 
         # No magnetic viscosity
         if np.all(self.dchi) == 0.:
 
-            chi_tensor = np.empty(
-                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
-            )
-            chi_tensor[:, :, :] = np.tile(chi.reshape(
-                (n_layer, n_frequency, 1)), (1, 1, n_filter)
-            )
+            
 
-            return chi_tensor
+            return chi
 
         # Magnetic viscosity
         else:
@@ -295,14 +275,7 @@ class BaseEM1DSimulation(BaseSimulation):
                 )
             )
 
-            chi_complex_tensor = np.empty(
-                [n_layer, n_frequency, n_filter], dtype=np.complex128, order='F'
-            )
-            chi_complex_tensor[:, :, :] = np.tile(chi_complex.reshape(
-                (n_layer, n_frequency, 1)), (1, 1, n_filter)
-            )
-
-            return chi_complex_tensor
+            return chi_complex
 
 
     def compute_integral(self, m, output_type='response'):
@@ -348,8 +321,8 @@ class BaseEM1DSimulation(BaseSimulation):
                 )
 
                 # Create globally, not for each receiver in the future
-                sig = self.compute_sigma_tensor(rx.frequencies)
-                chi = self.compute_chi_tensor(rx.frequencies)
+                sig = self.compute_sigma_matrix(rx.frequencies)
+                chi = self.compute_chi_matrix(rx.frequencies)
 
                 # Compute receiver height
                 h = h_vector[ii]
