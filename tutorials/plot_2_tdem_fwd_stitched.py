@@ -1,10 +1,6 @@
 """
-Forward Simulation of 1D Frequency-Domain Data
-==============================================
-
-
-
-
+Forward Simulation of Stitched Time-Domain Data
+===============================================
 
 """
 

@@ -1,6 +1,6 @@
 """
-Forward Simulation of 1D Frequency-Domain Data
-==============================================
+Forward Simulation of Stitched SkyTEM Data
+==========================================
 
 
 

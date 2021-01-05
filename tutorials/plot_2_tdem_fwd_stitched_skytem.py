@@ -1,6 +1,6 @@
 """
-Forward Simulation of 1D SkyTEM Data
-==============================================
+Forward Simulation of Stitched SkyTEM Data
+==========================================
 
 
 

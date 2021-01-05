@@ -66,7 +66,7 @@ downloads, directory = download_and_unzip_data()
 resolve = h5py.File(
     os.path.sep.join([directory, "booky_resolve.hdf5"]), "r"
 )
-river_path = resolve["river_path"].value    # River path
+river_path = resolve["river_path"]    # River path
 nskip = 1
 nSounding = resolve["data"][::nskip, :].shape[0]    # the # of soundings
 
@@ -76,8 +76,8 @@ b_height_resolve = (resolve["src_elevation"])[::nskip]
 # fetch the frequencies we are considering
 cpi_inds = [0, 2, 6, 8, 10]  # Indices for HCP in-phase
 cpq_inds = [1, 3, 7, 9, 11]  # Indices for HCP quadrature
-frequency_cp = resolve["frequency_cp"].value
-xy = (resolve["xy"].value)[::nskip, :]
+frequency_cp = resolve["frequency_cp"]
+xy = (resolve["xy"])[::nskip, :]
 line = resolve['line'][::nskip]
 
 
@@ -100,8 +100,8 @@ n_layer = thicknesses.size + 1
 # survey parameters
 rxOffset = 7.86  # tx-rx separation
 n_sounding = xy.shape[0]
-b_height_resolve = resolve["src_elevation"].value[::nskip]
-topo_resolve = resolve["ground_elevation"].value[::nskip]
+b_height_resolve = resolve["src_elevation"][::nskip]
+topo_resolve = resolve["ground_elevation"][::nskip]
 uniq_line = np.unique(line)
 x = xy[:,0]
 y = xy[:,1]
