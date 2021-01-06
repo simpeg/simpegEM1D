@@ -2,6 +2,7 @@ import numpy as np
 from scipy.constants import mu_0
 from geoana.kernels import rTE_forward, rTE_gradient
 
+# TODO: reduce f and lamda as 1D arrays, and use numpy broadcast
 def magnetic_dipole_kernel(
     simulation, lamda, f, n_layer, sig, chi, h, z, r,
     src, rx, output_type='response'

@@ -488,6 +488,30 @@ class BaseEM1DSimulation(BaseSimulation):
                 self._Jmatrix_sigma = self._Jmatrix_sigma.reshape([-1, 1])
             return self._Jmatrix_sigma
 
+    def getJ_eta(self, m, f=None):
+        """
+        Compute the sensitivity with respect to static conductivity.
+        """
+
+        # Null if eta is not parameter of the simulation.
+        if self.etaMap is None:
+            return utils.Zero()
+
+        if self._Jmatrix_eta is not None:
+            return self._Jmatrix_eta
+        else:
+
+            if self.verbose:
+                print(">> Compute J eta")
+
+            dudsig = self.compute_integral(m, output_type="sensitivity_sigma")
+            # Need to modify
+            dsigdeta = np.empty((m.size, m.size))
+            self._Jmatrix_eta = np.vstack(self.project_fields(dudsig.dot(dsigdeta),output_type="sensitivity_sigma"))
+            if self._Jmatrix_eta.ndim == 1:
+                self._Jmatrix_eta = self._Jmatrix_eta.reshape([-1, 1])
+            return self._Jmatrix_eta
+
     def getJ(self, m, f=None):
         """
         Fetch Jacobian.
@@ -1482,6 +1506,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
     def Jvec(self, m, v, f=None):
         J_sigma = self.getJ_sigma(m)
         J_height = self.getJ_height(m)
+        
         # This is deprecated at the moment
         # if self.parallel and self.parallel_jvec_jtvec:
         #     # Extra division of sigma is because:
@@ -1509,6 +1534,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         #     pool.close()
         #     pool.join()
         # else:
+
         Jv = J_sigma*(utils.sdiag(1./self.sigma)*(self.sigmaDeriv * v))
         if self.hMap is not None:
             Jv += J_height*(self.hDeriv * v)
@@ -1517,6 +1543,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
     def Jtvec(self, m, v, f=None):
         J_sigma = self.getJ_sigma(m)
         J_height = self.getJ_height(m)
+        
         # This is deprecated at the moment
         # if self.parallel and self.parallel_jvec_jtvec:
         #     pool = Pool(self.n_cpu)
@@ -1542,6 +1569,7 @@ class BaseStitchedEM1DSimulation(BaseSimulation):
         # Extra division of sigma is because:
         # J_sigma = dF/dlog(sigma)
         # And here sigmaMap also includes ExpMap
+        
         Jtv = self.sigmaDeriv.T * (utils.sdiag(1./self.sigma) * (J_sigma.T*v))
         if self.hMap is not None:
             Jtv += self.hDeriv.T*(J_height.T*v)
@@ -1588,124 +1616,12 @@ class StitchedEM1DFMSimulation(BaseStitchedEM1DSimulation):
             print(">> Frequency-domain")
         return run_simulation_FD(args)
 
-    # @property
-    # def frequency(self):
-    #     return self.survey.frequency
-
-    # @property
-    # def switch_real_imag(self):
-    #     return self.survey.switch_real_imag
-
-
 class StitchedEM1DTMSimulation(BaseStitchedEM1DSimulation):
-
-    # @property
-    # def wave_type(self):
-    #     return self.survey.wave_type
-
-    # @property
-    # def input_currents(self):
-    #     return self.survey.input_currents
-
-    # @property
-    # def time_input_currents(self):
-    #     return self.survey.time_input_currents
-
-    # @property
-    # def n_pulse(self):
-    #     return self.survey.n_pulse
-
-    # @property
-    # def base_frequency(self):
-    #     return self.survey.base_frequency
-
-    # @property
-    # def time(self):
-    #     return self.survey.time
-
-    # @property
-    # def use_lowpass_filter(self):
-    #     return self.survey.use_lowpass_filter
-
-    # @property
-    # def high_cut_frequency(self):
-    #     return self.survey.high_cut_frequency
-
-    # @property
-    # def moment_type(self):
-    #     return self.survey.moment_type
-
-    # @property
-    # def time_dual_moment(self):
-    #     return self.survey.time_dual_moment
-
-    # @property
-    # def time_input_currents_dual_moment(self):
-    #     return self.survey.time_input_currents_dual_moment
-
-    # @property
-    # def input_currents_dual_moment(self):
-    #     return self.survey.input_currents_dual_moment
-
-    # @property
-    # def base_frequency_dual_moment(self):
-    #     return self.survey.base_frequency_dual_moment
 
     def run_simulation(self, args):
         if self.verbose:
             print(">> Time-domain")
         return run_simulation_TD(args)
-
-    # def forward(self, m, f=None):
-    #     self.model = m
-
-    #     if self.parallel:
-    #         pool = Pool(self.n_cpu)
-    #         # This assumes the same # of layer for each of soundings
-    #         result = pool.map(
-    #             run_simulation_TD,
-    #             [
-    #                 self.input_args(i, output_type=False) for i in range(self.n_sounding)
-    #             ]
-    #         )
-    #         pool.close()
-    #         pool.join()
-    #     else:
-    #         result = [
-    #             run_simulation_TD(self.input_args(i, output_type=False)) for i in range(self.n_sounding)
-    #         ]
-    #     return np.hstack(result)
-
-    # def getJ(self, m):
-    #     """
-    #          Compute d F / d sigma
-    #     """
-    #     if self._Jmatrix is not None:
-    #         return self._Jmatrix
-    #     if self.verbose:
-    #         print(">> Compute J")
-    #     self.model = m
-    #     if self.parallel:
-    #         pool = Pool(self.n_cpu)
-    #         self._Jmatrix = pool.map(
-    #             run_simulation_TD,
-    #             [
-    #                 self.input_args(i, output_type=True) for i in range(self.n_sounding)
-    #             ]
-    #         )
-    #         pool.close()
-    #         pool.join()
-    #         if self.parallel_jvec_jtvec is False:
-    #             self._Jmatrix = sp.block_diag(self._Jmatrix).tocsr()
-    #     else:
-    #         # _Jmatrix is block diagnoal matrix (sparse)
-    #         self._Jmatrix = sp.block_diag(
-    #             [
-    #                 run_simulation_TD(self.input_args(i, output_type=True)) for i in range(self.n_sounding)
-    #             ]
-    #         ).tocsr()
-    #     return self._Jmatrix
-
 
 
 
