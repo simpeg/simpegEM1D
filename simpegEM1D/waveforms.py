@@ -89,11 +89,11 @@ def RectFun(time, ta, tb):
 
         .. math::
 
-            I(t) = 1, 0 < t \le t_a
+            I(t) = 1, 0 < t \\le t_a
 
             I(t) = -1, t_a < t < t_b
 
-            I(t) = 0, t \le t_a \ \\text{or}  \ t \ge t_b
+            I(t) = 0, t \\le t_a \\ \\text{or}  \\ t \\ge t_b
 
     """
     out = np.zeros(time.size)

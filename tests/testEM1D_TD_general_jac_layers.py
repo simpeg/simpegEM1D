@@ -2,79 +2,95 @@ import unittest
 from SimPEG import *
 import numpy as np
 import matplotlib.pyplot as plt
-from simpegEM1D import EM1D, EM1DSurveyTD
-from simpegEM1D.Waveform import TriangleFun, TriangleFunDeriv
+import simpegEM1D as em1d
+from simpegEM1D.waveforms import TriangleFun, TriangleFunDeriv
 
 
 class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self):    
 
         nearthick = np.logspace(-1, 1, 5)
         deepthick = np.logspace(1, 2, 10)
-        hx = np.r_[nearthick, deepthick]
-        mesh1D = Mesh.TensorMesh([hx], [0.])
-        depth = -mesh1D.gridN[:-1]
-        LocSigZ = -mesh1D.gridCC
-
-        # Triangular waveform
-        time_input_currents = np.r_[0., 5.5*1e-4, 1.1*1e-3]
-        input_currents = np.r_[0., 1., 0.]
-
-        TDsurvey = EM1DSurveyTD(
-            rx_location=np.array([0., 0., 100.+1e-5]),
-            src_location=np.array([0., 0., 100.+1e-5]),
-            topo=np.r_[0., 0., 100.],
-            depth=depth,
-            field_type='secondary',
-            rx_type='Bz',
-            wave_type='general',
-            time_input_currents=time_input_currents,
-            input_currents=input_currents,
-            n_pulse=2,
-            base_frequency=25.,
-            time=np.logspace(-5, -2, 31),
-            src_type='CircularLoop',
-            I=1e0,
-            a=2e1
+        thicknesses = np.r_[nearthick, deepthick]
+        topo = np.r_[0., 0., 100.]
+        a = 20.
+        
+        src_location = np.array([0., 0., 100.+1e-5])  
+        rx_location = np.array([0., 0., 100.+1e-5])
+        receiver_orientation = "z"  # "x", "y" or "z"
+        times = np.logspace(-5, -2, 31)
+        
+        # Receiver list
+        receiver_list = []
+        
+        receiver_list.append(
+            em1d.receivers.TimeDomainPointReceiver(
+                rx_location, times, orientation=receiver_orientation,
+                component="b"
+            )
         )
-
-        sig_half = 1e-4
-        chi_half = 0.
-
-        expmap = Maps.ExpMap(mesh1D)
-        m_1D = np.log(np.ones(TDsurvey.n_layer)*sig_half)
-        chi = np.zeros(TDsurvey.n_layer)
-
-        prob = EM1D(
-            mesh1D, sigmaMap=expmap, chi=chi
+        
+        receiver_list.append(
+            em1d.receivers.TimeDomainPointReceiver(
+                rx_location, times, orientation=receiver_orientation,
+                component="dbdt"
+            )
         )
-        prob.pair(TDsurvey)
+        
+        time_input_currents = np.r_[-np.logspace(-2, -5, 31), 0.]
+        input_currents = TriangleFun(time_input_currents+0.01, 5e-3, 0.01)
+        source_list = [
+            em1d.sources.TimeDomainHorizontalLoopSource(
+                receiver_list=receiver_list,
+                location=src_location,
+                a=a, I=1.,
+                wave_type="general",
+                time_input_currents=time_input_currents,
+                input_currents=input_currents,
+                n_pulse = 1,
+                base_frequency = 25.,
+                use_lowpass_filter=False,
+                high_cut_frequency=210*1e3
+            )
+        ]
+            
+        # Survey
+        survey = em1d.survey.EM1DSurveyTD(source_list)
+        
+        sigma = 1e-2
 
-        self.survey = TDsurvey
-        self.prob = prob
-        self.mesh1D = mesh1D
+        self.topo = topo
+        self.survey = survey
         self.showIt = False
-        self.chi = chi
-        self.m_1D = m_1D
-        self.sig_half = sig_half
-        self.expmap = expmap
+        self.sigma = sigma
+        self.times = times
+        self.thicknesses = thicknesses
+        self.nlayers = len(thicknesses)+1
+        self.a = a
+
 
     def test_EM1DTDJvec_Layers(self):
-        sig = np.ones(self.prob.survey.n_layer)*self.sig_half
-        m_1D = np.log(sig)
-
+        
+        sigma_map = maps.ExpMap(nP=self.nlayers)
+        sim = em1d.simulation.EM1DTMSimulation(
+            survey=self.survey, thicknesses=self.thicknesses,
+            sigmaMap=sigma_map, topo=self.topo
+        )
+        
+        m_1D = np.log(np.ones(self.nlayers)*self.sigma)
+        
         def fwdfun(m):
-            resp = self.prob.survey.dpred(m)
+            resp = sim.dpred(m)
             return resp
 
         def jacfun(m, dm):
-            Jvec = self.prob.Jvec(m, dm)
+            Jvec = sim.Jvec(m, dm)
             return Jvec
 
         dm = m_1D*0.5
         derChk = lambda m: [fwdfun(m), lambda mx: jacfun(m, mx)]
-        passed = Tests.checkDerivative(
+        passed = tests.checkDerivative(
             derChk, m_1D, num=4, dx=dm, plotIt=False, eps=1e-15
         )
 
@@ -83,24 +99,31 @@ class EM1D_TD_general_Jac_layers_ProblemTests(unittest.TestCase):
 
     def test_EM1DTDJtvec_Layers(self):
 
-        sig_blk = 0.1
-        sig = np.ones(self.prob.survey.n_layer)*self.sig_half
-        sig[3] = sig_blk
+        sigma_map = maps.ExpMap(nP=self.nlayers)
+        sim = em1d.simulation.EM1DTMSimulation(
+            survey=self.survey, thicknesses=self.thicknesses,
+            sigmaMap=sigma_map, topo=self.topo
+        )        
 
-        m_true = np.log(sig)
-        dobs = self.prob.survey.dpred(m_true)
-        m_ini = np.log(np.ones(self.prob.survey.n_layer)*self.sig_half)
-        resp_ini = self.prob.survey.dpred(m_ini)
+        sigma_layer = 0.1
+        sigma = np.ones(self.nlayers)*self.sigma
+        sigma[3] = sigma_layer
+        m_true = np.log(sigma)
+        
+        dobs = sim.dpred(m_true)
+        
+        m_ini = np.log(np.ones(self.nlayers)*self.sigma)
+        resp_ini = sim.dpred(m_ini)
         dr = resp_ini-dobs
 
         def misfit(m, dobs):
-            dpred = self.survey.dpred(m)
+            dpred = sim.dpred(m)
             misfit = 0.5*np.linalg.norm(dpred-dobs)**2
-            dmisfit = self.prob.Jtvec(m, dr)
+            dmisfit = sim.Jtvec(m, dr)
             return misfit, dmisfit
 
         derChk = lambda m: misfit(m, dobs)
-        passed = Tests.checkDerivative(
+        passed = tests.checkDerivative(
             derChk, m_ini, num=4, plotIt=False, eps=1e-26
         )
         self.assertTrue(passed)

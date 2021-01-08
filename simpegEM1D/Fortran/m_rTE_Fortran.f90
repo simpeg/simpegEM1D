@@ -27,7 +27,7 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
   !f2py intent(in) :: lambda
   complex(kind=8), intent(in) :: sig(nLayers, nFrequencies, nFilter)
   !f2py intent(in) :: sig
-  real(kind=8), intent(in) :: chi(nLayers)
+  complex(kind=8), intent(in) :: chi(nLayers, nFrequencies, nFilter)
   !f2py intent(in) :: chi
   real(kind=8), intent(in) :: depth(nLayers)
   !f2py intent(in) :: depth
@@ -47,15 +47,15 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
   real(kind=8) :: tmp0
   complex(kind=8) :: uTmp0, uTmp1, cTmp
   real(kind=8) :: thickness(nLayers - 1)
-  complex(kind=8) :: c1(nLayers)
+  complex(kind=8) :: c1(nLayers, nFrequencies, nFilter)
 
   if (halfSpace .or. nLayers == 1) then
 
-    cTmp = mu0 * (1.d0 + chi(1))
     do jj = 1, nFilter
       do i = 1, nFrequencies
         omega = pi2 * frequencies(i, jj)
         uTmp0 = lambda(i, jj)
+        cTmp = mu0 * (1.d0 + chi(1, i, jj))
         uTmp1 = sqrt(uTmp0**2.d0 + j * omega * cTmp * sig(1, i, jj))
         c = mu0 * uTmp1 / (cTmp * uTmp0)
 
@@ -72,9 +72,15 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
 
   do k = 1, nLayers - 1
     thickness(k) = -(depth(k+1) - depth(k))
-    c1(k) = 1.d0 + chi(k)
   enddo
-  c1(nLayers) = 1.d0 + chi(nLayers)
+
+  do k = 1, nLayers
+    do jj = 1, nFilter
+      do i = 1, nFrequencies
+        c1(k, i, jj) = 1.d0 + chi(k, i, jj)
+      enddo
+    enddo
+  enddo
 
   do jj = 1, nFilter
     do i = 1, nFrequencies
@@ -83,8 +89,8 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
       lam2 = lambda(i, jj)**2.d0
 
       ! Set up first layer
-      uTmp1 = sqrt(lam2 + j * tmp0 * c1(1) * sig(1, i, jj))
-      c = uTmp1 / (c1(1) * lambda(i, jj))
+      uTmp1 = sqrt(lam2 + j * tmp0 * c1(1, i, jj) * sig(1, i, jj))
+      c = uTmp1 / (c1(1, i, jj) * lambda(i, jj))
 
       s0 = 0.5d0 * (1.d0 + c)
       s1 = 0.5d0 * (1.d0 - c)
@@ -93,9 +99,9 @@ subroutine rTE_forward(nLayers, nFrequencies, nFilter, frequencies, lambda, sig,
 
       do k = 1, nLayers - 1
         cTmp = j * tmp0
-        uTmp0 = sqrt(lam2 + cTmp * c1(k) * sig(k, i, jj))
-        uTmp1 = sqrt(lam2 + cTmp * c1(k + 1) * sig(k+1, i, jj))
-        c = (c1(k) * uTmp1) / (c1(k + 1) * uTmp0)
+        uTmp0 = sqrt(lam2 + cTmp * c1(k, i, jj) * sig(k, i, jj))
+        uTmp1 = sqrt(lam2 + cTmp * c1(k + 1, i, jj) * sig(k+1, i, jj))
+        c = (c1(k, i, jj) * uTmp1) / (c1(k + 1, i, jj) * uTmp0)
 
         h = thickness(k)
 

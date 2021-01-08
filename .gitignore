@@ -39,4 +39,7 @@ nosetests.xml
 *.sublime-project
 *.sublime-workspace
 docs/_build/
+*.ipynb
 *.ipynb_checkpoints
+.DS_Store
+notebooks/
