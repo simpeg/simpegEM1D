@@ -356,7 +356,6 @@ def get_projection_matrix(args):
     nCz = mesh_3d.nCz
     nCy = mesh_3d.nCy
     nCx = mesh_3d.nCx    
-    print ('kang')
 
     I = np.argwhere(inds).flatten()
     J = np.argwhere(inds).flatten()
