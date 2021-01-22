@@ -26,6 +26,13 @@ class AEMInterpolation(BaseProblem):
         dtype=float  # data are floats
     )
     
+    indActive = properties.Array(
+        "active index of mesh",
+        required=True,
+        shape=('*',),  
+        dtype=bool  # data are floats
+    )
+
     n_cpu = properties.Integer(
         "Number of CPU",
         default=2,
@@ -72,7 +79,7 @@ class AEMInterpolation(BaseProblem):
             pool = Pool(self.n_cpu)
             self._G = pool.map(
                 get_projection_matrix, 
-                [(self.locations[ii,:], self.hz_aem, self.mesh.hx, self.mesh.hy, self.mesh.hz, self.mesh.x0) for ii in range(self.locations.shape[0])]
+                [(self.locations[ii,:], self.hz_aem, self.mesh.hx, self.mesh.hy, self.mesh.hz, self.mesh.x0, self.indActive) for ii in range(self.locations.shape[0])]
             )
             pool.close()
             pool.join()
@@ -229,7 +236,7 @@ def get_projection_matrix(args):
     import scipy.sparse as sp
     from SimPEG import Mesh, Utils
 
-    location, hz_aem, hx, hy, hz, x0 = args
+    location, hz_aem, hx, hy, hz, x0, indActive = args
     
     def get_circle(center_points, r, n):
         theta = np.linspace(-np.pi, np.pi, n+1)
@@ -343,12 +350,13 @@ def get_projection_matrix(args):
     xyz_cone = np.vstack((xyz_top, xyz_bottom))
 
     inds = in_hull(mesh_3d.gridCC, xyz_cone)
-
+    inds = np.logical_and(inds, indActive)
     nC = mesh_3d.nC
     n_cone = inds.sum()
     nCz = mesh_3d.nCz
     nCy = mesh_3d.nCy
     nCx = mesh_3d.nCx    
+    print ('kang')
 
     I = np.argwhere(inds).flatten()
     J = np.argwhere(inds).flatten()
