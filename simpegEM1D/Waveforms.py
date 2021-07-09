@@ -10,7 +10,7 @@ XXX
 
 import numpy as np
 from scipy.integrate import fixed_quad
-from scipy.integrate.quadrature import _cached_roots_legendre
+from scipy.special import roots_legendre as _cached_roots_legendre
 
 # from scipy.signal import butter, freqz
 
