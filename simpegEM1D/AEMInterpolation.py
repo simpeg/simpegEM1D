@@ -6,7 +6,110 @@ import numpy as np
 from scipy.interpolate import NearestNDInterpolator
 from multiprocess import Pool
 from SimPEG import Props, Utils
+from scipy.spatial import cKDTree as KDtree
 
+
+class Interpolation2D(BaseProblem):
+
+    _jtj_diag = None
+    
+    locations = properties.Array(
+        "(x,y) locations of data",
+        required=True,
+        shape=('*', 2),  
+        dtype=float  # data are floats
+    )
+
+    sampling_radius = properties.Array(
+        "sampling radius of data",
+        required=True,
+        shape=('*',),  
+        dtype=float  # data are floats
+    )
+    
+    indActive = properties.Array(
+        "active index of mesh",
+        required=True,
+        shape=('*',),  
+        dtype=bool  # data are floats
+    )
+    
+    def __init__(self, mesh, **kwargs):
+        BaseProblem.__init__(self, mesh, **kwargs)
+        self.modelMap = kwargs.pop('modelMap', Maps.IdentityMap(mesh))
+    
+    @property
+    def modelMap(self):
+        "A SimPEG.Map instance."
+        return getattr(self, '_modelMap', None)
+
+
+    @modelMap.setter
+    def modelMap(self, val):
+        val._assertMatchesPair(self.mapPair)
+        self._modelMap = val
+    
+
+    @property
+    def n_locations(self):
+        return self.locations.shape[0]
+            
+    @property
+    def G(self):
+        if getattr(self, '_G', None) is None:
+            print (">> Computing G matrix")
+            tree = KDtree(self.mesh.gridCC)
+            N = self.locations.shape[0]
+            M = self.mesh.nC
+            J = tree.query_ball_point(self.locations, r=self.sampling_radius)
+            I = []
+            values = []
+            for ii, ind in enumerate(J):
+                n = len(ind)
+                I.append(np.ones(len(ind)) * ii)
+                if n == 0:
+                    if self.verbose:
+                        print ("No data")
+                values_tmp = np.ones(n) / n
+                values.append(values_tmp)
+            J = np.hstack(J).astype(int)
+            I = np.hstack(I).astype(int)
+            values = np.hstack(values)
+            self._G = sp.coo_matrix(
+                (values, (I, J)), shape=(N, M)
+            ).tocsr()            
+            print (">> Finished computing G matrix")
+        return self._G
+    
+    def fields(self, m):
+        return self.G.dot(self.modelMap * m)
+
+    def getJ(self, m, f=None):
+        """
+            Sensitivity matrix
+        """
+
+        if self.modelMap is not None:
+            dmudm = self.modelMap.deriv(m)
+            return self.G*dmudm
+        else:
+            return self.G
+
+    def Jvec(self, m, v, f=None):
+        return self.G.dot(self.modelMap.deriv(m) * v)
+
+    def Jtvec(self, m, v, f=None):
+        return self.modelMap.deriv(m).T*self.G.T.dot(v)
+    
+    def getJtJdiag(self, m, W=None):
+        J_matrix = W*self.getJ(m)
+        I, J = J_matrix.nonzero()
+        values = J_matrix.data
+        J2 = sp.coo_matrix((values**2, (I, J)), shape=J_matrix.shape).tocsr()
+        self._jtj_diag = J2.T * np.ones(J2.shape[0])
+        threshold = np.percentile(self._jtj_diag[self._jtj_diag>0.], 5)
+        self._jtj_diag += threshold
+        return self._jtj_diag
 
 class AEMInterpolation(BaseProblem):
 

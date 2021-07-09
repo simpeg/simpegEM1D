@@ -11,5 +11,5 @@ dependencies:
   - discretize
   # - gcc
   - pip:
-    - git+https://github.com/simpeg/simpegEM1D.git@master
+    - git+https://github.com/simpeg/simpegEM1D.git
 

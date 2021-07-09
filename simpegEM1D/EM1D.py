@@ -363,7 +363,6 @@ class EM1D(Problem.BaseProblem):
         lambd[:, :], _ = get_dlf_points(
             self.fhtfilt, r, self.hankel_pts_per_dec
         )
-
         # TODO: potentially store
         f = np.empty([self.survey.frequency.size, n_filter], order='F')
         f[:, :] = np.tile(
@@ -590,7 +589,7 @@ class EM1D(Problem.BaseProblem):
         return doi, active
 
     def get_threshold(self, uncert):
-        _, active = self.depth_of_investigation(uncert)
+        _, active = self.depth_of_investigation_christiansen_2012(uncert)
         JtJdiag = self.get_JtJdiag(uncert)
         delta = JtJdiag[active].min()
         return delta

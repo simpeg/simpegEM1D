@@ -30,7 +30,7 @@ from .EM1DSimulation import (
 from .Regularization import (
     LateralConstraint, get_2d_mesh
 )
-from .AEMInterpolation import AEMInterpolation, TDSProblem 
+from .AEMInterpolation import AEMInterpolation, TDSProblem, Interpolation2D
 from .IO import ModelIO
 import os
 import glob
